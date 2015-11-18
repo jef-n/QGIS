@@ -93,7 +93,7 @@ class Processing:
             ProcessingLog.addToLog(
                 ProcessingLog.LOG_ERROR,
                 Processing.tr('Could not load provider: %s\n%s')
-                % (provider.getDescription(), unicode(sys.exc_info()[1])))
+                % (provider.getDescription(), str(sys.exc_info()[1])))
             Processing.removeProvider(provider)
 
     @staticmethod
@@ -241,15 +241,15 @@ class Processing:
 
     @staticmethod
     def getAlgorithm(name):
-        for provider in Processing.algs.values():
+        for provider in list(Processing.algs.values()):
             if name in provider:
                 return provider[name]
         return None
 
     @staticmethod
     def getAlgorithmFromFullName(name):
-        for provider in Processing.algs.values():
-            for alg in provider.values():
+        for provider in list(Processing.algs.values()):
+            for alg in list(provider.values()):
                 if alg.name == name:
                     return alg
         return None
@@ -270,7 +270,7 @@ class Processing:
         else:
             alg = Processing.getAlgorithm(algOrName)
         if alg is None:
-            print 'Error: Algorithm not found\n'
+            print ('Error: Algorithm not found\n')
             QgsMessageLog.logMessage(Processing.tr('Error: Algorithm {0} not found\n').format(algOrName), Processing.tr("Processing"))
             return
         alg = alg.getCopy()
@@ -279,7 +279,7 @@ class Processing:
             # Set params by name and try to run the alg even if not all parameter values are provided,
             # by using the default values instead.
             setParams = []
-            for (name, value) in args[0].items():
+            for (name, value) in list(args[0].items()):
                 param = alg.getParameterFromName(name)
                 if param and param.setValue(value):
                     setParams.append(name)
@@ -287,7 +287,7 @@ class Processing:
                 output = alg.getOutputFromName(name)
                 if output and output.setValue(value):
                     continue
-                print 'Error: Wrong parameter value %s for parameter %s.' % (value, name)
+                print(('Error: Wrong parameter value %s for parameter %s.' % (value, name)))
                 QgsMessageLog.logMessage(Processing.tr('Error: Wrong parameter value {0} for parameter {1}.').format(value, name), Processing.tr("Processing"))
                 ProcessingLog.addToLog(
                     ProcessingLog.LOG_ERROR,
@@ -298,8 +298,8 @@ class Processing:
             # fill any missing parameters with default values if allowed
             for param in alg.parameters:
                 if param.name not in setParams:
-                    if not param.setDefaultValue():
-                        print ('Error: Missing parameter value for parameter %s.' % (param.name))
+                    if not param.setValue(None):
+                        print (('Error: Missing parameter value for parameter %s.' % (param.name)))
                         QgsMessageLog.logMessage(Processing.tr('Error: Missing parameter value for parameter {0}.').format(param.name), Processing.tr("Processing"))
                         ProcessingLog.addToLog(
                             ProcessingLog.LOG_ERROR,
@@ -309,7 +309,7 @@ class Processing:
                         return
         else:
             if len(args) != alg.getVisibleParametersCount() + alg.getVisibleOutputsCount():
-                print 'Error: Wrong number of parameters'
+                print('Error: Wrong number of parameters')
                 QgsMessageLog.logMessage(Processing.tr('Error: Wrong number of parameters'), Processing.tr("Processing"))
                 processing.alghelp(algOrName)
                 return
@@ -317,29 +317,29 @@ class Processing:
             for param in alg.parameters:
                 if not param.hidden:
                     if not param.setValue(args[i]):
-                        print 'Error: Wrong parameter value: ' \
-                            + unicode(args[i])
-                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong parameter value: ') + unicode(args[i]), Processing.tr("Processing"))
+                        print('Error: Wrong parameter value: '
+                              + str(args[i]))
+                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong parameter value: ') + str(args[i]), Processing.tr("Processing"))
                         return
                     i = i + 1
 
             for output in alg.outputs:
                 if not output.hidden:
                     if not output.setValue(args[i]):
-                        print 'Error: Wrong output value: ' + unicode(args[i])
-                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong output value: ') + unicode(args[i]), Processing.tr("Processing"))
+                        print('Error: Wrong output value: ' + str(args[i]))
+                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong output value: ') + str(args[i]), Processing.tr("Processing"))
                         return
                     i = i + 1
 
         msg = alg._checkParameterValuesBeforeExecuting()
         if msg:
-            print 'Unable to execute algorithm\n' + msg
+            print('Unable to execute algorithm\n' + msg)
             QgsMessageLog.logMessage(Processing.tr('Unable to execute algorithm\n{0}').format(msg), Processing.tr("Processing"))
             return
 
         if not alg.checkInputCRS():
-            print 'Warning: Not all input layers use the same CRS.\n' \
-                + 'This can cause unexpected results.'
+            print('Warning: Not all input layers use the same CRS.\n'
+                  + 'This can cause unexpected results.')
             QgsMessageLog.logMessage(Processing.tr('Warning: Not all input layers use the same CRS.\nThis can cause unexpected results.'), Processing.tr("Processing"))
 
         # Don't set the wait cursor twice, because then when you
@@ -355,7 +355,7 @@ class Processing:
                 overrideCursor = True
 
         progress = None
-        if kwargs is not None and "progress" in kwargs.keys():
+        if kwargs is not None and "progress" in list(kwargs.keys()):
             progress = kwargs["progress"]
         elif iface is not None:
             progress = MessageBarProgress()

@@ -2,11 +2,11 @@
 
 """
 ***************************************************************************
-    __init__.py
+    QtXml.py
     ---------------------
-    Date                 : September 2012
-    Copyright            : (C) 2012 by Salvatore Larosa
-    Email                : lrssvtml at gmail dot com
+    Date                 : February 2016
+    Copyright            : (C) 2016 by Jürgen E. Fischer
+    Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -17,10 +17,10 @@
 ***************************************************************************
 """
 
-__author__ = 'Salvatore Larosa'
-__date__ = 'September 2012'
-__copyright__ = '(C) 2012, Salvatore Larosa'
+__author__ = 'Jürgen E. Fischer'
+__date__ = 'February 2016'
+__copyright__ = '(C) 2016, Jürgen E. Fischer'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from .console import show_console
+from PyQt4.QtXml import *

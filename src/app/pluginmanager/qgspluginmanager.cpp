@@ -516,6 +516,7 @@ void QgsPluginManager::reloadModelData()
 
       // Set checkable if the plugin is installed and not disabled due to incompatibility.
       // Broken plugins are checkable to to allow disabling them
+      QgsDebugMsg( QString( "name=%1 installed=%2 error=%3" ).arg( it->value( "name" ) ).arg( it->value( "installed" ) ).arg( it->value( "error" ) ) );
       mypDetailItem->setCheckable( it->value( "installed" ) == "true" && it->value( "error" ) != "incompatible" );
 
       // Set ckeckState depending on the plugin is loaded or not.

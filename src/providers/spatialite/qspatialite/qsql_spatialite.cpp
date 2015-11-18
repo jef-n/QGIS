@@ -60,6 +60,10 @@
 #include <sqlite3.h>
 #include <qgsslconnect.h>
 
+#if QT_VERSION >= 0x050000
+Q_DECLARE_OPAQUE_POINTER(sqlite3*)
+Q_DECLARE_OPAQUE_POINTER(sqlite3_stmt*)
+#endif
 Q_DECLARE_METATYPE(sqlite3*)
 Q_DECLARE_METATYPE(sqlite3_stmt*)
 
@@ -324,6 +328,9 @@ QSpatiaLiteResult::~QSpatiaLiteResult()
 
 void QSpatiaLiteResult::virtual_hook(int id, void *data)
 {
+#if QT_VERSION >= 0x050000
+    QSqlCachedResult::virtual_hook(id, data);
+#else
     switch (id) {
     case QSqlResult::DetachFromResultSet:
         if (d->stmt)
@@ -332,6 +339,7 @@ void QSpatiaLiteResult::virtual_hook(int id, void *data)
     default:
         QSqlCachedResult::virtual_hook(id, data);
     }
+#endif
 }
 
 bool QSpatiaLiteResult::reset(const QString &query)
@@ -531,6 +539,7 @@ bool QSpatiaLiteDriver::hasFeature(DriverFeature f) const
     case BatchOperations:
     case EventNotifications:
     case MultipleResultSets:
+    case CancelQuery:
         return false;
     }
     return false;

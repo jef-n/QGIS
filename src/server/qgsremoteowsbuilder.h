@@ -37,8 +37,10 @@ class QgsRemoteOWSBuilder: public QgsMSLayerBuilder
     QgsRemoteOWSBuilder(); //forbidden
     /** Creates a wms layer from a complete wms url (using http get). Returns 0 in case of error*/
     QgsRasterLayer* wmsLayerFromUrl( const QString& url, const QString& layerName, QList<QgsMapLayer*>& layersToRemove, bool allowCaching = true ) const;
+#if QT_VERSION < 0x050000
     /** Creates a temporary file such that the gdal library can read from wcs*/
     QgsRasterLayer* wcsLayerFromUrl( const QString& url, const QString& layerName, QList<QTemporaryFile*>& filesToRemove, QList<QgsMapLayer*>& layersToRemove, bool allowCaching = true ) const;
+#endif
     /** Creates sos layer by analizing server url and LayerSensorObservationConstraints*/
     QgsVectorLayer* sosLayer( const QDomElement& remoteOWSElem, const QString& url, const QString& layerName, QList<QgsMapLayer*>& layersToRemove, bool allowCaching = true ) const;
 

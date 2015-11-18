@@ -19,12 +19,10 @@ email                : lrssvtml (at) gmail (dot) com
 Some portions of code were taken from https://code.google.com/p/pydee/
 """
 
-from PyQt4.QtCore import Qt, QObject, QEvent, QSettings, QCoreApplication, QFileInfo, QSize, QDir, SIGNAL
-from PyQt4.QtGui import QFont, QFontMetrics, QColor, QShortcut, QKeySequence, QMenu, QApplication, QCursor, QWidget, QGridLayout, QSpacerItem, QSizePolicy, QFileDialog, QTabWidget, QTreeWidgetItem, QFrame, QLabel, QToolButton, QMessageBox
-from PyQt4.Qsci import (QsciScintilla,
-                        QsciLexerPython,
-                        QsciAPIs,
-                        QsciStyle)
+from PyQt.QtCore import Qt, QObject, QEvent, QSettings, QCoreApplication, QFileInfo, QSize, QDir
+from PyQt.QtGui import QFont, QFontMetrics, QColor, QKeySequence, QCursor
+from PyQt.QtWidgets import QShortcut, QMenu, QApplication, QWidget, QGridLayout, QSpacerItem, QSizePolicy, QFileDialog, QTabWidget, QTreeWidgetItem, QFrame, QLabel, QToolButton, QMessageBox
+from PyQt.Qsci import QsciScintilla, QsciLexerPython, QsciAPIs, QsciStyle
 from qgis.core import QgsApplication
 from qgis.gui import QgsMessageBar
 import sys
@@ -36,6 +34,8 @@ from operator import itemgetter
 import traceback
 import codecs
 import re
+
+from six import iteritems
 
 
 class KeyFilter(QObject):
@@ -50,7 +50,7 @@ class KeyFilter(QObject):
         self.window = window
         self.tab = tab
         self._handlers = {}
-        for shortcut, handler in KeyFilter.SHORTCUTS.iteritems():
+        for shortcut, handler in iteritems(KeyFilter.SHORTCUTS):
             modifiers = shortcut[0]
             if not isinstance(modifiers, list):
                 modifiers = [modifiers]
@@ -424,8 +424,12 @@ class Editor(QsciScintilla):
             self.parent.pc.objectListButton.setChecked(True)
 
     def codepad(self):
-        import urllib2
-        import urllib
+        try:
+            from urllib2 import urlopen, URLError
+            from urlib import urlencode
+        except ImportError:
+            from urllib.request import urlopen
+            from urllib.error import URLError
         listText = self.selectedText().split('\n')
         getCmd = []
         for strLine in listText:
@@ -436,7 +440,7 @@ class Editor(QsciScintilla):
                   'code': pasteText,
                   'submit': 'Submit'}
         try:
-            response = urllib2.urlopen(url, urllib.urlencode(values))
+            response = urlopen(url, urlencode(values))
             url = response.read()
             for href in url.split("</a>"):
                 if "Link:" in href:
@@ -449,7 +453,7 @@ class Editor(QsciScintilla):
                 QApplication.clipboard().setText(link)
                 msgText = QCoreApplication.translate('PythonConsole', 'URL copied to clipboard.')
                 self.parent.pc.callWidgetMessageBarEditor(msgText, 0, True)
-        except urllib2.URLError as e:
+        except URLError as e:
             msgText = QCoreApplication.translate('PythonConsole', 'Connection error: ')
             self.parent.pc.callWidgetMessageBarEditor(msgText + str(e.args), 0, True)
 
@@ -535,15 +539,15 @@ class Editor(QsciScintilla):
                 file = file + tmpFileTr
             if _traceback:
                 msgTraceTr = QCoreApplication.translate('PythonConsole', '## Script error: {0}').format(file)
-                print "## %s" % datetime.datetime.now()
-                print unicode(msgTraceTr)
+                print ("## %s" % datetime.datetime.now())
+                print (unicode(msgTraceTr))
                 sys.stderr.write(_traceback)
                 p.stderr.close()
             else:
                 msgSuccessTr = QCoreApplication.translate('PythonConsole',
                                                           '## Script executed successfully: {0}').format(file)
-                print "## %s" % datetime.datetime.now()
-                print unicode(msgSuccessTr)
+                print ("## %s" % datetime.datetime.now())
+                print (unicode(msgSuccessTr))
                 sys.stdout.write(out)
                 p.stdout.close()
             del p
@@ -553,10 +557,10 @@ class Editor(QsciScintilla):
             IOErrorTr = QCoreApplication.translate('PythonConsole',
                                                    'Cannot execute file {0}. Error: {1}\n').format(filename,
                                                                                                    error.strerror)
-            print '## Error: ' + IOErrorTr
+            print ('## Error: ' + IOErrorTr)
         except:
             s = traceback.format_exc()
-            print '## Error: '
+            print ('## Error: ')
             sys.stderr.write(s)
 
     def runScriptCode(self):
@@ -899,8 +903,8 @@ class EditorTabWidget(QTabWidget):
         self.layoutTopFrame2.addWidget(self.clButton, 0, 2, 1, 1)
 
         self.topFrame.hide()
-        self.connect(self.restoreTabsButton, SIGNAL('clicked()'), self.restoreTabs)
-        self.connect(self.clButton, SIGNAL('clicked()'), self.closeRestore)
+        self.restoreTabsButton.clicked.connect(self.restoreTabs)
+        self.clButton.clicked.connect(self.closeRestore)
 
         ## Fixes #7653
         if sys.platform != 'darwin':
@@ -912,10 +916,8 @@ class EditorTabWidget(QTabWidget):
 
         # Menu button list tabs
         self.fileTabMenu = QMenu()
-        self.connect(self.fileTabMenu, SIGNAL("aboutToShow()"),
-                     self.showFileTabMenu)
-        self.connect(self.fileTabMenu, SIGNAL("triggered(QAction*)"),
-                     self.showFileTabMenuTriggered)
+        self.fileTabMenu.aboutToShow.connect(self.showFileTabMenu)
+        self.fileTabMenu.triggered.connect(self.showFileTabMenuTriggered)
         self.fileTabButton = QToolButton()
         txtToolTipMenuFile = QCoreApplication.translate("PythonConsole",
                                                         "List all tabs")
@@ -926,8 +928,8 @@ class EditorTabWidget(QTabWidget):
         self.fileTabButton.setPopupMode(QToolButton.InstantPopup)
         self.fileTabButton.setMenu(self.fileTabMenu)
         self.setCornerWidget(self.fileTabButton, Qt.TopRightCorner)
-        self.connect(self, SIGNAL("tabCloseRequested(int)"), self._removeTab)
-        self.connect(self, SIGNAL('currentChanged(int)'), self._currentWidgetChanged)
+        self.tabCloseRequested.connect(self._removeTab)
+        self.currentChanged.connect(self._currentWidgetChanged)
 
         # New Editor button
         self.newTabButton = QToolButton()
@@ -938,7 +940,7 @@ class EditorTabWidget(QTabWidget):
         self.newTabButton.setIcon(QgsApplication.getThemeIcon("console/iconNewTabEditorConsole.png"))
         self.newTabButton.setIconSize(QSize(24, 24))
         self.setCornerWidget(self.newTabButton, Qt.TopLeftCorner)
-        self.connect(self.newTabButton, SIGNAL('clicked()'), self.newTabEditor)
+        self.newTabButton.clicked.connect(self.newTabEditor)
 
     def _currentWidgetChanged(self, tab):
         if self.settings.value("pythonConsole/enableObjectInsp",
@@ -1026,7 +1028,7 @@ class EditorTabWidget(QTabWidget):
                 IOErrorTr = QCoreApplication.translate('PythonConsole',
                                                        'The file {0} could not be opened. Error: {1}\n').format(filename,
                                                                                                                 error.strerror)
-                print '## Error: '
+                print ('## Error: ')
                 sys.stderr.write(IOErrorTr)
                 return
 
@@ -1125,7 +1127,7 @@ class EditorTabWidget(QTabWidget):
             else:
                 errOnRestore = QCoreApplication.translate("PythonConsole",
                                                           "Unable to restore the file: \n{0}\n").format(pathFile)
-                print '## Error: '
+                print ('## Error: ')
                 s = errOnRestore
                 sys.stderr.write(s)
                 self.parent.updateTabListScript(pathFile, action='remove')
@@ -1230,7 +1232,7 @@ class EditorTabWidget(QTabWidget):
                     msgItem.setIcon(0, iconWarning)
                     self.parent.listClassMethod.addTopLevelItem(msgItem)
 #                     s = traceback.format_exc()
-#                     print '## Error: '
+#                     print ('## Error: ')
 #                     sys.stderr.write(s)
 #                     pass
 

@@ -32,13 +32,11 @@ Parameters:
 
 Python console example, adds new layer to map canvas:
 
-  from PyQt4.QtCore import QString
-
   uri = QgsDataSourceURI()
   uri.setParam ("url", "http://wcs.qgis.org/1.9.0/wcs" )
   uri.setParam ( "identifier", "band1_int16_noct_epsg4326" )
 
-  layer = QgsRasterLayer( QString(uri.encodedUri()), "WCS test", "wcs" )
+  layer = QgsRasterLayer( uri.encodedUri(), "WCS test", "wcs" )
   layer.isValid()
 
   QgsMapLayerRegistry.instance().addMapLayer(layer)
@@ -50,8 +48,6 @@ another standalone script, downloads WCS layer to local file:
 
   from qgis.core import *
 
-  from PyQt4.QtCore import QString
-
   QgsApplication.setPrefixPath("/path/to/qgis/installation/", True)
 
   QgsApplication.initQgis()
@@ -62,7 +58,7 @@ another standalone script, downloads WCS layer to local file:
   srcUri.setParam ("url", "http://wcs.qgis.org/1.9.0/wcs" )
   srcUri.setParam ( "identifier", "band1_int16_noct_epsg4326" )
 
-  srcProvider = QgsProviderRegistry.instance().provider( "wcs", QString( srcUri.encodedUri()) )
+  srcProvider = QgsProviderRegistry.instance().provider( "wcs", srcUri.encodedUri() )
 
   if not srcProvider or not srcProvider.isValid():
     print "Cannot create provider"

@@ -33,6 +33,11 @@ except ValueError:
     # API has already been set so we can't set it again.
     pass
 
+try:
+    unicode
+except:
+    unicode = str
+
 from qgis.core import QgsFeature, QgsGeometry
 
 

@@ -93,7 +93,10 @@
 // warning - this is not fully tested and can lead to race conditions
 #define QOCISPATIAL_THREADED
 
-
+#if QT_VERSION >= 0x050000
+Q_DECLARE_OPAQUE_POINTER( OCIEnv* )
+Q_DECLARE_OPAQUE_POINTER( OCIStmt* )
+#endif
 Q_DECLARE_METATYPE( OCIEnv* )
 Q_DECLARE_METATYPE( OCIStmt* )
 
@@ -2525,7 +2528,7 @@ bool QOCISpatialCols::convertToWkb( QVariant &v, int index )
     }
 
     Q_ASSERT( nPoints % nDims == 0 );
-    Q_ASSERT( iType == gtMultipoint || nPoints == nDims );
+    Q_ASSERT( iType == gtMultiPoint || nPoints == nDims );
 
     int wkbSize = 0;
 
@@ -2696,7 +2699,7 @@ bool QOCISpatialCols::convertToWkb( QVariant &v, int index )
     }
 
     Q_ASSERT( nPolygons > 0 );
-    Q_ASSERT( nRings.size() >= nPolygons );
+    Q_ASSERT( nPolygonRings.size() >= nPolygons );
     Q_ASSERT( nPoints % nDims == 0 );
 
     qDebug() << "polygon" << nPolygons << "rings" << nRings << "points" << nPoints;
@@ -3259,6 +3262,9 @@ QVariant QOCISpatialResult::lastInsertId() const
 
 void QOCISpatialResult::virtual_hook( int id, void *data )
 {
+#if QT_VERSION >= 0x050000
+  QSqlCachedResult::virtual_hook( id, data );
+#else
   ENTER
   Q_ASSERT( data );
 
@@ -3270,6 +3276,7 @@ void QOCISpatialResult::virtual_hook( int id, void *data )
     default:
       QSqlCachedResult::virtual_hook( id, data );
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -3356,6 +3363,7 @@ bool QOCISpatialDriver::hasFeature( DriverFeature f ) const
     case EventNotifications:
     case FinishQuery:
     case MultipleResultSets:
+    case CancelQuery:
       return false;
     case Unicode:
       return d->serverVersion >= 9;

@@ -1570,6 +1570,7 @@ QgsMapLayer* QgsSLDConfigParser::mapLayerFromUserLayer( const QDomElement& userL
     layerBuilder = new QgsHostedRDSBuilder();
   }
 
+#if QT_VERSION < 0x050000
   //remote OWS (WMS, WFS, WCS)?
   QDomNode remoteOWSNode = userLayerElem.namedItem( "RemoteOWS" );
   if ( !layerBuilder && !remoteOWSNode.isNull() )
@@ -1594,6 +1595,7 @@ QgsMapLayer* QgsSLDConfigParser::mapLayerFromUserLayer( const QDomElement& userL
     layerBuilder = new QgsRemoteDataSourceBuilder();
     QgsDebugMsg( "Detected remote vector datasource" );
   }
+#endif
 
   //sent vector/raster datasource
   QDomNode sentVDSNode = userLayerElem.namedItem( "SentVDS" );

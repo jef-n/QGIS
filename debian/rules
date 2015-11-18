@@ -13,7 +13,6 @@ DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_BUILD_ARCH      ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 DEB_BUILD_MULTIARCH ?= $(shell dpkg-architecture -qDEB_BUILD_MULTIARCH)
-QT_PLUGIN_DIR = usr/lib/$(DEB_BUILD_MULTIARCH)/qt4/plugins
 
 DEB_TEST_TARGET ?= Experimental
 QGIS_BUILDDIR ?= debian/build
@@ -29,6 +28,17 @@ endif
 ifneq (,$(findstring -oracle,$(DISTRIBUTION)))
 	DISTRIBUTION := $(subst -oracle,,$(DISTRIBUTION))
 	WITH_ORACLE=1
+endif
+
+ifneq (,$(findstring -qt5,$(DISTRIBUTION)))
+	DISTRIBUTION := $(subst -qt5,,$(DISTRIBUTION))
+	WITH_QT5=1
+endif
+
+ifneq (,$(WITH_QT5))
+QT_PLUGIN_DIR = usr/lib/$(DEB_BUILD_MULTIARCH)/qt5/plugins
+else
+QT_PLUGIN_DIR = usr/lib/$(DEB_BUILD_MULTIARCH)/qt4/plugins
 endif
 
 ifneq ($(DISTRIBUTION),$(findstring $(DISTRIBUTION),"wheezy jessie stretch precise trusty utopic vivid wily"))
@@ -57,13 +67,10 @@ CMAKE_OPTS := \
 	-DBINDINGS_GLOBAL_INSTALL=TRUE \
 	-DPEDANTIC=TRUE \
 	-DWITH_QSPATIALITE=TRUE \
-	-DWITH_SERVER=TRUE \
-	-DWITH_SERVER_PLUGINS=TRUE \
 	-DSERVER_SKIP_ECW=TRUE \
 	-DQGIS_CGIBIN_SUBDIR=/usr/lib/cgi-bin \
 	-DWITH_APIDOC=TRUE \
 	-DWITH_CUSTOM_WIDGETS=TRUE \
-	-DWITH_GLOBE=TRUE \
 	-DWITH_INTERNAL_HTTPLIB2=FALSE \
 	-DWITH_INTERNAL_JINJA2=FALSE \
 	-DWITH_INTERNAL_MARKUPSAFE=FALSE \
@@ -73,6 +80,20 @@ CMAKE_OPTS := \
 	-DWITH_INTERNAL_YAML=FALSE \
 	-DQT_TAG_FILE=/usr/share/qt4/doc/html/qt.tags \
 	-DQT_DOC_URL=/usr/share/qt4/doc/html/
+
+ifneq (,$(WITH_QT5))
+	CMAKE_OPTS += \
+		-DENABLE_QT5=TRUE \
+		-DWITH_GLOBE=FALSE \
+		-DWITH_SERVER=FALSE \
+		-DWITH_SERVER_PLUGINS=FALSE \
+		-DWITH_QWTPOLAR=FALSE
+else
+	CMAKE_OPTS += \
+		-DWITH_SERVER=TRUE \
+		-DWITH_SERVER_PLUGINS=TRUE \
+		-DWITH_GLOBE=TRUE
+endif
 
 ifeq ($(GRASSVER),7)
 	CMAKE_OPTS += \
@@ -109,7 +130,9 @@ ifneq (,$(findstring $(DISTRIBUTION),"sid"))
 	CMAKE_OPTS += -DGEOS_LIBRARY=/usr/lib/$(DEB_BUILD_MULTIARCH)/libgeos_c.so
 endif
 
-ifneq (,$(findstring $(DISTRIBUTION),"jessie stretch trusty utopic vivid wily sid"))
+ifneq (,$(WITH_QT5))
+	CMAKE_OPTS += -DPYTHON_LIBRARY=/usr/lib/$(DEB_BUILD_MULTIARCH)/libpython3.4m.so
+else
 	CMAKE_OPTS += -DPYTHON_LIBRARY=/usr/lib/$(DEB_BUILD_MULTIARCH)/libpython2.7.so
 endif
 
@@ -181,6 +204,12 @@ ifneq (,$(WITH_ORACLE))
 	CONTROL_EXPRESSIONS += oracle
 endif
 
+ifneq (,$(WITH_QT5))
+	CONTROL_EXPRESSIONS += qt5
+else
+	CONTROL_EXPRESSIONS += qt4
+endif
+
 define gentemplate
 $(2): $(1)
 	sed -r \
@@ -211,7 +240,11 @@ cleantemplates:
 	$(MAKE) -f debian/rules debian/control debian/compat
 
 binary binary-arch binary-indep build build-arch build-indep clean install install-arch install-indep:
+ifneq (,$(findstring $(DISTRIBUTION),"stretch sid"))
+	dh $@ --with python3 --parallel --builddirectory=$(QGIS_BUILDDIR)
+else
 	dh $@ --with python2 --parallel --builddirectory=$(QGIS_BUILDDIR)
+endif
 
 override_dh_clean: cleantemplates
 	dh_clean
@@ -303,7 +336,9 @@ override_dh_install:
 	# Don't ship srs.db, automatically updated in postinst with crssync
 	mv $(CURDIR)/debian/tmp/usr/share/qgis/resources/srs.db $(CURDIR)/debian/tmp/usr/share/qgis/resources/srs-template.db
 
+ifneq (,$(findstring $(DISTRIBUTION),"stretch sid"))
 	perl -i -pe 's=#!/usr/bin/env python=#!/usr/bin/python2.7=;' $$(find debian/tmp -name "*.py")
+endif
 
 	# remove unwanted files
 	$(RM) $(CURDIR)/debian/tmp/usr/share/qgis/doc/api/installdox
@@ -339,10 +374,17 @@ override_dh_installman:
 override_dh_installmime:
 	dh_installmime -pqgis
 
+ifneq (,$(findstring $(DISTRIBUTION),"stretch sid"))
 override_dh_python2:
 	dh_python2 --no-guessing-versions
 	dh_python2 --no-guessing-versions usr/share/qgis/grass/scripts
 	dh_sip -ppython-qgis
+else
+override_dh_python3:
+	dh_python3 --no-guessing-versions
+	dh_python3 --no-guessing-versions usr/share/qgis/grass/scripts
+	dh_sip -ppython-qgis
+endif
 
 override_dh_compress:
 	dh_compress --exclude=pdf

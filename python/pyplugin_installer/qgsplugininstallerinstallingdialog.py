@@ -24,16 +24,16 @@
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import QDir, QUrl, QFile, QCoreApplication
-from PyQt4.QtGui import QDialog
-from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
+from PyQt.QtCore import QDir, QUrl, QFile, QCoreApplication
+from PyQt.QtWidgets import QDialog
+from PyQt.QtNetwork import QNetworkRequest, QNetworkReply
 
 import qgis
 from qgis.core import QgsNetworkAccessManager
 
-from ui_qgsplugininstallerinstallingbase import Ui_QgsPluginInstallerInstallingDialogBase
-from installer_data import removeDir
-from unzip import unzip
+from .ui_qgsplugininstallerinstallingbase import Ui_QgsPluginInstallerInstallingDialogBase
+from .installer_data import removeDir
+from .unzip import unzip
 
 
 class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallingDialogBase):

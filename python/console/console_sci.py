@@ -19,9 +19,10 @@ email                : lrssvtml (at) gmail (dot) com
 Some portions of code were taken from https://code.google.com/p/pydee/
 """
 
-from PyQt4.QtCore import Qt, QSettings, QByteArray, QCoreApplication, QFile, QSize
-from PyQt4.QtGui import QDialog, QMenu, QColor, QShortcut, QKeySequence, QFont, QFontMetrics, QStandardItemModel, QStandardItem, QApplication, QClipboard
-from PyQt4.Qsci import QsciScintilla, QsciLexerPython, QsciAPIs
+from PyQt.QtCore import Qt, QSettings, QByteArray, QCoreApplication, QFile, QSize
+from PyQt.QtGui import QColor, QKeySequence, QFont, QFontMetrics, QStandardItemModel, QStandardItem, QClipboard
+from PyQt.QtWidgets import QDialog, QMenu, QApplication, QShortcut
+from PyQt.Qsci import QsciScintilla, QsciLexerPython, QsciAPIs
 
 import sys
 import os
@@ -30,7 +31,12 @@ import codecs
 import re
 
 from qgis.core import QgsApplication
-from ui_console_history_dlg import Ui_HistoryDialogPythonConsole
+from .ui_console_history_dlg import Ui_HistoryDialogPythonConsole
+
+try:
+    unicode
+except:
+    unicode = str
 
 _init_commands = ["from qgis.core import *", "import qgis.utils",
                   "from qgis.utils import iface"]
@@ -170,10 +176,10 @@ class ShellScintilla(QsciScintilla, code.InteractiveInterpreter):
             self.append('import processing')
         elif command == "qtCore":
             # import QtCore class
-            self.append('from PyQt4.QtCore import *')
+            self.append('from PyQt.QtCore import *')
         elif command == "qtGui":
             # import QtGui class
-            self.append('from PyQt4.QtGui import *')
+            self.append('from PyQt.QtGui import *')
         self.entered()
         self.move_cursor_to_end()
         self.setFocus()

@@ -23,18 +23,23 @@
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import pyqtSignal, QObject, QCoreApplication, QFile, QDir, QDirIterator, QSettings, QDate, QUrl, QFileInfo, QLocale
-from PyQt4.QtXml import QDomDocument
-from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
+from PyQt.QtCore import pyqtSignal, QObject, QCoreApplication, QFile, QDir, QDirIterator, QSettings, QDate, QUrl, QFileInfo, QLocale, QByteArray
+from PyQt.QtXml import QDomDocument
+from PyQt.QtNetwork import QNetworkRequest, QNetworkReply
 import sys
 import os
 import codecs
-import ConfigParser
 import qgis.utils
 from qgis.core import QGis, QgsNetworkAccessManager, QgsAuthManager
 from qgis.gui import QgsMessageBar
 from qgis.utils import iface, plugin_paths
-from version_compare import compareVersions, normalizeVersion, isCompatible
+from .version_compare import compareVersions, normalizeVersion, isCompatible
+
+try:
+   from ConfigParser import ConfigParser
+except:
+   from configparser import ConfigParser
+   unicode = str
 
 """
 Data structure:
@@ -385,7 +390,12 @@ class Repositories(QObject):
             reposXML = QDomDocument()
             content = reply.readAll()
             # Fix lonely ampersands in metadata
-            reposXML.setContent(content.replace("& ", "&amp; "))
+            a = QByteArray()
+            a.append("& ")
+            b = QByteArray()
+            b.append("&amp; ")
+            content = content.replace(a, b)
+            reposXML.setContent(content)
             pluginNodes = reposXML.elementsByTagName("pyqgis_plugin")
             if pluginNodes.size():
                 for i in range(pluginNodes.size()):
@@ -554,7 +564,7 @@ class Plugins(QObject):
                 for better control on wchich module is examined
                 in case there is an installed plugin masking a core one """
             global errorDetails
-            cp = ConfigParser.ConfigParser()
+            cp = ConfigParser()
             try:
                 cp.readfp(codecs.open(metadataFile, "r", "utf8"))
                 return cp.get('general', fct)

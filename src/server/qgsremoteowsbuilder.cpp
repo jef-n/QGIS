@@ -17,11 +17,14 @@
 
 #include "qgsdatasourceuri.h"
 #include "qgsremoteowsbuilder.h"
+#if QT_VERSION < 0x050000
 #include "qgshttptransaction.h"
+#endif
 #include "qgslogger.h"
 #include "qgsmslayercache.h"
 #include "qgsrasterlayer.h"
 #include "qgsvectorlayer.h"
+
 #include <QDomElement>
 #include <QTemporaryFile>
 
@@ -29,25 +32,23 @@ QgsRemoteOWSBuilder::QgsRemoteOWSBuilder( const QMap<QString, QString>& paramete
     : QgsMSLayerBuilder()
     , mParameterMap( parameterMap )
 {
-
 }
 
 QgsRemoteOWSBuilder::QgsRemoteOWSBuilder()
     : QgsMSLayerBuilder()
 {
-
 }
 
 QgsRemoteOWSBuilder::~QgsRemoteOWSBuilder()
 {
-
 }
 
 QgsMapLayer* QgsRemoteOWSBuilder::createMapLayer(
   const QDomElement& elem,
   const QString& layerName,
   QList<QTemporaryFile*>& filesToRemove,
-  QList<QgsMapLayer*>& layersToRemove, bool allowCaching ) const
+  QList<QgsMapLayer*>& layersToRemove,
+  bool allowCaching ) const
 {
   if ( elem.isNull() )
   {
@@ -130,8 +131,12 @@ QgsMapLayer* QgsRemoteOWSBuilder::createMapLayer(
   }
   else if ( serviceName == "WCS" )
   {
+#if QT_VERSION < 0x050000
     QgsDebugMsg( "Trying to get WCS layer" );
     result = wcsLayerFromUrl( url, layerName, filesToRemove, layersToRemove );
+#else
+    Q_UNUSED( filesToRemove );
+#endif
   }
   else if ( serviceName == "SOS" )
   {
@@ -231,6 +236,7 @@ QgsRasterLayer* QgsRemoteOWSBuilder::wmsLayerFromUrl( const QString& url, const 
   return result;
 }
 
+#if QT_VERSION < 0x050000
 QgsRasterLayer* QgsRemoteOWSBuilder::wcsLayerFromUrl( const QString &url,
     const QString &layerName,
     QList<QTemporaryFile*> &filesToRemove,
@@ -356,6 +362,7 @@ QgsRasterLayer* QgsRemoteOWSBuilder::wcsLayerFromUrl( const QString &url,
   layersToRemove.push_back( rl ); //make sure the layer gets deleted after each request
   return rl;
 }
+#endif
 
 QgsVectorLayer* QgsRemoteOWSBuilder::sosLayer( const QDomElement& remoteOWSElem, const QString& url, const QString& layerName, QList<QgsMapLayer*>& layersToRemove, bool allowCaching ) const
 {
@@ -417,16 +424,13 @@ QgsVectorLayer* QgsRemoteOWSBuilder::sosLayer( const QDomElement& remoteOWSElem,
     delete sosLayer;
     return nullptr;
   }
+  else if ( allowCaching )
+  {
+    QgsMSLayerCache::instance()->insertLayer( providerUrl, layerName, sosLayer );
+  }
   else
   {
-    if ( allowCaching )
-    {
-      QgsMSLayerCache::instance()->insertLayer( providerUrl, layerName, sosLayer );
-    }
-    else
-    {
-      layersToRemove.push_back( sosLayer );
-    }
+    layersToRemove.push_back( sosLayer );
   }
   return sosLayer;
 }

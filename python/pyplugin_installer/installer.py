@@ -23,19 +23,19 @@
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import Qt, QObject, QSettings, QDir, QUrl
-from PyQt4.QtGui import QMessageBox, QLabel, QFrame, QApplication
-from PyQt4.QtNetwork import QNetworkRequest
+from PyQt.QtCore import Qt, QObject, QSettings, QDir, QUrl
+from PyQt.QtWidgets import QMessageBox, QLabel, QFrame, QApplication
+from PyQt.QtNetwork import QNetworkRequest
 
 import qgis
 from qgis.core import QgsApplication, QgsNetworkAccessManager
 from qgis.gui import QgsMessageBar
 from qgis.utils import iface, startPlugin, unloadPlugin, loadPlugin, reloadPlugin, updateAvailablePlugins
-from installer_data import repositories, plugins, officialRepo, settingsGroup, reposGroup, removeDir
-from qgsplugininstallerinstallingdialog import QgsPluginInstallerInstallingDialog
-from qgsplugininstallerpluginerrordialog import QgsPluginInstallerPluginErrorDialog
-from qgsplugininstallerfetchingdialog import QgsPluginInstallerFetchingDialog
-from qgsplugininstallerrepositorydialog import QgsPluginInstallerRepositoryDialog
+from .installer_data import repositories, plugins, officialRepo, settingsGroup, reposGroup, removeDir
+from .qgsplugininstallerinstallingdialog import QgsPluginInstallerInstallingDialog
+from .qgsplugininstallerpluginerrordialog import QgsPluginInstallerPluginErrorDialog
+from .qgsplugininstallerfetchingdialog import QgsPluginInstallerFetchingDialog
+from .qgsplugininstallerrepositorydialog import QgsPluginInstallerRepositoryDialog
 
 
 # public instances:
@@ -447,7 +447,7 @@ class QgsPluginInstaller(QObject):
         dlg.editParams.setText(repositories.urlParams())
         dlg.checkBoxEnabled.setCheckState(checkState[repositories.all()[reposName]["enabled"]])
         if repositories.all()[reposName]["valid"]:
-            dlg.checkBoxEnabled.setEnabled(True)
+            #dlg.checkBoxEnabled.setEnabled(True)
             dlg.labelInfo.setText("")
         else:
             dlg.checkBoxEnabled.setEnabled(False)

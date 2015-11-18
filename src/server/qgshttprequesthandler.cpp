@@ -18,7 +18,9 @@
  ***************************************************************************/
 
 #include "qgshttprequesthandler.h"
+#if QT_VERSION < 0x050000
 #include "qgsftptransaction.h"
+#endif
 #include "qgshttptransaction.h"
 #include "qgsmessagelog.h"
 #include "qgsmapserviceexception.h"
@@ -580,6 +582,7 @@ void QgsHttpRequestHandler::requestStringToParameterMap( const QString& request,
           continue;
         }
       }
+#if QT_VERSION < 0x050000
       else if ( value.startsWith( "ftp", Qt::CaseInsensitive ) )
       {
         QgsFtpTransaction ftp;
@@ -589,6 +592,7 @@ void QgsHttpRequestHandler::requestStringToParameterMap( const QString& request,
         }
         value = QUrl::fromPercentEncoding( fileContents );
       }
+#endif
       else
       {
         continue; //only http and ftp supported at the moment

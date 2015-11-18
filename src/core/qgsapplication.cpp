@@ -117,7 +117,11 @@ void QgsApplication::init( QString customConfigPath )
     }
     else
     {
+#if QT_VERSION < 0x050000
       customConfigPath = QString( "%1/.qgis%2/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
+#else
+      customConfigPath = QString( "%1/.qgis%2-qt5/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
+#endif
     }
   }
 

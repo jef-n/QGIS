@@ -114,6 +114,7 @@ bool QgsPythonUtilsImpl::checkSystemImports()
     return false;
   }
 
+#ifdef PYTHON2
   // set PyQt4 api versions
   QStringList apiV2classes;
   apiV2classes << "QDate" << "QDateTime" << "QString" << "QTextStream" << "QTime" << "QUrl" << "QVariant";
@@ -125,7 +126,6 @@ bool QgsPythonUtilsImpl::checkSystemImports()
       return false;
     }
   }
-#ifdef PYTHON2
   // import Qt bindings
   if ( !runString( "from PyQt4 import QtCore, QtGui",
                    QObject::tr( "Couldn't load PyQt." ) + '\n' + QObject::tr( "Python support will be disabled." ) ) )
@@ -134,7 +134,7 @@ bool QgsPythonUtilsImpl::checkSystemImports()
   }
 #else
   // import Qt bindings
-  if ( !runString( "from PyQt5 import QtCore, QtGui",
+  if ( !runString( "from PyQt5 import QtCore, QtGui, QtWidgets",
                    QObject::tr( "Couldn't load PyQt." ) + '\n' + QObject::tr( "Python support will be disabled." ) ) )
   {
     return false;
@@ -328,6 +328,7 @@ bool QgsPythonUtilsImpl::runString( const QString& command, QString msgOnError, 
   evalString( "sys.version", version );
 
   QString str = "<font color=\"red\">" + msgOnError + "</font><br><pre>\n" + traceback + "\n</pre>"
+                + QObject::tr( "Python code:" ) + "<pre>\n" + command + "\n</pre>"
                 + QObject::tr( "Python version:" ) + "<br>" + version + "<br><br>"
                 + QObject::tr( "QGIS version:" ) + "<br>" + QString( "%1 '%2', %3" ).arg( QGis::QGIS_VERSION, QGis::QGIS_RELEASE_NAME, QGis::QGIS_DEV_VERSION ) + "<br><br>"
                 + QObject::tr( "Python path:" ) + "<br>" + path;

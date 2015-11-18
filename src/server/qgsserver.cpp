@@ -113,6 +113,7 @@ void QgsServer::setupNetworkAccessManager()
  */
 QgsRequestHandler* QgsServer::createRequestHandler( const bool captureOutput )
 {
+#if QT_VERSION < 0x050000
   QgsRequestHandler* requestHandler = nullptr;
   char* requestMethod = getenv( "REQUEST_METHOD" );
   if ( requestMethod )
@@ -132,6 +133,10 @@ QgsRequestHandler* QgsServer::createRequestHandler( const bool captureOutput )
     requestHandler = new QgsGetRequestHandler( captureOutput );
   }
   return requestHandler;
+#else
+  Q_UNUSED( captureOutput );
+  return 0;
+#endif
 }
 
 /**

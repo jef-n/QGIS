@@ -28,8 +28,8 @@ QGIS utilities module
 
 """
 
-from PyQt4.QtCore import QCoreApplication, QLocale
-from PyQt4.QtGui import QPushButton, QApplication
+from PyQt.QtCore import QCoreApplication, QLocale
+from PyQt.QtWidgets import QPushButton, QApplication
 from qgis.core import QGis, QgsExpression, QgsMessageLog, qgsfunction, QgsMessageOutput
 from qgis.gui import QgsMessageBar
 
@@ -37,11 +37,19 @@ import sys
 import traceback
 import glob
 import os.path
-import ConfigParser
+try:
+    import ConfigParser
+except:
+    import configparser as ConfigParser
 import warnings
 import codecs
 import time
 import functools
+
+try:
+    unicode
+except:
+    unicode=str
 
 # ######################
 # ERROR HANDLING
@@ -53,7 +61,7 @@ warnings.filterwarnings("ignore", "the sets module is deprecated")
 def showWarning(message, category, filename, lineno, file=None, line=None):
     stk = ""
     for s in traceback.format_stack()[:-2]:
-        stk += s.decode('utf-8', 'replace')
+        stk += s # s.decode('utf-8', 'replace')
     QgsMessageLog.logMessage(
         "warning:%s\ntraceback:%s" % (warnings.formatwarning(message, category, filename, lineno), stk),
         QCoreApplication.translate("Python", "Python warning")
@@ -69,13 +77,17 @@ def showException(type, value, tb, msg, messagebar=False):
 
     logmessage = ''
     for s in traceback.format_exception(type, value, tb):
-        logmessage += s.decode('utf-8', 'replace')
+        logmessage += s # s.decode('utf-8', 'replace')
 
     title = QCoreApplication.translate('Python', 'Python error')
     QgsMessageLog.logMessage(logmessage, title)
 
-    blockingdialog = QApplication.instance().activeModalWidget()
-    window = QApplication.instance().activeWindow()
+    try:
+        blockingdialog = QApplication.instance().activeModalWidget()
+        window = QApplication.instance().activeWindow()
+    except:
+        blockingdialog = QApplication.activeModalWidget()
+        window = QApplication.activeWindow()
 
     # Still show the normal blocking dialog in this case for now.
     if blockingdialog or not window or not messagebar or not iface:
@@ -139,10 +151,10 @@ def open_stack_dialog(type, value, tb, msg, pop_error=True):
     error = ''
     lst = traceback.format_exception(type, value, tb)
     for s in lst:
-        error += s.decode('utf-8', 'replace')
+        error += s # s.decode('utf-8', 'replace')
     error = error.replace('\n', '<br>')
 
-    main_error = lst[-1].decode('utf-8', 'replace')
+    main_error = lst[-1] # lst[-1].decode('utf-8', 'replace')
 
     version_label = QCoreApplication.translate('Python', 'Python version:')
     qgis_label = QCoreApplication.translate('Python', 'QGIS version:')
@@ -172,11 +184,13 @@ def qgis_excepthook(type, value, tb):
 
 
 def installErrorHook():
-    sys.excepthook = qgis_excepthook
+    #sys.excepthook = qgis_excepthook
+    pass
 
 
 def uninstallErrorHook():
-    sys.excepthook = sys.__excepthook__
+    #sys.excepthook = sys.__excepthook__
+    pass
 
 # install error hook() on module load
 installErrorHook()
@@ -561,15 +575,23 @@ def startServerPlugin(packageName):
 #######################
 # IMPORT wrapper
 
-import __builtin__
+try:
+    import __builtin__
+except:
+    import builtins as __builtin__
 
 _builtin_import = __builtin__.__import__
 _plugin_modules = {}
 
 
-def _import(name, globals={}, locals={}, fromlist=[], level=-1):
+def _import(name, _globals={}, _locals={}, fromlist=[], level=0):
     """ wrapper around builtin import that keeps track of loaded plugin modules """
-    mod = _builtin_import(name, globals, locals, fromlist, level)
+#    try:
+#        mod = _builtin_import(name, _globals, _locals, fromlist, level)
+#    except ImportError:
+#        showException(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2], "", messagebar=True)
+#        return None
+    mod = _builtin_import(name, _globals, _locals, fromlist, level)
 
     if mod and '__file__' in mod.__dict__:
         module_name = mod.__name__

@@ -350,6 +350,9 @@ void myMessageOutput( QtMsgType type, const char *msg )
       if ( strncmp( msg, "Backtrace", 9 ) == 0 )
         dumpBacktrace( atoi( msg + 9 ) );
       break;
+    case QtInfoMsg:
+      myPrint( "Info: %s\n", msg );
+      break;
     case QtCriticalMsg:
       myPrint( "Critical: %s\n", msg );
       break;

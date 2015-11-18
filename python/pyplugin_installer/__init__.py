@@ -28,11 +28,9 @@ __copyright__ = '(C) 2013, Borys Jurgiel'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-
 # import functions for easier access
-import installer
-from installer import initPluginInstaller
-
+from . import installer
+from .installer import initPluginInstaller
 
 def instance():
     if not installer.pluginInstaller:

@@ -50,6 +50,10 @@ import re
 
 # ------------------------------------------------------------------------ #
 
+try:
+    unicode
+except:
+    unicode = str
 
 def normalizeVersion(s):
     """ remove possible prefix from given string and convert to uppercase """

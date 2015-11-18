@@ -20,16 +20,15 @@ Some portions of code were taken from https://code.google.com/p/pydee/
 """
 import os
 
-from PyQt4.QtCore import Qt, QTimer, QSettings, QCoreApplication, QSize, QByteArray, QFileInfo, SIGNAL, QUrl, QDir
-from PyQt4.QtGui import QDockWidget, QToolBar, QToolButton, QWidget,\
-    QSplitter, QTreeWidget, QAction, QFileDialog, QCheckBox, QSizePolicy, QMenu, QGridLayout, QApplication, \
-    QDesktopServices
-from PyQt4.QtGui import QVBoxLayout
+from PyQt.QtCore import Qt, QTimer, QSettings, QCoreApplication, QSize, QByteArray, QFileInfo, QUrl, QDir
+from PyQt.QtGui import QDesktopServices
+from PyQt.QtWidgets import QDockWidget, QToolBar, QToolButton, QWidget, \
+    QSplitter, QTreeWidget, QAction, QFileDialog, QCheckBox, QSizePolicy, QMenu, QGridLayout, QApplication, QVBoxLayout
 from qgis.utils import iface
-from console_sci import ShellScintilla
-from console_output import ShellOutputScintilla
-from console_editor import EditorTabWidget
-from console_settings import optionsDialog
+from .console_sci import ShellScintilla
+from .console_output import ShellOutputScintilla
+from .console_editor import EditorTabWidget
+from .console_settings import optionsDialog
 from qgis.core import QgsApplication, QgsContextHelp
 from qgis.gui import QgsFilterLineEdit
 
@@ -460,7 +459,7 @@ class PythonConsoleWidget(QWidget):
         ##------------ Layout -------------------------------
 
         self.mainLayout = QGridLayout(self)
-        self.mainLayout.setMargin(0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.mainLayout.setSpacing(0)
         self.mainLayout.addWidget(self.widgetButton, 0, 0, 1, 1)
         self.mainLayout.addWidget(self.splitterEditor, 0, 1, 1, 1)
@@ -468,7 +467,7 @@ class PythonConsoleWidget(QWidget):
         self.shellOutWidget.layout().insertWidget(0, self.toolBar)
 
         self.layoutEditor = QGridLayout(self.widgetEditor)
-        self.layoutEditor.setMargin(0)
+        self.layoutEditor.setContentsMargins(0, 0, 0, 0)
         self.layoutEditor.setSpacing(0)
         self.layoutEditor.addWidget(self.toolBarEditor, 0, 1, 1, 1)
         self.layoutEditor.addWidget(self.widgetButtonEditor, 1, 0, 2, 1)
@@ -539,8 +538,7 @@ class PythonConsoleWidget(QWidget):
         self.saveFileButton.triggered.connect(self.saveScriptFile)
         self.saveAsFileButton.triggered.connect(self.saveAsScriptFile)
         self.helpButton.triggered.connect(self.openHelp)
-        self.connect(self.listClassMethod, SIGNAL('itemClicked(QTreeWidgetItem*, int)'),
-                     self.onClickGoToLine)
+        self.listClassMethod.itemClicked.connect(self.onClickGoToLine)
         self.lineEditFind.returnPressed.connect(self._findText)
         self.findNextButton.clicked.connect(self._findNext)
         self.findPrevButton.clicked.connect(self._findPrev)

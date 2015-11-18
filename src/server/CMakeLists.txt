@@ -21,23 +21,16 @@ SET ( qgis_mapserv_SRCS
   qgis_map_serv.cpp
   qgscapabilitiescache.cpp
   qgsconfigcache.cpp
-  qgshttprequesthandler.cpp
-  qgsgetrequesthandler.cpp
-  qgspostrequesthandler.cpp
-  qgssoaprequesthandler.cpp
   qgsowsserver.cpp
   qgswmsserver.cpp
   qgswfsserver.cpp
   qgswcsserver.cpp
   qgsmapserviceexception.cpp
   qgsmslayercache.cpp
-  qgsftptransaction.cpp
   qgsmslayerbuilder.cpp
   qgshostedvdsbuilder.cpp
   qgsinterpolationlayerbuilder.cpp
-  qgsremoteowsbuilder.cpp
   qgshostedrdsbuilder.cpp
-  qgsremotedatasourcebuilder.cpp
   qgssentdatasourcebuilder.cpp
   qgsserverlogger.cpp
   qgsmsutils.cpp
@@ -57,7 +50,6 @@ SET ( qgis_mapserv_SRCS
 # )
 
 SET (qgis_mapserv_MOC_HDRS
-  qgsftptransaction.h
   qgscapabilitiescache.h
   qgsconfigcache.h
   qgsmslayercache.h
@@ -71,6 +63,23 @@ SET (qgis_mapserv_RCCS
   )
 
 
+IF(NOT ENABLE_QT5)
+  SET(qgis_mapserv_SRCS
+    ${qgis_mapserv_SRCS}
+    qgshttprequesthandler.cpp
+    qgsftptransaction.cpp
+    qgsremoteowsbuilder.cpp
+    qgsremotedatasourcebuilder.cpp
+    qgssoaprequesthandler.cpp
+    qgsgetrequesthandler.cpp
+    qgspostrequesthandler.cpp
+  )
+
+  SET(qgis_mapserv_MOC_HDRS
+    ${qgis_mapserv_MOC_HDRS}
+    qgsftptransaction.h
+  )
+ENDIF(NOT ENABLE_QT5)
 
 #############################################################
 # qgis_server library
