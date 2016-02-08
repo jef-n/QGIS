@@ -30,8 +30,8 @@
 
 import re
 
-from PyQt4.QtCore import QObject, SIGNAL, QIODevice, QFile, QTextStream
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QIODevice, QFile, QTextStream
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 
 from qgis.core import QGis, QgsCoordinateReferenceSystem
 from qgis.gui import QgsGenericProjectionSelector
@@ -54,9 +54,9 @@ class Dialog(QDialog, Ui_Dialog):
         self.label_2.setEnabled(False)
         self.setWindowTitle(self.tr("Define current projection"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
-        QObject.connect(self.btnProjection, SIGNAL("clicked()"), self.outProjFile)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.updateProj1)
-        QObject.connect(self.cmbLayer, SIGNAL("currentIndexChanged(QString)"), self.updateProj2)
+        self.btnProjection.clicked.connect(self.outProjFile)
+        self.inShape.currentIndexChanged.connect(self.updateProj1)
+        self.cmbLayer.currentIndexChanged.connect(self.updateProj2)
         # populate layer list
         self.progressBar.setValue(0)
         layers = ftools_utils.getLayerNames([QGis.Point, QGis.Line, QGis.Polygon])
@@ -159,7 +159,6 @@ class Dialog(QDialog, Ui_Dialog):
         projSelector.setMessage("<h2>%s</h2>%s <br/> %s" % (header, sentence1, sentence2))
         if projSelector.exec_():
             self.crs = QgsCoordinateReferenceSystem(projSelector.selectedCrsId(), QgsCoordinateReferenceSystem.InternalCrsId)
-            print "AUTHID", projSelector.selectedAuthId()
             if len(projSelector.selectedAuthId()) == 0:
                 QMessageBox.information(self, self.tr("Export to new projection"), self.tr("No Valid CRS selected"))
                 return

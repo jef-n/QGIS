@@ -22,10 +22,10 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import Qt, QObject, QSettings, QByteArray, SIGNAL, pyqtSignal
-from PyQt4.QtGui import QDialog, QWidget, QAction, QKeySequence, \
-    QDialogButtonBox, QApplication, QCursor, QMessageBox, QClipboard, QInputDialog, QIcon, QStyledItemDelegate, QStandardItemModel, QStandardItem
-from PyQt4.Qsci import QsciAPIs
+from PyQt.QtCore import Qt, QObject, QSettings, QByteArray, pyqtSignal
+from PyQt.QtGui import QIcon, QCursor, QStandardItemModel, QStandardItem, QKeySequence, QClipboard
+from PyQt.QtWidgets import QDialog, QWidget, QAction, QDialogButtonBox, QApplication, QMessageBox, QInputDialog, QStyledItemDelegate
+from PyQt.Qsci import QsciAPIs
 
 from qgis.core import QgsProject
 
@@ -45,6 +45,11 @@ except:
 from .ui.ui_DlgSqlWindow import Ui_DbManagerDlgSqlWindow as Ui_Dialog
 
 import re
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class DlgSqlWindow(QWidget, Ui_Dialog):

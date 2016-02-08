@@ -24,7 +24,7 @@ from qgis.core import (
     QgsProviderRegistry
 
 
-from PyQt4.QtCore import (
+from PyQt.QtCore import (
     QSettings,
     QDate,
     QTime,

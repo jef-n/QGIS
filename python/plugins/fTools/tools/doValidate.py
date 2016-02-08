@@ -28,13 +28,18 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import SIGNAL, Qt, QObject, QSettings, QByteArray, QThread, QVariant
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QAbstractItemView, QApplication, QMessageBox, QHeaderView, QTableWidgetItem
+from PyQt.QtCore import Qt, QObject, QSettings, QByteArray, QThread, QVariant
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QAbstractItemView, QApplication, QMessageBox, QHeaderView, QTableWidgetItem
 from qgis.core import QGis, QgsPoint, QgsFeature, QgsFeatureRequest, QgsGeometry, QgsFields, QgsField, QgsVectorFileWriter
 from qgis.gui import QgsVertexMarker
 
 from ui_frmVisual import Ui_Dialog
 import ftools_utils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class MarkerErrorGeometry():
@@ -87,7 +92,7 @@ class ValidateDialog(QDialog, Ui_Dialog):
         self.tblUnique.setSelectionBehavior(QAbstractItemView.SelectRows)
         # populate list of available layers
         myList = ftools_utils.getLayerNames([QGis.Point, QGis.Line, QGis.Polygon])
-        self.connect(self.tblUnique, SIGNAL("currentItemChanged(QTableWidgetItem*, QTableWidgetItem*)"), self.zoomToError)
+        self.tblUnique.currentItemChanged.connect(self.zoomToError)
         self.inShape.addItems(myList)
         self.buttonBox_2.setOrientation(Qt.Horizontal)
         self.cancel_close = self.buttonBox_2.button(QDialogButtonBox.Close)
@@ -100,8 +105,8 @@ class ValidateDialog(QDialog, Ui_Dialog):
         settings = QSettings()
         self.restoreGeometry(settings.value("/fTools/ValidateDialog/geometry", QByteArray(), type=QByteArray))
 
-        QObject.connect(self.browseShpError, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.ckBoxShpError, SIGNAL("stateChanged( int )"), self.updateGui)
+        self.browseShpError.clicked.connect(self.outFile)
+        self.ckBoxShpError.stateChanged.connect(self.updateGui)
         self.updateGui()
 
     def closeEvent(self, e):
@@ -207,11 +212,11 @@ class ValidateDialog(QDialog, Ui_Dialog):
         self.buttonOk.setEnabled(False)
 
         self.testThread = validateThread(self.iface.mainWindow(), self, self.vlayer, mySelection, self.shapefileName, self.encoding, self.ckBoxShpError.isChecked())
-        QObject.connect(self.testThread, SIGNAL("runFinished(PyQt_PyObject)"), self.runFinishedFromThread)
-        QObject.connect(self.testThread, SIGNAL("runStatus(PyQt_PyObject)"), self.runStatusFromThread)
-        QObject.connect(self.testThread, SIGNAL("runRange(PyQt_PyObject)"), self.runRangeFromThread)
+        self.testThread.runFinished.connect(self.runFinishedFromThread)
+        self.testThread.runStatus.connect(self.runStatusFromThread)
+        self.testThread.runRange.connect(self.runRangeFromThread)
         self.cancel_close.setText(self.tr("Cancel"))
-        QObject.connect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.connect(self.cancelThread)
         QApplication.setOverrideCursor(Qt.WaitCursor)
         self.testThread.start()
         return True
@@ -261,7 +266,7 @@ class ValidateDialog(QDialog, Ui_Dialog):
             self.tblUnique.resizeRowsToContents()
             self.lstCount.insert(unicode(count))
         self.cancel_close.setText("Close")
-        QObject.disconnect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.disconnect(self.cancelThread)
         return True
 
     def runStatusFromThread(self, status):
@@ -286,7 +291,7 @@ class validateThread(QThread):
     def run(self):
         self.running = True
         success = self.check_geometry(self.vlayer)
-        self.emit(SIGNAL("runFinished(PyQt_PyObject)"), success)
+        self.runFinished.emit(success)
 
     def stop(self):
         self.running = False
@@ -305,18 +310,18 @@ class validateThread(QThread):
             nFeat = len(layer)
         nElement = 0
         if nFeat > 0:
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
         for feat in layer:
             if not self.running:
                 return list()
             geom = QgsGeometry(feat.geometry()) # ger reference to geometry
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             nElement += 1
             # Check Add error
             if not geom.isGeosEmpty():
                 lstErrors.append((feat.id(), list(geom.validateGeometry())))
-        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nFeat)
+        self.runStatus.emit(nFeat)
 
         if self.writeShape:
             fields = QgsFields()

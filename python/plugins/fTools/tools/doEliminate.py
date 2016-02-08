@@ -27,12 +27,17 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QFile, QFileInfo
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QFile, QFileInfo
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsVectorFileWriter, QgsVectorLayer, QgsFeature, QgsFeatureRequest, QgsGeometry
 
 import ftools_utils
 from ui_frmEliminate import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -42,8 +47,8 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inShape.currentIndexChanged.connect(self.update)
         self.setWindowTitle(self.tr("Eliminate sliver polygons"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         # populate layer list

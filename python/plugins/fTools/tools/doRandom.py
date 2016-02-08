@@ -28,8 +28,8 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis
 
 import ftools_utils
@@ -44,7 +44,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.changed)
+        self.inShape.currentIndexChanged.connect(self.changed)
         self.setWindowTitle(self.tr("Random selection"))
         # populate layer list
         self.progressBar.setValue(0)

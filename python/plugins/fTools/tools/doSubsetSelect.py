@@ -28,14 +28,19 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import SIGNAL, QObject
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsFeature
 
 import random
 import ftools_utils
 
 from ui_frmSubsetSelect import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -45,7 +50,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+        self.inShape.currentIndexChanged.connect(self.update)
         self.setWindowTitle(self.tr("Random selection within subsets"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         # populate layer list

@@ -30,12 +30,18 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import SIGNAL, QObject, Qt, QFile, QThread, QVariant
-from PyQt4.QtGui import QDialog, QDoubleValidator, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, Qt, QFile, QThread, QVariant
+from PyQt.QtGui import QDoubleValidator
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsFields, QgsField, QgsFeatureRequest, QgsPoint, QgsDistanceArea, QgsWKBTypes
 
 from ui_frmGeoprocessing import Ui_Dialog
 import ftools_utils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class GeoprocessingDialog(QDialog, Ui_Dialog):
@@ -46,11 +52,11 @@ class GeoprocessingDialog(QDialog, Ui_Dialog):
         self.setupUi(self)
         self.param.setValidator(QDoubleValidator(self.param))
         self.myFunction = function
-        QObject.connect(self.btnBrowse, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inShapeA, SIGNAL("currentIndexChanged(QString)"), self.checkA)
-        QObject.connect(self.inShapeB, SIGNAL("currentIndexChanged(QString)"), self.checkB)
+        self.btnBrowse.clicked.connect(self.outFile)
+        self.inShapeA.currentIndexChanged.connect(self.checkA)
+        self.inShapeB.currentIndexChanged.connect(self.checkB)
         if function == 4 or function == 1 or function == 2:
-            QObject.connect(self.inShapeA, SIGNAL("currentIndexChanged(QString)"), self.update)
+            self.inShapeA.currentIndexChanged.connect(self.update)
         self.manageGui()
         self.success = False
         self.cancel_close = self.buttonBox_2.button(QDialogButtonBox.Close)
@@ -224,11 +230,11 @@ class GeoprocessingDialog(QDialog, Ui_Dialog):
             self.iface.mainWindow(), self, self.myFunction, myLayerA,
             myLayerB, myParam, myMerge, mySelectionA, mySelectionB, mySegments, self.shapefileName, self.encoding
         )
-        QObject.connect(self.testThread, SIGNAL("runFinished(PyQt_PyObject)"), self.runFinishedFromThread)
-        QObject.connect(self.testThread, SIGNAL("runStatus(PyQt_PyObject)"), self.runStatusFromThread)
-        QObject.connect(self.testThread, SIGNAL("runRange(PyQt_PyObject)"), self.runRangeFromThread)
+        self.testThread.runFinished.connect(self.runFinishedFromThread)
+        self.testThread.runStatus.connect(self.runStatusFromThread)
+        self.testThread.runRange.connect(self.runRangeFromThread)
         self.cancel_close.setText(self.tr("Cancel"))
-        QObject.connect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.connect(self.cancelThread)
         self.testThread.start()
         return True
 
@@ -240,7 +246,7 @@ class GeoprocessingDialog(QDialog, Ui_Dialog):
         self.testThread.stop()
         self.buttonOk.setEnabled(True)
         self.cancel_close.setText(self.tr("Close"))
-        QObject.disconnect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.disconnect(self.cancelThread)
         out_text = ""
         if results[3] is not None:
             QMessageBox.warning(self, self.tr("Geoprocessing"),
@@ -319,8 +325,8 @@ class geoprocessingThread(QThread):
                 geos, feature, match, error = self.symmetrical_difference()
             elif self.myFunction == 8:
                 geos, feature, match, error = self.clip()
-        self.emit(SIGNAL("runFinished(PyQt_PyObject)"), (geos, feature, match, error))
-        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
+        self.runFinished.emit((geos, feature, match, error))
+        self.runStatus.emit(0)
 
     def stop(self):
         self.running = False
@@ -346,8 +352,8 @@ class geoprocessingThread(QThread):
         if self.mySelectionA:
             nFeat = self.vlayerA.selectedFeatureCount()
             selectionA = self.vlayerA.selectedFeatures()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # with dissolve
             if self.myMerge:
                 first = True
@@ -373,7 +379,7 @@ class geoprocessingThread(QThread):
                         GEOS_EXCEPT = False
                         continue
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                 try:
                     outFeat.setGeometry(tempGeom)
                     writer.addFeature(outFeat)
@@ -402,12 +408,12 @@ class geoprocessingThread(QThread):
                         GEOS_EXCEPT = False
                         continue
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
         # there is no selection in input layer
         else:
             nFeat = vproviderA.featureCount()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # with dissolve
             if self.myMerge:
                 first = True
@@ -434,7 +440,7 @@ class geoprocessingThread(QThread):
                         GEOS_EXCEPT = False
                         continue
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                 try:
                     outFeat.setGeometry(tempGeom)
                     writer.addFeature(outFeat)
@@ -464,7 +470,7 @@ class geoprocessingThread(QThread):
                         GEOS_EXCEPT = False
                         continue
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
         del writer
         return GEOS_EXCEPT, FEATURE_EXCEPT, True, None
 
@@ -507,8 +513,8 @@ class geoprocessingThread(QThread):
             if useField:
                 unique = ftools_utils.getUniqueValues(vproviderA, self.myParam)
                 nFeat = nFeat * len(unique)
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
                 for i in unique:
                     first = True
                     hull = []
@@ -523,7 +529,7 @@ class geoprocessingThread(QThread):
                             points = ftools_utils.extractPoints(inGeom)
                             hull.extend(points)
                         nElement += 1
-                        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                        self.runStatus.emit(nElement)
                     if len(hull) >= 3:
                         tmpGeom = QgsGeometry(outGeom.fromMultiPoint(hull))
                         try:
@@ -539,15 +545,15 @@ class geoprocessingThread(QThread):
                             GEOS_EXCEPT = False
                             continue
             else:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
                 hull = []
                 for inFeat in selectionA:
                     inGeom = QgsGeometry(inFeat.geometry())
                     points = ftools_utils.extractPoints(inGeom)
                     hull.extend(points)
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                 tmpGeom = QgsGeometry(outGeom.fromMultiPoint(hull))
                 try:
                     outGeom = tmpGeom.convexHull()
@@ -566,8 +572,8 @@ class geoprocessingThread(QThread):
             if useField:
                 unique = ftools_utils.getUniqueValues(vproviderA, self.myParam)
                 nFeat = nFeat * len(unique)
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
 
                 for i in unique:
                     first = True
@@ -583,7 +589,7 @@ class geoprocessingThread(QThread):
                             points = ftools_utils.extractPoints(inGeom)
                             hull.extend(points)
                         nElement += 1
-                        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                        self.runStatus.emit(nElement)
                     if len(hull) >= 3:
                         tmpGeom = QgsGeometry(outGeom.fromMultiPoint(hull))
                         try:
@@ -599,8 +605,8 @@ class geoprocessingThread(QThread):
                             GEOS_EXCEPT = False
                             continue
             else:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
                 hull = []
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeat):
@@ -608,7 +614,7 @@ class geoprocessingThread(QThread):
                     points = ftools_utils.extractPoints(inGeom)
                     hull.extend(points)
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                 tmpGeom = QgsGeometry(outGeom.fromMultiPoint(hull))
                 try:
                     outGeom = tmpGeom.convexHull()
@@ -644,12 +650,12 @@ class geoprocessingThread(QThread):
             nFeat = self.vlayerA.selectedFeatureCount()
             selectionA = self.vlayerA.selectedFeatures()
             if not useField:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
                 first = True
                 for inFeat in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     if first:
                         attrs = inFeat.attributes()
                         tmpInGeom = QgsGeometry(inFeat.geometry())
@@ -667,15 +673,15 @@ class geoprocessingThread(QThread):
                 outFeat.setAttributes(attrs)
                 writer.addFeature(outFeat)
             else:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
 
                 outFeats = {}
                 attrs = {}
 
                 for inFeat in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     atMap = inFeat.attributes()
                     tempItem = unicode(atMap[self.myParam]).strip()
 
@@ -697,13 +703,13 @@ class geoprocessingThread(QThread):
         else:
             nFeat = vproviderA.featureCount()
             if not useField:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
                 first = True
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeat):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     if first:
                         attrs = inFeat.attributes()
                         tmpInGeom = QgsGeometry(inFeat.geometry())
@@ -721,8 +727,8 @@ class geoprocessingThread(QThread):
                 outFeat.setAttributes(attrs)
                 writer.addFeature(outFeat)
             else:
-                self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                self.runStatus.emit(0)
+                self.runRange.emit((0, nFeat))
 
                 outFeats = {}
                 attrs = {}
@@ -730,7 +736,7 @@ class geoprocessingThread(QThread):
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeat):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     atMap = inFeat.attributes()
                     tempItem = unicode(atMap[self.myParam]).strip()
 
@@ -781,14 +787,14 @@ class geoprocessingThread(QThread):
         if self.mySelectionA:
             nFeat = self.vlayerA.selectedFeatureCount()
             selectionA = self.vlayerA.selectedFeatures()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     add = True
                     geom = QgsGeometry(inFeatA.geometry())
                     diff_geom = QgsGeometry(geom)
@@ -818,7 +824,7 @@ class geoprocessingThread(QThread):
             else:
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     add = True
                     geom = QgsGeometry(inFeatA.geometry())
                     diff_geom = QgsGeometry(geom)
@@ -845,8 +851,8 @@ class geoprocessingThread(QThread):
         # there is no selection in input layer
         else:
             nFeat = vproviderA.featureCount()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
@@ -854,7 +860,7 @@ class geoprocessingThread(QThread):
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
                     add = True
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     diff_geom = QgsGeometry(geom)
                     atMap = inFeatA.attributes()
@@ -885,7 +891,7 @@ class geoprocessingThread(QThread):
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
                     add = True
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     diff_geom = QgsGeometry(geom)
                     atMap = inFeatA.attributes()
@@ -947,14 +953,14 @@ class geoprocessingThread(QThread):
         if self.mySelectionA:
             nFeat = self.vlayerA.selectedFeatureCount()
             selectionA = self.vlayerA.selectedFeatures()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMapA = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -990,7 +996,7 @@ class geoprocessingThread(QThread):
             else:
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMapA = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1020,15 +1026,15 @@ class geoprocessingThread(QThread):
         # there is no selection in input layer
         else:
             nFeat = vproviderA.featureCount()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMapA = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1061,7 +1067,7 @@ class geoprocessingThread(QThread):
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMapA = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1120,15 +1126,15 @@ class geoprocessingThread(QThread):
         indexB = ftools_utils.createIndex(vproviderA)
 
         nFeat = vproviderA.featureCount() + vproviderB.featureCount()
-        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-        self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
 
         count = 0
         nElement = 0
 
         fitA = vproviderA.getFeatures()
         while fitA.nextFeature(inFeatA):
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             nElement += 1
             lstIntersectingB = []
             geom = QgsGeometry(inFeatA.geometry())
@@ -1253,7 +1259,7 @@ class geoprocessingThread(QThread):
                     except Exception as err:
                         FEATURE_EXCEPT = False
 
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             nElement += 1
         del writer
         return GEOS_EXCEPT, FEATURE_EXCEPT, crs_match, None
@@ -1287,12 +1293,12 @@ class geoprocessingThread(QThread):
 
         nFeat = vproviderA.featureCount() * vproviderB.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-        self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         fitA = vproviderA.getFeatures()
         while fitA.nextFeature(inFeatA):
             nElement += 1
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             add = True
             geom = QgsGeometry(inFeatA.geometry())
             diff_geom = QgsGeometry(geom)
@@ -1322,7 +1328,7 @@ class geoprocessingThread(QThread):
         fitB = vproviderB.getFeatures()
         while fitB.nextFeature(inFeatA):
             nElement += 1
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             add = True
             geom = QgsGeometry(inFeatA.geometry())
             diff_geom = QgsGeometry(geom)
@@ -1381,14 +1387,14 @@ class geoprocessingThread(QThread):
         if self.mySelectionA:
             nFeat = self.vlayerA.selectedFeatureCount()
             selectionA = self.vlayerA.selectedFeatures()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMap = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1433,7 +1439,7 @@ class geoprocessingThread(QThread):
             else:
                 for inFeatA in selectionA:
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMap = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1476,15 +1482,15 @@ class geoprocessingThread(QThread):
         # there is no selection in input layer
         else:
             nFeat = vproviderA.featureCount()
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
             # we have selection in overlay layer
             if self.mySelectionB:
                 selectionB = self.vlayerB.selectedFeaturesIds()
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMap = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())
@@ -1530,7 +1536,7 @@ class geoprocessingThread(QThread):
                 fitA = vproviderA.getFeatures()
                 while fitA.nextFeature(inFeatA):
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
                     geom = QgsGeometry(inFeatA.geometry())
                     atMap = inFeatA.attributes()
                     intersects = index.intersects(geom.boundingBox())

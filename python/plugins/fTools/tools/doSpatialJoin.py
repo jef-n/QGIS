@@ -28,12 +28,17 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QVariant, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsVectorFileWriter, QgsVectorLayer, QgsMapLayerRegistry, QgsFields, QgsField, QgsFeature, QgsGeometry, NULL
 
 import ftools_utils
 from ui_frmSpatialJoin import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def myself(L):
@@ -66,7 +71,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
+        self.toolOut.clicked.connect(self.outFile)
         self.setWindowTitle(self.tr("Join attributes by location"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         # populate layer list

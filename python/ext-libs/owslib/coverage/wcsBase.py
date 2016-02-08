@@ -9,12 +9,17 @@
 # Contact email: d.lowe@rl.ac.uk
 # =============================================================================
 
-from urllib import urlencode
-from urllib2 import urlopen, Request
 from owslib.etree import etree
 import cgi
-from StringIO import StringIO
 
+try:
+    from urllib import urlencode
+    from urllib2 import urlopen, Request
+    from StringIO import StringIO
+except ImportError:
+    from urllib.parse import urlencode
+    from urllib.request import urlopen, Request
+    from io import StringIO
 
 class ServiceException(Exception):
     """WCS ServiceException

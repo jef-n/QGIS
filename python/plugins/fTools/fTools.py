@@ -28,8 +28,9 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QSettings, QDir, QFile, QCoreApplication, QObject, SIGNAL
-from PyQt4.QtGui import QIcon, QMessageBox, QMenu, QAction
+from PyQt.QtCore import QSettings, QDir, QFile, QCoreApplication, QObject
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import QMessageBox, QMenu, QAction
 from qgis.core import QGis
 
 import os.path
@@ -64,7 +65,15 @@ import doSpatialIndex
 import doEliminate
 
 # load icons for actions
-import resources_rc
+try:
+    import resources_rc
+except:
+    pass
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class fToolsPlugin:
@@ -147,7 +156,7 @@ class fToolsPlugin:
                 QCoreApplication.translate("fTools", "QGIS version detected: ") + unicode(self.QgisVersion) + ".xx\n"
                 + QCoreApplication.translate("fTools", "This version of fTools requires at least QGIS version 1.0.0\nPlugin will not be enabled."))
             return None
-        QObject.connect(self.iface, SIGNAL("currentThemeChanged (QString)"), self.updateThemeIcons)
+        self.iface.currentThemeChanged .connect(self.updateThemeIcons)
 
         self.analysisMenu = QMenu(QCoreApplication.translate("fTools", "&Analysis Tools"))
         self.analysisMenu.setObjectName("analysisMenu")
@@ -270,51 +279,51 @@ class fToolsPlugin:
         self.menu.addMenu(self.conversionMenu)
         self.menu.addMenu(self.dataManageMenu)
 
-        QObject.connect(self.distMatrix, SIGNAL("triggered()"), self.dodistMatrix)
-        QObject.connect(self.sumLines, SIGNAL("triggered()"), self.dosumLines)
-        QObject.connect(self.pointsPoly, SIGNAL("triggered()"), self.dopointsPoly)
-        QObject.connect(self.compStats, SIGNAL("triggered()"), self.docompStats)
-        QObject.connect(self.listUnique, SIGNAL("triggered()"), self.dolistUnique)
-        QObject.connect(self.nearestNeigh, SIGNAL("triggered()"), self.donearestNeigh)
-        QObject.connect(self.meanCoords, SIGNAL("triggered()"), self.domeanCoords)
-        QObject.connect(self.intLines, SIGNAL("triggered()"), self.dointLines)
+        self.distMatrix.triggered.connect(self.dodistMatrix)
+        self.sumLines.triggered.connect(self.dosumLines)
+        self.pointsPoly.triggered.connect(self.dopointsPoly)
+        self.compStats.triggered.connect(self.docompStats)
+        self.listUnique.triggered.connect(self.dolistUnique)
+        self.nearestNeigh.triggered.connect(self.donearestNeigh)
+        self.meanCoords.triggered.connect(self.domeanCoords)
+        self.intLines.triggered.connect(self.dointLines)
 
-        QObject.connect(self.randSel, SIGNAL("triggered()"), self.dorandSel)
-        QObject.connect(self.randSub, SIGNAL("triggered()"), self.dorandSub)
-        QObject.connect(self.randPoints, SIGNAL("triggered()"), self.dorandPoints)
-        QObject.connect(self.regPoints, SIGNAL("triggered()"), self.doregPoints)
-        QObject.connect(self.vectGrid, SIGNAL("triggered()"), self.dovectGrid)
-        QObject.connect(self.selectLocation, SIGNAL("triggered()"), self.doselectLocation)
-        QObject.connect(self.layerExtent, SIGNAL("triggered()"), self.doextent)
+        self.randSel.triggered.connect(self.dorandSel)
+        self.randSub.triggered.connect(self.dorandSub)
+        self.randPoints.triggered.connect(self.dorandPoints)
+        self.regPoints.triggered.connect(self.doregPoints)
+        self.vectGrid.triggered.connect(self.dovectGrid)
+        self.selectLocation.triggered.connect(self.doselectLocation)
+        self.layerExtent.triggered.connect(self.doextent)
 
-        QObject.connect(self.minConvex, SIGNAL("triggered()"), self.dominConvex)
-        QObject.connect(self.intersect, SIGNAL("triggered()"), self.dointersect)
-        QObject.connect(self.dissolve, SIGNAL("triggered()"), self.dodissolve)
-        QObject.connect(self.symDifference, SIGNAL("triggered()"), self.dosymdifference)
-        QObject.connect(self.erase, SIGNAL("triggered()"), self.doerase)
-        QObject.connect(self.union, SIGNAL("triggered()"), self.dounion)
-        QObject.connect(self.clip, SIGNAL("triggered()"), self.doclip)
-        QObject.connect(self.dynaBuffer, SIGNAL("triggered()"), self.dodynaBuffer)
-        QObject.connect(self.eliminate, SIGNAL("triggered()"), self.doEliminate)
+        self.minConvex.triggered.connect(self.dominConvex)
+        self.intersect.triggered.connect(self.dointersect)
+        self.dissolve.triggered.connect(self.dodissolve)
+        self.symDifference.triggered.connect(self.dosymdifference)
+        self.erase.triggered.connect(self.doerase)
+        self.union.triggered.connect(self.dounion)
+        self.clip.triggered.connect(self.doclip)
+        self.dynaBuffer.triggered.connect(self.dodynaBuffer)
+        self.eliminate.triggered.connect(self.doEliminate)
 
-        QObject.connect(self.multiToSingle, SIGNAL("triggered()"), self.domultiToSingle)
-        QObject.connect(self.singleToMulti, SIGNAL("triggered()"), self.dosingleToMulti)
-        QObject.connect(self.checkGeom, SIGNAL("triggered()"), self.docheckGeom)
-        QObject.connect(self.simplify, SIGNAL("triggered()"), self.doSimplify)
-        QObject.connect(self.densify, SIGNAL("triggered()"), self.doDensify)
-        QObject.connect(self.centroids, SIGNAL("triggered()"), self.docentroids)
-        QObject.connect(self.delaunay, SIGNAL("triggered()"), self.dodelaunay)
-        QObject.connect(self.voronoi, SIGNAL("triggered()"), self.dovoronoi)
-        QObject.connect(self.polysToLines, SIGNAL("triggered()"), self.dopolysToLines)
-        QObject.connect(self.linesToPolys, SIGNAL("triggered()"), self.dolinesToPolys)
-        QObject.connect(self.compGeo, SIGNAL("triggered()"), self.docompGeo)
-        QObject.connect(self.extNodes, SIGNAL("triggered()"), self.doextNodes)
+        self.multiToSingle.triggered.connect(self.domultiToSingle)
+        self.singleToMulti.triggered.connect(self.dosingleToMulti)
+        self.checkGeom.triggered.connect(self.docheckGeom)
+        self.simplify.triggered.connect(self.doSimplify)
+        self.densify.triggered.connect(self.doDensify)
+        self.centroids.triggered.connect(self.docentroids)
+        self.delaunay.triggered.connect(self.dodelaunay)
+        self.voronoi.triggered.connect(self.dovoronoi)
+        self.polysToLines.triggered.connect(self.dopolysToLines)
+        self.linesToPolys.triggered.connect(self.dolinesToPolys)
+        self.compGeo.triggered.connect(self.docompGeo)
+        self.extNodes.triggered.connect(self.doextNodes)
 
-        QObject.connect(self.define, SIGNAL("triggered()"), self.dodefine)
-        QObject.connect(self.spatJoin, SIGNAL("triggered()"), self.dospatJoin)
-        QObject.connect(self.splitVect, SIGNAL("triggered()"), self.dosplitVect)
-        QObject.connect(self.mergeShapes, SIGNAL("triggered()"), self.doMergeShapes)
-        QObject.connect(self.spatialIndex, SIGNAL("triggered()"), self.doSpatIndex)
+        self.define.triggered.connect(self.dodefine)
+        self.spatJoin.triggered.connect(self.dospatJoin)
+        self.splitVect.triggered.connect(self.dosplitVect)
+        self.mergeShapes.triggered.connect(self.doMergeShapes)
+        self.spatialIndex.triggered.connect(self.doSpatIndex)
 
     def unload(self):
         self.menu.removeAction(self.analysisMenu.menuAction())

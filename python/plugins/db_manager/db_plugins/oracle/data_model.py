@@ -23,13 +23,19 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt.QtCore import *
+from PyQt.QtGui import *
+from PyQt.QtWidgets import *
 
 from ..data_model import TableDataModel, SqlResultModel, \
     BaseTableModel, TableFieldsModel, SimpleTableModel
 from ..plugin import DbError
 from qgis.core import *
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class ORTableDataModel(TableDataModel):
@@ -41,8 +47,7 @@ class ORTableDataModel(TableDataModel):
         if not self.table.rowCount:
             self.table.refreshRowCount()
 
-        self.connect(self.table, SIGNAL("aboutToChange"),
-                     self._deleteCursor)
+        self.table.aboutToChange.connect(self._deleteCursor)
         self._createCursor()
 
     def _createCursor(self):
@@ -86,8 +91,7 @@ class ORTableDataModel(TableDataModel):
         self.cursor = None
 
     def __del__(self):
-        self.disconnect(
-            self.table, SIGNAL("aboutToChange"), self._deleteCursor)
+        self.table.aboutToChange.disconnect(self._deleteCursor)
         self._deleteCursor()
 
     def getData(self, row, col):

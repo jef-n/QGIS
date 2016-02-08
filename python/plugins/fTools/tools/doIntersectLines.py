@@ -28,11 +28,16 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 import ftools_utils
 from qgis.core import QGis, QgsFields, QgsVectorFileWriter, QgsFeatureRequest, QgsFeature, QgsGeometry
 from ui_frmIntersectLines import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -42,9 +47,9 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inLine1, SIGNAL("currentIndexChanged(QString)"), self.update1)
-        QObject.connect(self.inLine2, SIGNAL("currentIndexChanged(QString)"), self.update2)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inLine1.currentIndexChanged.connect(self.update1)
+        self.inLine2.currentIndexChanged.connect(self.update2)
         self.setWindowTitle(self.tr("Line intersections"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         self.progressBar.setValue(0)

@@ -28,13 +28,19 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDoubleValidator, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QVariant, QFile
+from PyQt.QtGui import QDoubleValidator
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 import ftools_utils
 from qgis.core import QgsRectangle, QgsGeometry, QgsPoint, QgsFeature, QgsFields, QgsField, QgsVectorFileWriter, QGis
 from random import seed, random, uniform
 from math import sqrt
 from ui_frmRegPoints import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -47,7 +53,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.xMax.setValidator(QDoubleValidator(self.xMax))
         self.yMin.setValidator(QDoubleValidator(self.yMin))
         self.yMax.setValidator(QDoubleValidator(self.yMax))
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
+        self.toolOut.clicked.connect(self.outFile)
         self.setWindowTitle(self.tr("Regular points"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         self.progressBar.setValue(0)
@@ -86,7 +92,6 @@ class Dialog(QDialog, Ui_Dialog):
             else:
                 boundBox = QgsRectangle(float(self.xMin.text()), float(self.yMin.text()), float(self.xMax.text()), float(self.yMax.text()))
                 crs = self.mapCanvas.mapRenderer().destinationCrs()
-                print crs.isValid()
                 if not crs.isValid():
                     crs = None
             self.regularize(boundBox, outPath, offset, value, self.rdoSpacing.isChecked(), self.spnInset.value(), crs)

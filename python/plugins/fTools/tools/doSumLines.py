@@ -28,11 +28,16 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QVariant, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 import ftools_utils
 from qgis.core import QGis, QgsField, QgsFeature, QgsGeometry, QgsDistanceArea, QgsVectorFileWriter, QgsFeatureRequest
 from ui_frmSumLines import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -42,7 +47,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
+        self.toolOut.clicked.connect(self.outFile)
         self.setWindowTitle(self.tr("Sum line lengths"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         self.progressBar.setValue(0)

@@ -17,13 +17,18 @@
 ***************************************************************************
 """
 
-from PyQt4.QtCore import QObject, SIGNAL, QSettings, QDir, QFileInfo, QFile, QThread, QMutex
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
+from PyQt.QtCore import QObject, QSettings, QDir, QFileInfo, QFile, QThread, QMutex
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer, QgsFields, QgsFeature, QgsGeometry
 
 import ftools_utils
 
 from ui_frmMergeShapes import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -41,10 +46,10 @@ class Dialog(QDialog, Ui_Dialog):
         self.btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
         self.btnClose = self.buttonBox.button(QDialogButtonBox.Close)
 
-        QObject.connect(self.btnSelectDir, SIGNAL("clicked()"), self.inputDir)
-        QObject.connect(self.btnSelectFile, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.chkListMode, SIGNAL("stateChanged( int )"), self.changeMode)
-        QObject.connect(self.leOutShape, SIGNAL("editingFinished()"), self.updateOutFile)
+        self.btnSelectDir.clicked.connect(self.inputDir)
+        self.btnSelectFile.clicked.connect(self.outFile)
+        self.chkListMode.stateChanged.connect(self.changeMode)
+        self.leOutShape.editingFinished.connect(self.updateOutFile)
 
     def inputDir(self):
         settings = QSettings()
@@ -98,14 +103,14 @@ class Dialog(QDialog, Ui_Dialog):
     def changeMode(self):
         if self.chkListMode.isChecked():
             self.label.setText(self.tr("Input files"))
-            QObject.disconnect(self.btnSelectDir, SIGNAL("clicked()"), self.inputDir)
-            QObject.connect(self.btnSelectDir, SIGNAL("clicked()"), self.inputFile)
+            self.btnSelectDir.clicked.disconnect(self.inputDir)
+            self.btnSelectDir.clicked.connect(self.inputFile)
             self.lblGeometry.setEnabled(False)
             self.cmbGeometry.setEnabled(False)
         else:
             self.label.setText(self.tr("Input directory"))
-            QObject.disconnect(self.btnSelectDir, SIGNAL("clicked()"), self.inputFile)
-            QObject.connect(self.btnSelectDir, SIGNAL("clicked()"), self.inputDir)
+            self.btnSelectDir.clicked.disconnect(self.inputFile)
+            self.btnSelectDir.clicked.connect(self.inputDir)
             self.lblGeometry.setEnabled(True)
             self.cmbGeometry.setEnabled(True)
 
@@ -163,18 +168,18 @@ class Dialog(QDialog, Ui_Dialog):
         self.btnOk.setEnabled(False)
 
         self.mergeThread = ShapeMergeThread(baseDir, self.inputFiles, self.inEncoding, self.outFileName, self.encoding)
-        QObject.connect(self.mergeThread, SIGNAL("rangeChanged( PyQt_PyObject )"), self.setFeatureProgressRange)
-        QObject.connect(self.mergeThread, SIGNAL("checkStarted()"), self.setFeatureProgressFormat)
-        QObject.connect(self.mergeThread, SIGNAL("checkFinished()"), self.resetFeatureProgressFormat)
-        QObject.connect(self.mergeThread, SIGNAL("fileNameChanged( PyQt_PyObject )"), self.setShapeProgressFormat)
-        QObject.connect(self.mergeThread, SIGNAL("featureProcessed()"), self.featureProcessed)
-        QObject.connect(self.mergeThread, SIGNAL("shapeProcessed()"), self.shapeProcessed)
-        QObject.connect(self.mergeThread, SIGNAL("processingFinished()"), self.processingFinished)
-        QObject.connect(self.mergeThread, SIGNAL("processingInterrupted()"), self.processingInterrupted)
+        self.mergeThread.rangeChanged.connect(self.setFeatureProgressRange)
+        self.mergeThread.checkStarted.connect(self.setFeatureProgressFormat)
+        self.mergeThread.checkFinished.connect(self.resetFeatureProgressFormat)
+        self.mergeThread.fileNameChanged.connect(self.setShapeProgressFormat)
+        self.mergeThread.featureProcessed.connect(self.featureProcessed)
+        self.mergeThread.shapeProcessed.connect(self.shapeProcessed)
+        self.mergeThread.processingFinished.connect(self.processingFinished)
+        self.mergeThread.processingInterrupted.connect(self.processingInterrupted)
 
         self.btnClose.setText(self.tr("Cancel"))
-        QObject.disconnect(self.buttonBox, SIGNAL("rejected()"), self.reject)
-        QObject.connect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
+        self.buttonBox.rejected.disconnect(self.reject)
+        self.btnClose.clicked.connect(self.stopProcessing)
 
         self.mergeThread.start()
 
@@ -220,7 +225,7 @@ class Dialog(QDialog, Ui_Dialog):
         self.progressFeatures.setRange(0, 100)
         self.progressFeatures.setValue(0)
         self.progressFiles.setValue(0)
-        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
+        self.buttonBox.rejected.connect(self.reject)
         self.btnClose.setText(self.tr("Close"))
         self.btnOk.setEnabled(True)
 
@@ -248,8 +253,8 @@ class ShapeMergeThread(QThread):
         # create attribute list with uniquie fields
         # from all selected layers
         mergedFields = []
-        self.emit(SIGNAL("rangeChanged( PyQt_PyObject )"), len(self.shapes))
-        self.emit(SIGNAL("checkStarted()"))
+        self.rangeChanged.emit(len(self.shapes))
+        self.checkStarted.emit()
 
         shapeIndex = 0
         fieldMap = {}
@@ -282,8 +287,8 @@ class ShapeMergeThread(QThread):
                 fieldIndex += 1
 
             shapeIndex += 1
-            self.emit(SIGNAL("featureProcessed()"))
-        self.emit(SIGNAL("checkFinished()"))
+            self.featureProcessed.emit()
+        self.checkFinished.emit()
 
         # get information about shapefiles
         layerPath = QFileInfo(self.baseDir + "/" + self.shapes[0]).absoluteFilePath()
@@ -309,8 +314,8 @@ class ShapeMergeThread(QThread):
             newLayer.setProviderEncoding(self.inputEncoding)
             vprovider = newLayer.dataProvider()
             nFeat = vprovider.featureCount()
-            self.emit(SIGNAL("rangeChanged( PyQt_PyObject )"), nFeat)
-            self.emit(SIGNAL("fileNameChanged( PyQt_PyObject )"), fileName)
+            self.rangeChanged.emit(nFeat)
+            self.fileNameChanged.emit(fileName)
             inFeat = QgsFeature()
             outFeat = QgsFeature()
             inGeom = QgsGeometry()
@@ -330,9 +335,9 @@ class ShapeMergeThread(QThread):
                     outFeat.setGeometry(inGeom)
                 outFeat.setAttributes(mergedAttrs)
                 writer.addFeature(outFeat)
-                self.emit(SIGNAL("featureProcessed()"))
+                self.featureProcessed.emit()
 
-            self.emit(SIGNAL("shapeProcessed()"))
+            self.shapeProcessed.emit()
             self.mutex.lock()
             s = self.stopMe
             self.mutex.unlock()
@@ -346,9 +351,9 @@ class ShapeMergeThread(QThread):
         del writer
 
         if not interrupted:
-            self.emit(SIGNAL("processingFinished()"))
+            self.processingFinished.emit()
         else:
-            self.emit(SIGNAL("processingInterrupted()"))
+            self.processingInterrupted.emit()
 
     def stop(self):
         self.mutex.lock()

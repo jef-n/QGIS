@@ -24,11 +24,15 @@
 #
 ###############################################################################
 
-#avoid PendingDeprecationWarning from PyQt4.uic
+#avoid PendingDeprecationWarning from PyQt.uic
 import warnings
 warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
 
-import ConfigParser
+try:
+    import ConfigParser as configparser
+except:
+    import configparser
+
 from gettext import gettext, ngettext
 import logging
 import os
@@ -40,9 +44,9 @@ from jinja2 import Environment, FileSystemLoader
 from pygments import highlight
 from pygments.lexers import XmlLexer
 from pygments.formatters import HtmlFormatter
-from PyQt4.QtCore import QSettings
-from PyQt4.QtGui import QMessageBox
-from PyQt4.uic import loadUiType
+from PyQt.QtCore import QSettings
+from PyQt.QtWidgets import QMessageBox
+from PyQt.uic import loadUiType
 
 from qgis.core import QGis
 
@@ -57,7 +61,7 @@ class StaticContext(object):
     def __init__(self):
         """init"""
         self.ppath = os.path.dirname(os.path.abspath(__file__))
-        self.metadata = ConfigParser.ConfigParser()
+        self.metadata = configparser.ConfigParser()
         self.metadata.readfp(open(os.path.join(self.ppath, 'metadata.txt')))
 
 

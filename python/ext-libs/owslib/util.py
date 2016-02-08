@@ -13,17 +13,25 @@ from datetime import datetime
 import pytz
 from owslib.etree import etree
 from owslib.namespaces import Namespaces
-import urlparse, urllib2
-from urllib2 import urlopen, HTTPError, Request
-from urllib2 import HTTPPasswordMgrWithDefaultRealm
-from urllib2 import HTTPBasicAuthHandler
-from StringIO import StringIO
 import cgi
-from urllib import urlencode
 import re
 from copy import deepcopy
 import warnings
 
+try:
+    from urllib2 import urlopen, HTTPError, Request, build_opener
+    from urllib2 import HTTPPasswordMgrWithDefaultRealm
+    from urllib2 import HTTPBasicAuthHandler
+    from urllib import urlencode
+    from urlparse import urlsplit
+    from StringIO import StringIO
+except ImportError:
+    import urllib.parse, urllib.request, urllib.error, urllib.parse
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+    from urllib.request import HTTPPasswordMgrWithDefaultRealm, HTTPBasicAuthHandler, build_opener
+    from io import StringIO
+    from urllib.parse import urlencode, urlsplit
 
 """
 Utility functions and classes
@@ -118,7 +126,7 @@ def xml_to_dict(root, prefix=None, depth=1, diction=None):
     return ret
 
 def openURL(url_base, data, method='Get', cookies=None, username=None, password=None, timeout=30):
-    ''' function to open urls - wrapper around urllib2.urlopen but with additional checks for OGC service exceptions and url formatting, also handles cookies and simple user password authentication'''
+    ''' function to open urls - wrapper around urlopen but with additional checks for OGC service exceptions and url formatting, also handles cookies and simple user password authentication'''
     url_base.strip() 
     lastchar = url_base[-1]
     if lastchar not in ['?', '&']:
@@ -134,11 +142,11 @@ def openURL(url_base, data, method='Get', cookies=None, username=None, password=
         passman = HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, url_base, username, password)
         auth_handler = HTTPBasicAuthHandler(passman)
-        opener = urllib2.build_opener(auth_handler)
+        opener = build_opener(auth_handler)
         openit = opener.open
     else:
         # NOTE: optionally set debuglevel>0 to debug HTTP connection
-        #opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=0))
+        #opener = build_opener(urllib2.HTTPHandler(debuglevel=0))
         #openit = opener.open
         openit = urlopen
    
@@ -156,9 +164,9 @@ def openURL(url_base, data, method='Get', cookies=None, username=None, password=
         if cookies is not None:
             req.add_header('Cookie', cookies)
         u = openit(req, timeout=timeout)
-    except HTTPError, e: #Some servers may set the http header to 400 if returning an OGC service exception or 401 if unauthorised.
+    except HTTPError as e: #Some servers may set the http header to 400 if returning an OGC service exception or 401 if unauthorised.
         if e.code in [400, 401]:
-            raise ServiceException, e.read()
+            raise ServiceException( e.read())
         else:
             raise e
     # check for service exceptions without the http header set
@@ -172,8 +180,7 @@ def openURL(url_base, data, method='Get', cookies=None, username=None, password=
         if serviceException is None:
             serviceException=se_tree.find('ServiceException')
         if serviceException is not None:
-            raise ServiceException, \
-            str(serviceException.text).strip()
+            raise ServiceException( str(serviceException.text).strip() )
         u.seek(0) #return cursor to start of u      
     return u
 
@@ -334,8 +341,8 @@ def http_post(url=None, request=None, lang='en-US', timeout=10):
     """
 
     if url is not None:
-        u = urlparse.urlsplit(url)
-        r = urllib2.Request(url, request)
+        u = urlsplit(url)
+        r = Request(url, request)
         r.add_header('User-Agent', 'OWSLib (https://geopython.github.io/OWSLib)')
         r.add_header('Content-type', 'text/xml')
         r.add_header('Content-length', '%d' % len(request))
@@ -345,11 +352,11 @@ def http_post(url=None, request=None, lang='en-US', timeout=10):
         r.add_header('Host', u.netloc)
 
         try:
-            up = urllib2.urlopen(r,timeout=timeout);
+            up = urlopen(r,timeout=timeout);
         except TypeError:
             import socket
             socket.setdefaulttimeout(timeout)
-            up = urllib2.urlopen(r)
+            up = urlopen(r)
 
         ui = up.info()  # headers
         response = up.read()
@@ -457,7 +464,7 @@ def build_get_url(base_url, params):
 def dump(obj, prefix=''):
     '''Utility function to print to standard output a generic object with all its attributes.'''
     
-    print "%s %s : %s" % (prefix, obj.__class__, obj.__dict__)
+    print( "%s %s : %s" % (prefix, obj.__class__, obj.__dict__) )
     
 def getTypedValue(type, value):
     ''' Utility function to cast a string value to the appropriate XSD type. '''
@@ -509,7 +516,7 @@ a newline. This will extract out all of the keywords correctly.
 """
     keywords = [re.split(r'[\n\r]+',f.text) for f in elements if f.text]
     flattened = [item.strip() for sublist in keywords for item in sublist]
-    remove_blank = filter(None, flattened)
+    remove_blank = [_f for _f in flattened if _f]
     return remove_blank
 
 

@@ -17,13 +17,18 @@
 ***************************************************************************
 """
 
-from PyQt4.QtCore import Qt, QObject, SIGNAL, QThread, QMutex
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QListWidgetItem, QAbstractItemView, QErrorMessage, QMessageBox
+from PyQt.QtCore import Qt, QObject, QThread, QMutex
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QListWidgetItem, QAbstractItemView, QErrorMessage, QMessageBox
 from qgis.core import QGis, QgsProviderRegistry, QgsVectorLayer, QgsVectorDataProvider
 
 import ftools_utils
 
 from ui_frmSpatialIndex import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -38,12 +43,12 @@ class Dialog(QDialog, Ui_Dialog):
         self.btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
         self.btnClose = self.buttonBox.button(QDialogButtonBox.Close)
 
-        QObject.connect(self.chkExternalFiles, SIGNAL("stateChanged( int )"), self.toggleExternalFiles)
-        QObject.connect(self.btnSelectFiles, SIGNAL("clicked()"), self.selectFiles)
-        QObject.connect(self.lstLayers, SIGNAL("itemSelectionChanged()"), self.updateLayerList)
-        QObject.connect(self.btnSelectAll, SIGNAL("clicked()"), self.selectAll)
-        QObject.connect(self.btnSelectNone, SIGNAL("clicked()"), self.selectNone)
-        QObject.connect(self.btnClearList, SIGNAL("clicked()"), self.clearList)
+        self.chkExternalFiles.stateChanged.connect(self.toggleExternalFiles)
+        self.btnSelectFiles.clicked.connect(self.selectFiles)
+        self.lstLayers.itemSelectionChanged.connect(self.updateLayerList)
+        self.btnSelectAll.clicked.connect(self.selectAll)
+        self.btnSelectNone.clicked.connect(self.selectNone)
+        self.btnClearList.clicked.connect(self.clearList)
 
         self.manageGui()
 
@@ -113,13 +118,13 @@ class Dialog(QDialog, Ui_Dialog):
         self.workThread = SpatialIdxThread(self.layers, self.chkExternalFiles.isChecked())
         self.progressBar.setRange(0, len(self.layers))
 
-        QObject.connect(self.workThread, SIGNAL("layerProcessed()"), self.layerProcessed)
-        QObject.connect(self.workThread, SIGNAL("processFinished( PyQt_PyObject )"), self.processFinished)
-        QObject.connect(self.workThread, SIGNAL("processInterrupted()"), self.processInterrupted)
+        self.workThread.layerProcessed.connect(self.layerProcessed)
+        self.workThread.processFinished.connect(self.processFinished)
+        self.workThread.processInterrupted.connect(self.processInterrupted)
 
         self.btnClose.setText(self.tr("Cancel"))
-        QObject.disconnect(self.buttonBox, SIGNAL("rejected()"), self.reject)
-        QObject.connect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
+        self.buttonBox.rejected.disconnect(self.reject)
+        self.btnClose.clicked.connect(self.stopProcessing)
 
         self.workThread.start()
 
@@ -146,7 +151,7 @@ class Dialog(QDialog, Ui_Dialog):
 
     def restoreGui(self):
         self.progressBar.setValue(0)
-        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
+        self.buttonBox.rejected.connect(self.reject)
         self.btnClose.setText(self.tr("Close"))
         self.btnOk.setEnabled(True)
 
@@ -183,7 +188,7 @@ class SpatialIdxThread(QThread):
                 else:
                     self.errors.append(layer)
 
-                self.emit(SIGNAL("layerProcessed()"))
+                self.layerProcessed.emit()
 
                 self.mutex.lock()
                 s = self.stopMe
@@ -201,7 +206,7 @@ class SpatialIdxThread(QThread):
                 else:
                     self.errors.append(layer)
 
-                self.emit(SIGNAL("layerProcessed()"))
+                self.layerProcessed.emit()
 
                 self.mutex.lock()
                 s = self.stopMe
@@ -211,9 +216,9 @@ class SpatialIdxThread(QThread):
                     break
 
         if not interrupted:
-            self.emit(SIGNAL("processFinished( PyQt_PyObject )"), self.errors)
+            self.processFinished.emit(self.errors)
         else:
-            self.emit(SIGNAL("processInterrupted()"))
+            self.processInterrupted.emit()
 
     def stop(self):
         self.mutex.lock()

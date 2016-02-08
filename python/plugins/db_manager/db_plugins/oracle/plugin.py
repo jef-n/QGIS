@@ -26,8 +26,9 @@ The content of this file is based on
 # this will disable the dbplugin if the connector raise an ImportError
 from .connector import OracleDBConnector
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt.QtCore import *
+from PyQt.QtGui import *
+from PyQt.QtWidgets import *
 
 from ..plugin import ConnectionError, InvalidDataException, DBPlugin, \
     Database, Schema, Table, VectorTable, TableField, TableConstraint, \
@@ -41,6 +42,11 @@ except ImportError:
 from ..html_elems import HtmlParagraph, HtmlList, HtmlTable
 
 from qgis.core import QgsCredentials
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def classFactory():

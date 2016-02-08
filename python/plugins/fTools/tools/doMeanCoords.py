@@ -28,12 +28,17 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QVariant, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 import ftools_utils
 from qgis.core import QGis, QgsFeature, QgsVectorFileWriter, QgsFields, QgsField, QgsGeometry, QgsPoint, QgsDistanceArea
 from math import sqrt
 from ui_frmMeanCoords import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -44,8 +49,8 @@ class Dialog(QDialog, Ui_Dialog):
         self.function = function
         self.setupUi(self)
         self.updateUi()
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inShape.currentIndexChanged.connect(self.update)
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         self.progressBar.setValue(0)
         self.populateLayers()

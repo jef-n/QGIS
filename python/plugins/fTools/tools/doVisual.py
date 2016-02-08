@@ -28,14 +28,19 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import Qt, QObject, SIGNAL, QThread
-from PyQt4.QtGui import QDialog, QApplication, QDialogButtonBox, QMessageBox, QTableWidgetItem, QHeaderView
+from PyQt.QtCore import Qt, QObject, QThread
+from PyQt.QtWidgets import QDialog, QApplication, QDialogButtonBox, QMessageBox, QTableWidgetItem, QHeaderView
 from qgis.core import QGis, QgsFeature, QgsDistanceArea, QgsFeatureRequest
 
 from ui_frmVisual import Ui_Dialog
 
 import ftools_utils
 import math
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class VisualDialog(QDialog, Ui_Dialog):
@@ -56,7 +61,7 @@ class VisualDialog(QDialog, Ui_Dialog):
         self.buttonBox_2.setOrientation(Qt.Horizontal)
 
         if self.myFunction == 2 or self.myFunction == 3:
-            QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+            self.inShape.currentIndexChanged.connect(self.update)
         self.manageGui()
         self.cancel_close = self.buttonBox_2.button(QDialogButtonBox.Close)
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
@@ -148,13 +153,13 @@ class VisualDialog(QDialog, Ui_Dialog):
         self.buttonOk.setEnabled(False)
 
         self.testThread = visualThread(self.iface.mainWindow(), self, self.myFunction, vlayer, myField, mySelection)
-        QObject.connect(self.testThread, SIGNAL("runFinished(PyQt_PyObject)"), self.runFinishedFromThread)
-        QObject.connect(self.testThread, SIGNAL("runStatus(PyQt_PyObject)"), self.runStatusFromThread)
-        QObject.connect(self.testThread, SIGNAL("runRange(PyQt_PyObject)"), self.runRangeFromThread)
-        QObject.connect(self.testThread, SIGNAL("runPartRange(PyQt_PyObject)"), self.runPartRangeFromThread)
-        QObject.connect(self.testThread, SIGNAL("runPartStatus(PyQt_PyObject)"), self.runPartStatusFromThread)
+        self.testThread.runFinished.connect(self.runFinishedFromThread)
+        self.testThread.runStatus.connect(self.runStatusFromThread)
+        self.testThread.runRange.connect(self.runRangeFromThread)
+        self.testThread.runPartRange.connect(self.runPartRangeFromThread)
+        self.testThread.runPartStatus.connect(self.runPartStatusFromThread)
         self.cancel_close.setText(self.tr("Cancel"))
-        QObject.connect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.connect(self.cancelThread)
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
         self.testThread.start()
@@ -196,7 +201,7 @@ class VisualDialog(QDialog, Ui_Dialog):
 
         self.lstCount.insert(unicode(output[1]))
         self.cancel_close.setText("Close")
-        QObject.disconnect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.disconnect(self.cancelThread)
         return True
 
     def runStatusFromThread(self, status):
@@ -236,8 +241,8 @@ class visualThread(QThread):
             (lst, cnt) = self.basic_statistics(self.vlayer, self.myField)
         elif self.myFunction == 4: # Nearest neighbour analysis
             (lst, cnt) = self.nearest_neighbour_analysis(self.vlayer)
-        self.emit(SIGNAL("runFinished(PyQt_PyObject)"), (lst, cnt))
-        self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
+        self.runFinished.emit((lst, cnt))
+        self.runStatus.emit(0)
 
     def stop(self):
         self.running = False
@@ -250,11 +255,11 @@ class visualThread(QThread):
         nFeat = len(unique)
         nElement = 0
         if nFeat > 0:
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
         for item in unique:
             nElement += 1
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
             lstUnique.append(unicode(item).strip())
         lstCount = len(unique)
         return (lstUnique, lstCount)
@@ -279,8 +284,8 @@ class visualThread(QThread):
                 selection = vlayer.selectedFeatures()
                 nFeat = vlayer.selectedFeatureCount()
                 if nFeat > 0:
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                    self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                    self.runStatus, emit(0)
+                    self.runRange.emit((0, nFeat))
                 for f in selection:
                     try:
                         lenVal = float(len(f[index]))
@@ -302,12 +307,12 @@ class visualThread(QThread):
                     values.append(lenVal)
                     sumVal = sumVal + lenVal
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
             else: # there is no selection, process the whole layer
                 nFeat = vprovider.featureCount()
                 if nFeat > 0:
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                    self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                    self.runStatus.emit(0)
+                    self.runRange.emit((0, nFeat))
                 fit = vprovider.getFeatures()
                 while fit.nextFeature(feat):
                     try:
@@ -330,7 +335,7 @@ class visualThread(QThread):
                     values.append(lenVal)
                     sumVal = sumVal + lenVal
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
             nVal = float(len(values))
             if nVal > 0:
                 meanVal = sumVal / nVal
@@ -356,8 +361,8 @@ class visualThread(QThread):
                 nFeat = vlayer.selectedFeatureCount()
                 uniqueVal = ftools_utils.getUniqueValuesCount(vlayer, index, True)
                 if nFeat > 0:
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                    self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                    self.runStatus.emit(0)
+                    self.runRange.emit((0, nFeat))
                 for f in selection:
                     value = float(f[index])
                     if first:
@@ -372,13 +377,13 @@ class visualThread(QThread):
                     values.append(value)
                     sumVal = sumVal + value
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus(nElement)
             else: # there is no selection, process the whole layer
                 nFeat = vprovider.featureCount()
                 uniqueVal = ftools_utils.getUniqueValuesCount(vlayer, index, False)
                 if nFeat > 0:
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-                    self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+                    self.runStatus.emit(0)
+                    self.runRange.emit((0, nFeat))
                 fit = vprovider.getFeatures()
                 while fit.nextFeature(feat):
                     value = float(feat[index])
@@ -394,7 +399,7 @@ class visualThread(QThread):
                     values.append(value)
                     sumVal = sumVal + value
                     nElement += 1
-                    self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+                    self.runStatus.emit(nElement)
             nVal = float(len(values))
             if nVal > 0.00:
                 rangeVal = maxVal - minVal
@@ -435,8 +440,8 @@ class visualThread(QThread):
         nFeat = vprovider.featureCount()
         nElement = 0
         if nFeat > 0:
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), 0)
-            self.emit(SIGNAL("runRange(PyQt_PyObject)"), (0, nFeat))
+            self.runStatus.emit(0)
+            self.runRange.emit((0, nFeat))
         feat = QgsFeature()
         neighbour = QgsFeature()
         fit = vprovider.getFeatures()
@@ -446,7 +451,7 @@ class visualThread(QThread):
             nearDist = distance.measureLine(neighbour.geometry().asPoint(), feat.geometry().asPoint())
             sumDist += nearDist
             nElement += 1
-            self.emit(SIGNAL("runStatus(PyQt_PyObject)"), nElement)
+            self.runStatus.emit(nElement)
         nVal = vprovider.featureCount()
         do = float(sumDist) / nVal
         de = float(0.5 / math.sqrt(nVal / A))

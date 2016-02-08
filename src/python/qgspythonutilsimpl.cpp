@@ -604,9 +604,9 @@ QString QgsPythonUtilsImpl::pluginsPath()
 QString QgsPythonUtilsImpl::homePythonPath()
 {
   QString settingsDir = QgsApplication::qgisSettingsDirPath();
-  if ( QDir::cleanPath( settingsDir ) == QDir::homePath() + QString( "/.qgis%1" ).arg( QGis::QGIS_VERSION_INT / 10000 ) )
+  if ( QDir::cleanPath( settingsDir ) == QgsApplication::defaultConfigPath() )
   {
-    return QString( "b\"%1/.qgis%2/python\".decode('utf-8')" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
+    return QString( "b\"%1/python\".decode('utf-8')" ).arg( QgsApplication::defaultConfigPath() );
   }
   else
   {

@@ -28,8 +28,8 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import Qt
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 import ftools_utils
 from qgis.core import QGis, QgsFeature, QgsGeometry, QgsFeatureRequest
 from ui_frmSelectByLocation import Ui_Dialog
@@ -53,7 +53,7 @@ class Dialog(QDialog, Ui_Dialog):
         layers = ftools_utils.getLayerNames([QGis.Point, QGis.Line, QGis.Polygon])
         self.inPolygon.addItems(layers)
         self.inPoint.addItems(layers)
-        self.connect(self.inPoint, SIGNAL("currentIndexChanged(QString)"), self.updateCheck)
+        self.inPoint.currentIndexChanged.connect(self.updateCheck)
         self.cmbModify.addItems([self.tr("creating new selection"), self.tr("adding to current selection"), self.tr("removing from current selection")])
 
     def updateCheck(self, text):

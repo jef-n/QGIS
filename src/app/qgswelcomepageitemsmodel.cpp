@@ -16,6 +16,7 @@
 #include "qgswelcomepageitemsmodel.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsmessagelog.h"
+#include "qgslogger.h"
 
 #include <QApplication>
 #include <QAbstractTextDocumentLayout>
@@ -159,7 +160,11 @@ QVariant QgsWelcomePageItemsModel::data( const QModelIndex& index, int role ) co
       }
     case Qt::DecorationRole:
     {
-      QImage thumbnail( mRecentProjects.at( index.row() ).previewImagePath );
+      QString previewImagePath( mRecentProjects.at( index.row() ).previewImagePath );
+      if ( previewImagePath.isEmpty() )
+        return QVariant();
+
+      QImage thumbnail( previewImagePath );
       if ( thumbnail.isNull() )
         return QVariant();
 

@@ -23,8 +23,9 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt.QtCore import *
+from PyQt.QtGui import *
+from PyQt.QtWidgets import *
 from qgis.core import QGis
 
 from ..info_model import TableInfo, VectorTableInfo, DatabaseInfo, \

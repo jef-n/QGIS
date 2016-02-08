@@ -28,13 +28,18 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QFile, QVariant
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QFile, QVariant
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsFeatureRequest, QgsFeature, QgsGeometry, QgsPoint, QgsMapLayer, QgsVectorFileWriter, QgsDistanceArea, QgsMessageLog, QgsFields, QgsField
 from random import seed, random
 
 import ftools_utils
 from ui_frmRandPoints import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -43,8 +48,8 @@ class Dialog(QDialog, Ui_Dialog):
         QDialog.__init__(self, iface.mainWindow())
         self.iface = iface
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inShape.currentIndexChanged.connect(self.update)
         self.progressBar.setValue(0)
         self.setWindowTitle(self.tr("Random Points"))
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)

@@ -22,7 +22,7 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import QRegExp
+from PyQt.QtCore import QRegExp
 from qgis.core import QgsCredentials, QgsDataSourceURI
 
 from ..connector import DBConnector
@@ -34,6 +34,11 @@ import psycopg2.extensions
 # use unicode!
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def classFactory():

@@ -28,14 +28,19 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QThread, QMutex, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QThread, QMutex, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 
 from qgis.core import QGis, QgsVectorFileWriter, QgsPoint, QgsGeometry, QgsFeature
 
 import ftools_utils
 
 from ui_frmSimplify import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -59,8 +64,8 @@ class Dialog(QDialog, Ui_Dialog):
         self.btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
         self.btnClose = self.buttonBox.button(QDialogButtonBox.Close)
 
-        QObject.connect(self.chkWriteShapefile, SIGNAL("stateChanged( int )"), self.updateGui)
-        QObject.connect(self.btnSelectOutputFile, SIGNAL("clicked()"), self.selectOutputFile)
+        self.chkWriteShapefile.stateChanged.connect(self.updateGui)
+        self.btnSelectOutputFile.clicked.connect(self.selectOutputFile)
 
         self.populateLayers()
 
@@ -122,14 +127,14 @@ class Dialog(QDialog, Ui_Dialog):
             self.workThread = GeomThread(self.myFunction, vLayer, self.chkUseSelection.isChecked(),
                                          self.spnTolerance.value(), False, None, None)
 
-        QObject.connect(self.workThread, SIGNAL("rangeCalculated( PyQt_PyObject )"), self.setProgressRange)
-        QObject.connect(self.workThread, SIGNAL("featureProcessed()"), self.featureProcessed)
-        QObject.connect(self.workThread, SIGNAL("processingFinished( PyQt_PyObject )"), self.processFinished)
-        QObject.connect(self.workThread, SIGNAL("processingInterrupted()"), self.processInterrupted)
+        self.workThread.rangeCalculated.connect(self.setProgressRange)
+        self.workThread.featureProcessed.connect(self.featureProcessed)
+        self.workThread.processingFinished.connect(self.processFinished)
+        self.workThread.processingInterrupted.connect(self.processInterrupted)
 
         self.btnClose.setText(self.tr("Cancel"))
-        QObject.disconnect(self.buttonBox, SIGNAL("rejected()"), self.reject)
-        QObject.connect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
+        self.buttonBox.rejected.disconnect(self.reject)
+        self.btnClose.clicked.connect(self.stopProcessing)
 
         self.workThread.start()
 
@@ -167,7 +172,7 @@ class Dialog(QDialog, Ui_Dialog):
 
     def restoreGui(self):
         self.progressBar.setValue(0)
-        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
+        self.buttonBox.rejected.connect(self.reject)
         self.btnClose.setText(self.tr("Close"))
         self.btnOk.setEnabled(True)
 
@@ -288,7 +293,7 @@ class GeomThread(QThread):
             featureId = 0
             if self.useSelection:
                 selection = self.inputLayer.selectedFeatures()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), len(selection))
+                self.rangeCalculated.emit(len(selection))
                 for f in selection:
                     featGeometry = QgsGeometry(f.geometry())
                     attrMap = f.attributes()
@@ -302,7 +307,7 @@ class GeomThread(QThread):
                     feature.setAttributes(attrMap)
                     shapeFileWriter.addFeature(feature)
                     featureId += 1
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -311,7 +316,7 @@ class GeomThread(QThread):
                         interrupted = True
                         break
             else:
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), vProvider.featureCount())
+                self.rangeCalculated.emit(vProvider.featureCount())
                 f = QgsFeature()
                 fit = vProvider.getFeatures()
                 while fit.nextFeature(f):
@@ -327,7 +332,7 @@ class GeomThread(QThread):
                     feature.setAttributes(attrMap)
                     shapeFileWriter.addFeature(feature)
                     featureId += 1
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -341,7 +346,7 @@ class GeomThread(QThread):
             self.inputLayer.beginEditCommand("Simplify line(s)")
             if self.useSelection:
                 selection = self.inputLayer.selectedFeatures()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), len(selection))
+                self.rangeCalculated.emit(len(selection))
                 for f in selection:
                     featureId = f.id()
                     featGeometry = QgsGeometry(f.geometry())
@@ -351,7 +356,7 @@ class GeomThread(QThread):
                     pointsAfter += geomVertexCount(newGeometry)
 
                     self.inputLayer.changeGeometry(featureId, newGeometry)
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -361,7 +366,7 @@ class GeomThread(QThread):
                         break
             else:
                 vProvider = self.inputLayer.dataProvider()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), vProvider.featureCount())
+                self.rangeCalculated.emit(vProvider.featureCount())
                 f = QgsFeature()
                 fit = vProvider.getFeatures()
                 while fit.nextFeature(f):
@@ -373,7 +378,7 @@ class GeomThread(QThread):
                     pointsAfter += geomVertexCount(newGeometry)
 
                     self.inputLayer.changeGeometry(featureId, newGeometry)
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -390,9 +395,9 @@ class GeomThread(QThread):
             del shapeFileWriter
 
         if not interrupted:
-            self.emit(SIGNAL("processingFinished( PyQt_PyObject )"), (pointsBefore, pointsAfter))
+            self.processingFinished.emit((pointsBefore, pointsAfter))
         else:
-            self.emit(SIGNAL("processingInterrupted()"))
+            self.processingInterrupted.emit()
 
     def runDensify(self):
         self.mutex.lock()
@@ -418,7 +423,7 @@ class GeomThread(QThread):
 
             if self.useSelection:
                 selection = self.inputLayer.selectedFeatures()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), len(selection))
+                self.rangeCalculated.emit(len(selection))
                 for f in selection:
                     featGeometry = QgsGeometry(f.geometry())
                     attrMap = f.attributes()
@@ -429,7 +434,7 @@ class GeomThread(QThread):
                     feature.setAttributes(attrMap)
                     shapeFileWriter.addFeature(feature)
                     featureId += 1
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -438,7 +443,7 @@ class GeomThread(QThread):
                         interrupted = True
                         break
             else:
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), vProvider.featureCount())
+                self.rangeCalculated.emit(vProvider.featureCount())
                 f = QgsFeature()
                 fit = vProvider.getFeatures()
                 while fit.nextFeature(f):
@@ -451,7 +456,7 @@ class GeomThread(QThread):
                     feature.setAttributes(attrMap)
                     shapeFileWriter.addFeature(feature)
                     featureId += 1
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -467,14 +472,14 @@ class GeomThread(QThread):
 
             if self.useSelection:
                 selection = self.inputLayer.selectedFeatures()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), len(selection))
+                self.rangeCalculated.emit(len(selection))
                 for f in selection:
                     featureId = f.id()
                     featGeometry = QgsGeometry(f.geometry())
                     newGeometry = densifyGeometry(featGeometry, int(self.tolerance), isPolygon)
 
                     self.inputLayer.changeGeometry(featureId, newGeometry)
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -484,7 +489,7 @@ class GeomThread(QThread):
                         break
             else:
                 vProvider = self.inputLayer.dataProvider()
-                self.emit(SIGNAL("rangeCalculated( PyQt_PyObject )"), vProvider.featureCount())
+                self.rangeCalculated.emit(vProvider.featureCount())
                 f = QgsFeature()
                 fit = vProvider.getFeatures()
                 while fit.nextFeature(f):
@@ -493,7 +498,7 @@ class GeomThread(QThread):
                     newGeometry = densifyGeometry(featGeometry, int(self.tolerance), isPolygon)
 
                     self.inputLayer.changeGeometry(featureId, newGeometry)
-                    self.emit(SIGNAL("featureProcessed()"))
+                    self.featureProcessed.emit()
 
                     self.mutex.lock()
                     s = self.stopMe
@@ -510,9 +515,9 @@ class GeomThread(QThread):
             del shapeFileWriter
 
         if not interrupted:
-            self.emit(SIGNAL("processingFinished( PyQt_PyObject )"), None)
+            self.processingFinished.emit(None)
         else:
-            self.emit(SIGNAL("processingInterrupted()"))
+            self.processingInterrupted.emit()
 
     def stop(self):
         self.mutex.lock()

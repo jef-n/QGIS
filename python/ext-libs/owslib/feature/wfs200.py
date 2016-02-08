@@ -16,9 +16,15 @@ from owslib.namespaces import Namespaces
 
 #other imports
 import cgi
-from cStringIO import StringIO
-from urllib import urlencode
-from urllib2 import urlopen
+
+try:
+    from cStringIO import StringIO
+    from urllib import urlencode
+    from urllib2 import urlopen
+except ImportError:
+    from io import StringIO
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
 
 import logging
 from owslib.util import log
@@ -383,7 +389,7 @@ class ContentMetadata:
 
             if metadataUrl['url'] is not None and parse_remote_metadata:  # download URL
                 try:
-                    content = urllib2.urlopen(metadataUrl['url'], timeout=timeout)
+                    content = urlopen(metadataUrl['url'], timeout=timeout)
                     doc = etree.parse(content)
                     try:  # FGDC
                         metadataUrl['metadata'] = Metadata(doc)

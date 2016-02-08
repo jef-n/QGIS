@@ -1,3 +1,8 @@
+try:
+    unicode
+except:
+    unicode=str
+
 class Namespaces(object):
     """
         Class for holding and maniputlating a dictionary containing the various namespaces for

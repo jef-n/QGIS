@@ -28,13 +28,22 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QFile, QThread, QSettings, QVariant
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox
+from PyQt.QtCore import QObject, QFile, QThread, QSettings, QVariant
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
 from qgis.core import QGis, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsCoordinateTransform, QgsFields, QgsField, QgsFeatureRequest, QgsPoint, QgsDistanceArea
 from ui_frmGeometry import Ui_Dialog
 import ftools_utils
 import voronoi
-from sets import Set
+
+try:
+    from sets import Set as set
+except:
+    pass
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class GeometryDialog(QDialog, Ui_Dialog):
@@ -45,11 +54,11 @@ class GeometryDialog(QDialog, Ui_Dialog):
         self.setupUi(self)
         self.myFunction = function
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
+        self.toolOut.clicked.connect(self.outFile)
         if self.myFunction == 1:
-            QObject.connect(self.inShape, SIGNAL("currentIndexChanged( QString )"), self.update)
+            self.inShape.currentIndexChanged.connect(self.update)
         elif self.myFunction == 5:
-            QObject.connect(self.chkWriteShapefile, SIGNAL("stateChanged( int )"), self.updateGui)
+            self.chkWriteShapefile.stateChanged.connect(self.updateGui)
             self.updateGui()
         self.manageGui()
         self.success = False
@@ -246,11 +255,11 @@ class GeometryDialog(QDialog, Ui_Dialog):
                                          vlayer, myParam, myField, self.shapefileName, self.encoding,
                                          self.cmbCalcType.currentIndex(), self.chkWriteShapefile.isChecked(),
                                          self.chkByFeatures.isChecked(), self.chkUseSelection.isChecked())
-        QObject.connect(self.testThread, SIGNAL("runFinished( PyQt_PyObject )"), self.runFinishedFromThread)
-        QObject.connect(self.testThread, SIGNAL("runStatus( PyQt_PyObject )"), self.runStatusFromThread)
-        QObject.connect(self.testThread, SIGNAL("runRange( PyQt_PyObject )"), self.runRangeFromThread)
+        self.testThread.runFinished.connect(self.runFinishedFromThread)
+        self.testThread.runStatus.connect(self.runStatusFromThread)
+        self.testThread.runRange.connect(self.runRangeFromThread)
         self.cancel_close.setText(self.tr("Cancel"))
-        QObject.connect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+        self.cancel_close.clicked.connect(self.cancelThread)
         self.testThread.start()
 
     def cancelThread(self):
@@ -279,7 +288,7 @@ class GeometryDialog(QDialog, Ui_Dialog):
                                 + "geometry, please check using the check validity tool\n")
                 success = True
             self.cancel_close.setText("Close")
-            QObject.disconnect(self.cancel_close, SIGNAL("clicked()"), self.cancelThread)
+            self.cancel_close.clicked.disconnect(self.cancelThread)
             if success:
                 if (self.myFunction == 5 and self.chkWriteShapefile.isChecked()) or self.myFunction != 5:
                     if self.addToCanvasCheck.isChecked():
@@ -347,8 +356,8 @@ class geometryThread(QThread):
             success = self.voronoi_polygons()
         elif self.myFunction == 11: # Lines to polygons
             success = self.lines_to_polygons()
-        self.emit(SIGNAL("runFinished( PyQt_PyObject )"), success)
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
+        self.runFinished.emit(success)
+        self.runStatus.emit(0)
 
     def stop(self):
         self.running = False
@@ -370,8 +379,8 @@ class geometryThread(QThread):
             unique = [""]
         nFeat = vprovider.featureCount() * len(unique)
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         merge_all = self.myField == "--- " + self.tr("Merge all") + " ---"
         if not len(unique) == self.vlayer.featureCount() or merge_all:
             for i in unique:
@@ -403,7 +412,7 @@ class geometryThread(QThread):
                         feature_list = self.extractAsMulti(inGeom)
                         multi_feature.extend(feature_list)
                     nElement += 1
-                    self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+                    self.runStatus.emit(nElement)
                 if not first:
                     outFeat.setAttributes(atts)
                     outGeom = QgsGeometry(self.convertGeometry(multi_feature, vType))
@@ -426,12 +435,12 @@ class geometryThread(QThread):
         inGeom = QgsGeometry()
         nFeat = vprovider.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             inGeom = inFeat.geometry()
             atMap = inFeat.attributes()
             featList = self.extractAsSingle(inGeom)
@@ -452,12 +461,12 @@ class geometryThread(QThread):
         outGeom = QgsGeometry()
         nFeat = vprovider.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             inGeom = inFeat.geometry()
             atMap = inFeat.attributes()
             pointList = ftools_utils.extractPoints(inGeom)
@@ -478,13 +487,13 @@ class geometryThread(QThread):
         outGeom = QgsGeometry()
         nFeat = vprovider.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
 
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             inGeom = inFeat.geometry()
             atMap = inFeat.attributes()
             lineList = self.extractAsLine(inGeom)
@@ -503,14 +512,14 @@ class geometryThread(QThread):
         outFeat = QgsFeature()
         nFeat = vprovider.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
 
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
             outGeomList = []
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             if inFeat.geometry().isMultipart():
                 outGeomList = inFeat.geometry().asMultiPolyline()
             else:
@@ -548,8 +557,8 @@ class geometryThread(QThread):
         nElement = 0
 
         vprovider = self.vlayer.dataProvider()
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, vprovider.featureCount()))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, vprovider.featureCount()))
 
         (fields, index1, index2) = self.checkMeasurementFields(self.vlayer, not self.writeShape)
 
@@ -559,7 +568,7 @@ class geometryThread(QThread):
 
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             nElement += 1
             inGeom = inFeat.geometry()
 
@@ -601,12 +610,12 @@ class geometryThread(QThread):
         outFeat = QgsFeature()
         nFeat = vprovider.featureCount()
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         fit = vprovider.getFeatures()
         while fit.nextFeature(inFeat):
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
             inGeom = inFeat.geometry()
             atMap = inFeat.attributes()
             outGeom = inGeom.centroid()
@@ -620,7 +629,6 @@ class geometryThread(QThread):
 
     def delaunay_triangulation(self):
         import voronoi
-        from sets import Set
         vprovider = self.vlayer.dataProvider()
 
         fields = QgsFields()
@@ -646,7 +654,7 @@ class geometryThread(QThread):
             ptDict[ptNdx] = inFeat.id()
         if len(pts) < 3:
             return False
-        uniqueSet = Set(item for item in pts)
+        uniqueSet = set(item for item in pts)
         ids = [pts.index(item) for item in uniqueSet]
         sl = voronoi.SiteList([voronoi.Site(*i) for i in uniqueSet])
         c.triangulate = True
@@ -655,8 +663,8 @@ class geometryThread(QThread):
         feat = QgsFeature()
         nFeat = len(triangles)
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         for triangle in triangles:
             indicies = list(triangle)
             indicies.append(indicies[0])
@@ -676,7 +684,7 @@ class geometryThread(QThread):
             feat.setGeometry(geometry)
             writer.addFeature(feat)
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
         del writer
         return True
 
@@ -707,15 +715,15 @@ class geometryThread(QThread):
         self.vlayer = None
         if len(pts) < 3:
             return False
-        uniqueSet = Set(item for item in pts)
+        uniqueSet = set(item for item in pts)
         ids = [pts.index(item) for item in uniqueSet]
         sl = voronoi.SiteList([voronoi.Site(i[0], i[1], sitenum=j) for j, i in enumerate(uniqueSet)])
         voronoi.voronoi(sl, c)
         inFeat = QgsFeature()
         nFeat = len(c.polygons)
         nElement = 0
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, nFeat))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, nFeat))
         for site, edges in c.polygons.iteritems():
             vprovider.getFeatures(QgsFeatureRequest().setFilterFid(ptDict[ids[site]])).nextFeature(inFeat)
             lines = self.clip_voronoi(edges, c, width, height, extent, extraX, extraY)
@@ -725,7 +733,7 @@ class geometryThread(QThread):
             outFeat.setAttributes(inFeat.attributes())
             writer.addFeature(outFeat)
             nElement += 1
-            self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+            self.runStatus.emit(nElement)
         del writer
         return True
 
@@ -823,8 +831,8 @@ class geometryThread(QThread):
         return lines
 
     def layer_extent(self):
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, 0))
+        self.runStatus.emit(0)
+        self.runRange.emit((0, 0))
 
         fields = QgsFields()
         fields.append(QgsField("MINX", QVariant.Double))
@@ -870,15 +878,15 @@ class geometryThread(QThread):
                             height,
                             width])
         writer.addFeature(feat)
-        self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, 100))
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
+        self.runRange.emit((0, 100))
+        self.runStatus.emit(0)
         del writer
 
         return True
 
     def feature_extent(self):
         vprovider = self.vlayer.dataProvider()
-        self.emit(SIGNAL("runStatus( PyQt_PyObject )"), 0)
+        self.runStatus.emit(0)
 
         fields = QgsFields()
         fields.append(QgsField("MINX", QVariant.Double))
@@ -899,9 +907,9 @@ class geometryThread(QThread):
         nElement = 0
 
         if self.useSelection:
-            self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, self.vlayer.selectedFeatureCount()))
+            self.runRange.emit((0, self.vlayer.selectedFeatureCount()))
             for inFeat in self.vlayer.selectedFeatures():
-                self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+                self.runStatus.emit(nElement)
                 nElement += 1
 
                 rect = inFeat.geometry().boundingBox()
@@ -935,10 +943,10 @@ class geometryThread(QThread):
                                        width])
                 writer.addFeature(outFeat)
         else:
-            self.emit(SIGNAL("runRange( PyQt_PyObject )"), (0, vprovider.featureCount()))
+            self.runRange.emit((0, vprovider.featureCount()))
             fit = vprovider.getFeatures()
             while fit.nextFeature(inFeat):
-                self.emit(SIGNAL("runStatus( PyQt_PyObject )"), nElement)
+                self.runStatus.emit(nElement)
                 nElement += 1
 
                 rect = inFeat.geometry().boundingBox()
@@ -1087,7 +1095,7 @@ class geometryThread(QThread):
             else:
                 return QGis.WKBUnknown
         except Exception as err:
-            print unicode(err)
+            print (unicode(err))
 
     def multiToSingleGeom(self, wkbType):
         try:
@@ -1103,7 +1111,7 @@ class geometryThread(QThread):
             else:
                 return QGis.WKBUnknown
         except Exception as err:
-            print unicode(err)
+            print (unicode(err))
 
     def extractAsSingle(self, geom):
         multi_geom = QgsGeometry()

@@ -23,8 +23,9 @@ email                : brush.tyler@gmail.com
 # this will disable the dbplugin if the connector raise an ImportError
 from .connector import SpatiaLiteDBConnector
 
-from PyQt4.QtCore import Qt, SIGNAL, QSettings, QFileInfo
-from PyQt4.QtGui import QIcon, QApplication, QAction, QFileDialog
+from PyQt.QtCore import Qt, QSettings, QFileInfo
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import QApplication, QAction, QFileDialog
 from qgis.core import QgsDataSourceURI
 from qgis.gui import QgsMessageBar
 
@@ -35,6 +36,11 @@ try:
     from . import resources_rc
 except ImportError:
     pass
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def classFactory():
@@ -101,7 +107,7 @@ class SpatiaLiteDBPlugin(DBPlugin):
         uri = QgsDataSourceURI()
         uri.setDatabase(filename)
         self.addConnection(conn_name, uri)
-        index.internalPointer().emit(SIGNAL('itemChanged'), index.internalPointer())
+        index.internalPointer().itemChanged.emit(index.internalPointer())
 
 
 class SLDatabase(Database):

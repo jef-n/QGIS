@@ -26,7 +26,7 @@ def patch_well_known_namespaces(etree_module):
                 pass
             warnings.warn("Only 'lxml.etree' >= 2.3 and 'xml.etree.ElementTree' >= 1.3 are fully supported!")
 
-    for k, v in ns.get_namespaces().iteritems():
+    for k, v in ns.get_namespaces().items():
         register_namespace(k, v)
 
 # try to find lxml or elementtree

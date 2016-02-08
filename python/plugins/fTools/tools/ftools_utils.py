@@ -55,12 +55,17 @@
 #
 # -------------------------------------------------
 
-from PyQt4.QtCore import QTextCodec, QFileInfo, QSettings, QCoreApplication
-from PyQt4.QtGui import QDialog, QFileDialog
+from PyQt.QtCore import QTextCodec, QFileInfo, QSettings, QCoreApplication
+from PyQt.QtWidgets import QDialog, QFileDialog
 from qgis.core import QgsVectorFileWriter, QGis, QgsDistanceArea, QgsGeometry, QgsMapLayer, QgsVectorLayer, QgsMapLayerRegistry, QgsFeature, QgsSpatialIndex
 from qgis.gui import QgsEncodingFileDialog
 
 import locale
+
+try:
+    unicode
+except:
+    unicode = str
 
 # For use with memory provider/layer, converts full field type to simple string
 

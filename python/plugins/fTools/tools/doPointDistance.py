@@ -28,16 +28,21 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QVariant, QFileInfo
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QFileDialog
+from PyQt.QtCore import QObject, QVariant, QFileInfo
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QFileDialog
 from qgis.core import QGis, QgsSpatialIndex, QgsFeature, QgsDistanceArea, QgsGeometry, QgsFeatureRequest
 
 from ui_frmPointDistance import Ui_Dialog
 import csv
 import codecs
-import cStringIO
 import ftools_utils
 from math import sqrt
+
+try:
+    from cStringIO import StringIO
+except:
+    from io import StringIO
+    unicode = str
 
 
 class UnicodeWriter:
@@ -51,7 +56,7 @@ class UnicodeWriter:
 
     def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
         # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
+        self.queue = StringIO()
         self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
         self.stream = f
         self.encoder = codecs.getincrementalencoder(encoding)()
@@ -83,9 +88,9 @@ class Dialog(QDialog, Ui_Dialog):
         self.iface = iface
         # Set up the user interface from Designer.
         self.setupUi(self)
-        QObject.connect(self.btnFile, SIGNAL("clicked()"), self.saveFile)
-        QObject.connect(self.inPoint1, SIGNAL("currentIndexChanged(QString)"), self.update1)
-        QObject.connect(self.inPoint2, SIGNAL("currentIndexChanged(QString)"), self.update2)
+        self.btnFile.clicked.connect(self.saveFile)
+        self.inPoint1.currentIndexChanged.connect(self.update1)
+        self.inPoint2.currentIndexChanged.connect(self.update2)
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         # populate layer list
         self.setWindowTitle(self.tr("Distance matrix"))

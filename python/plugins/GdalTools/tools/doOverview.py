@@ -23,13 +23,18 @@ __copyright__ = '(C) 2010, Giuseppe Sucameli'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import QObject, SIGNAL, QCoreApplication
-from PyQt4.QtGui import QWidget
+from PyQt.QtCore import QObject, QCoreApplication
+from PyQt.QtWidgets import QWidget
 from qgis.core import QgsRaster
 
 from ui_widgetOverview import Ui_GdalToolsWidget as Ui_Widget
 from widgetBatchBase import GdalToolsBaseBatchWidget as BaseBatchWidget
 import GdalTools_utils as Utils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
@@ -50,16 +55,16 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
         self.base.loadCheckBox.hide()
 
         self.setParamsStatus([
-            (self.inSelector, SIGNAL("filenameChanged()")),
-            (self.cleanCheck, SIGNAL("stateChanged(int)"), None, 1700),
-            (self.mPyramidOptionsWidget, SIGNAL("overviewListChanged()")),
-            (self.mPyramidOptionsWidget, SIGNAL("someValueChanged()"))
+            (self.inSelector.filenameChanged,
+            (self.cleanCheck.stateChanged, None, 1700),
+            (self.mPyramidOptionsWidget.overviewListChanged),
+            (self.mPyramidOptionsWidget.someValueChanged)
         ])
 
-        self.connect(self.inSelector, SIGNAL("selectClicked()"), self.fillInputFile)
-        self.connect(self.batchCheck, SIGNAL("stateChanged( int )"), self.switchToolMode)
+        self.inSelector.selectClicked.connect(self.fillInputFile)
+        self.batchCheck.stateChanged.connect(self.switchToolMode)
 
-        self.init = False  # workaround bug that pyramid options widgets are not initialized at first
+        self.init=False  # workaround bug that pyramid options widgets are not initialized at first
 
     # make sure we get a command line when dialog appears
     def show_(self):
@@ -74,23 +79,23 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
         self.inSelector.setType(self.inSelector.FILE if self.batchCheck.isChecked() else self.inSelector.FILE_LAYER)
 
         if self.batchCheck.isChecked():
-            self.inFileLabel = self.label.text()
+            self.inFileLabel=self.label.text()
             self.label.setText(QCoreApplication.translate("GdalTools", "&Input directory"))
 
-            QObject.disconnect(self.inSelector, SIGNAL("selectClicked()"), self.fillInputFile)
-            QObject.connect(self.inSelector, SIGNAL("selectClicked()"), self.fillInputDir)
+            self.inSelector.selectClicked.disconnect(self.fillInputFile)
+            self.inSelector.selectClicked.connect(self.fillInputDir)
         else:
             self.label.setText(self.inFileLabel)
 
-            QObject.disconnect(self.inSelector, SIGNAL("selectClicked()"), self.fillInputDir)
-            QObject.connect(self.inSelector, SIGNAL("selectClicked()"), self.fillInputFile)
+            self.inSelector.selectClicked.disconnect(self.fillInputDir)
+            self.inSelector.selectClicked.connect(self.fillInputFile)
 
     def onLayersChanged(self):
         self.inSelector.setLayers(Utils.LayerRegistry.instance().getRasterLayers())
 
     def fillInputFile(self):
-        lastUsedFilter = Utils.FileFilter.lastUsedRasterFilter()
-        inputFile = Utils.FileDialog.getOpenFileName(self, self.tr("Select the input file"), Utils.FileFilter.allRastersFilter(), lastUsedFilter)
+        lastUsedFilter=Utils.FileFilter.lastUsedRasterFilter()
+        inputFile=Utils.FileDialog.getOpenFileName(self, self.tr("Select the input file"), Utils.FileFilter.allRastersFilter(), lastUsedFilter)
         if inputFile == '':
             return
         Utils.FileFilter.setLastUsedRasterFilter(lastUsedFilter)
@@ -100,19 +105,19 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
         self.mPyramidOptionsWidget.setRasterLayer(None)
 
     def fillInputDir(self):
-        inputDir = Utils.FileDialog.getExistingDirectory(self, self.tr("Select the input directory with files"))
+        inputDir=Utils.FileDialog.getExistingDirectory(self, self.tr("Select the input directory with files"))
         if inputDir == '':
             return
 
         self.inSelector.setFilename(inputDir)
 
     def getArguments(self):
-        arguments = []
+        arguments=[]
 
         arguments.append("-r")
         arguments.append(self.mPyramidOptionsWidget.resamplingMethod())
 
-        format = self.mPyramidOptionsWidget.pyramidsFormat()
+        format=self.mPyramidOptionsWidget.pyramidsFormat()
         if format == QgsRaster.PyramidsGTiff:
             arguments.append("-ro")
         elif format == QgsRaster.PyramidsErdas:
@@ -121,7 +126,7 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
             arguments.append("YES")
 
         for option in self.mPyramidOptionsWidget.configOptions():
-            (k, v) = option.split("=")
+            (k, v)=option.split("=")
             arguments.append("--config")
             arguments.append(unicode(k))
             arguments.append(unicode(v))
@@ -148,7 +153,7 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
             else:
                 self.mPyramidOptionsWidget.setRasterFileName(self.getInputFileName())
         else:
-            self.init = True
+            self.init=True
 
         return arguments
 
@@ -162,7 +167,7 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
         self.iface.addRasterLayer(fileInfo.filePath())
 
     def getBatchArguments(self, inFile, outFile=None):
-        arguments = self.getArguments()
+        arguments=self.getArguments()
         arguments.append(inFile)
         if len(self.mPyramidOptionsWidget.overviewList()) == 0:
             arguments.extend(["2", "4", "8", "16", "32"])
@@ -180,7 +185,7 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
             BasePluginWidget.onFinished(self, exitCode, status)
             return
 
-        msg = unicode(self.base.process.readAllStandardError())
+        msg=unicode(self.base.process.readAllStandardError())
         if msg != '':
             self.errors.append(">> " + self.inFiles[self.batchIndex] + "<br>" + msg.replace("\n", "<br>"))
 

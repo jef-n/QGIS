@@ -7,9 +7,6 @@
 # =============================================================================
 
 import cgi
-from cStringIO import StringIO
-from urllib import urlencode
-from urllib2 import urlopen
 from owslib.util import openURL, testXMLValue, extract_xml_list, ServiceException, xmltag_split
 from owslib.etree import etree
 from owslib.fgdc import Metadata
@@ -17,6 +14,15 @@ from owslib.iso import MD_Metadata
 from owslib.crs import Crs
 from owslib.namespaces import Namespaces
 from owslib.util import log
+
+try:
+    from cStringIO import StringIO
+    from urllib import urlencode
+    from urllib2 import urlopen
+except ImportError:
+    from io import StringIO
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
 
 n = Namespaces()
 WFS_NAMESPACE = n.get_namespace("wfs")

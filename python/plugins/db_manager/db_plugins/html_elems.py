@@ -20,6 +20,11 @@ email                : brush.tyler@gmail.com
  ***************************************************************************/
 """
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class HtmlContent:
 

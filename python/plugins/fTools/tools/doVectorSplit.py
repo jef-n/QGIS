@@ -28,12 +28,17 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import QObject, SIGNAL, QThread, QMutex, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QErrorMessage
+from PyQt.QtCore import QObject, QThread, QMutex, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QErrorMessage
 from qgis.core import QGis, QgsFeature, QgsVectorFileWriter
 
 import ftools_utils
 from ui_frmVectorSplit import Ui_Dialog
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -45,8 +50,8 @@ class Dialog(QDialog, Ui_Dialog):
         self.setupUi(self)
         self.setWindowTitle(self.tr("Split vector layer"))
 
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inShape, SIGNAL("currentIndexChanged(QString)"), self.update)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inShape.currentIndexChanged.connect(self.update)
 
         self.workThread = None
 
@@ -88,14 +93,14 @@ class Dialog(QDialog, Ui_Dialog):
         vLayer = ftools_utils.getVectorLayerByName(unicode(self.inShape.currentText()))
         self.workThread = SplitThread(vLayer, self.inField.currentText(), self.encoding, outDir)
 
-        QObject.connect(self.workThread, SIGNAL("rangeCalculated(PyQt_PyObject)"), self.setProgressRange)
-        QObject.connect(self.workThread, SIGNAL("valueProcessed()"), self.valueProcessed)
-        QObject.connect(self.workThread, SIGNAL("processFinished(PyQt_PyObject)"), self.processFinished)
-        QObject.connect(self.workThread, SIGNAL("processInterrupted()"), self.processInterrupted)
+        self.workThread.rangeCalculated.connect(self.setProgressRange)
+        self.workThread.valueProcessed.connect(self.valueProcessed)
+        self.workThread.processFinished.connect(self.processFinished)
+        self.workThread.processInterrupted.connect(self.processInterrupted)
 
         self.btnClose.setText(self.tr("Cancel"))
-        QObject.disconnect(self.buttonBox_2, SIGNAL("rejected()"), self.reject)
-        QObject.connect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
+        self.buttonBox_2.rejected.disconnect(self.reject)
+        self.btnClose.clicked.connect(self.stopProcessing)
 
         self.workThread.start()
 
@@ -108,7 +113,7 @@ class Dialog(QDialog, Ui_Dialog):
     def restoreGui(self):
         self.progressBar.setValue(0)
         self.outShape.clear()
-        QObject.connect(self.buttonBox_2, SIGNAL("rejected()"), self.reject)
+        self.buttonBox_2.rejected.connect(self.reject)
         self.btnClose.setText(self.tr("Close"))
         self.btnOk.setEnabled(True)
 
@@ -172,7 +177,7 @@ class SplitThread(QThread):
         geom = self.layer.wkbType()
         inFeat = QgsFeature()
 
-        self.emit(SIGNAL("rangeCalculated(PyQt_PyObject)"), len(unique))
+        self.rangeCalculated.emit(len(unique))
 
         for i in unique:
             check = QFile(baseName + "_" + unicode(i).strip() + ".shp")
@@ -191,7 +196,7 @@ class SplitThread(QThread):
                     writer.addFeature(inFeat)
             del writer
 
-            self.emit(SIGNAL("valueProcessed()"))
+            self.valueProcessed.emit()
 
             self.mutex.lock()
             s = self.stopMe
@@ -201,9 +206,9 @@ class SplitThread(QThread):
                 break
 
         if not interrupted:
-            self.emit(SIGNAL("processFinished( PyQt_PyObject )"), self.errors)
+            self.processFinished.emit(self.errors)
         else:
-            self.emit(SIGNAL("processInterrupted()"))
+            self.processInterrupted.emit()
 
     def stop(self):
         self.mutex.lock()

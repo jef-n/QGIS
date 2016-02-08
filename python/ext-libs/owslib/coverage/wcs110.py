@@ -13,8 +13,6 @@
 
 from wcsBase import WCSBase, WCSCapabilitiesReader, ServiceException
 from owslib.util import openURL, testXMLValue
-from urllib import urlencode
-from urllib2 import urlopen
 from owslib.etree import etree
 import os, errno
 from owslib.coverage import wcsdecoder
@@ -22,6 +20,13 @@ from owslib.crs import Crs
 
 import logging
 from owslib.util import log
+
+try:
+    from urllib import urlencode
+    from urllib2 import urlopen
+except:
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
 
 def ns(tag):
     return '{http://www.opengis.net/wcs/1.1}'+tag

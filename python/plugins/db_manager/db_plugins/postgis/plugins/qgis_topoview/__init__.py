@@ -21,13 +21,19 @@ Based on qgis_pgis_topoview by Sandro Santilli <strk@keybit.net>
  ***************************************************************************/
 """
 
-from PyQt4.QtGui import QAction, QIcon
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import QAction
 from qgis.core import QgsMapLayerRegistry, QgsVectorLayer, QGis
 from qgis.gui import QgsMessageBar
 
 import os
 
 current_path = os.path.dirname(__file__)
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 # The load function is called when the "db" database or either one of its

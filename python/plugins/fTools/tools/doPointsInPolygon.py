@@ -30,13 +30,17 @@
 
 import math
 
-from PyQt4.QtCore import QObject, SIGNAL, QThread, QMutex, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QListWidgetItem
+from PyQt.QtCore import QObject, QThread, QMutex, QVariant, QFile
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QListWidgetItem
 from qgis.core import QGis, QgsFeatureRequest, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry
 import ftools_utils
 from ui_frmPointsInPolygon import Ui_Dialog
 from functools import reduce
 
+try:
+    unicode
+except:
+    unicode = str
 
 typeInt = 1
 typeDouble = 2
@@ -53,9 +57,9 @@ class Dialog(QDialog, Ui_Dialog):
         self.btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
         self.btnClose = self.buttonBox.button(QDialogButtonBox.Close)
 
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.inPoint, SIGNAL("currentIndexChanged(QString)"), self.listPointFields)
-        QObject.connect(self.inPoint, SIGNAL("activated(QString)"), self.listPointFields)
+        self.toolOut.clicked.connect(self.outFile)
+        self.inPoint.currentIndexChanged.connect(self.listPointFields)
+        self.inPoint.activated.connect(self.listPointFields)
 
         self.progressBar.setValue(0)
         self.populateLayers()
@@ -124,14 +128,14 @@ class Dialog(QDialog, Ui_Dialog):
             self.workThread = PointsInPolygonThread(inPoly, inPnts, self.lnField.text(), self.outShape.text(), self.encoding,
                                                     self.attributeList, self.statisticSelector)
 
-            QObject.connect(self.workThread, SIGNAL("rangeChanged(int)"), self.setProgressRange)
-            QObject.connect(self.workThread, SIGNAL("updateProgress()"), self.updateProgress)
-            QObject.connect(self.workThread, SIGNAL("processingFinished()"), self.processFinished)
-            QObject.connect(self.workThread, SIGNAL("processingInterrupted()"), self.processInterrupted)
+            self.workThread.rangeChanged.connect(self.setProgressRange)
+            self.workThread.updateProgress.connect(self.updateProgress)
+            self.workThread.processingFinished.connect(self.processFinished)
+            self.workThread.processingInterrupted.connect(self.processInterrupted)
 
             self.btnClose.setText(self.tr("Cancel"))
-            QObject.disconnect(self.buttonBox, SIGNAL("rejected()"), self.reject)
-            QObject.connect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
+            self.buttonBox.rejected.disconnect(self.reject)
+            self.btnClose.clicked.connect(self.stopProcessing)
 
             self.workThread.start()
 
@@ -167,8 +171,8 @@ class Dialog(QDialog, Ui_Dialog):
         self.progressBar.setValue(0)
         self.outShape.clear()
 
-        QObject.disconnect(self.btnClose, SIGNAL("clicked()"), self.stopProcessing)
-        QObject.connect(self.buttonBox, SIGNAL("rejected()"), self.reject)
+        self.btnClose.clicked.disconnect(self.stopProcessing)
+        self.buttonBox.rejected.connect(self.reject)
         self.btnClose.setText(self.tr("Close"))
         self.btnOk.setEnabled(True)
 
@@ -227,7 +231,7 @@ class PointsInPolygonThread(QThread):
 
         spatialIndex = ftools_utils.createIndex(pointProvider)
 
-        self.emit(SIGNAL("rangeChanged(int)"), polyProvider.featureCount())
+        self.rangeChanged.emit(polyProvider.featureCount())
 
         polyFeat = QgsFeature()
         pntFeat = QgsFeature()
@@ -302,7 +306,7 @@ class PointsInPolygonThread(QThread):
             outFeat.setAttributes(atMap)
             writer.addFeature(outFeat)
 
-            self.emit(SIGNAL("updateProgress()"))
+            self.updateProgress.emit()
 
             self.mutex.lock()
             s = self.stopMe
@@ -314,9 +318,9 @@ class PointsInPolygonThread(QThread):
         del writer
 
         if not interrupted:
-            self.emit(SIGNAL("processingFinished()"))
+            self.processingFinished.emit()
         else:
-            self.emit(SIGNAL("processingInterrupted()"))
+            self.processingInterrupted.emit()
 
     def stop(self):
         self.mutex.lock()

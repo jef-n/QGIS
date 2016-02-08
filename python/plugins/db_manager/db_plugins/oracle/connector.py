@@ -23,17 +23,23 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtSql import QSqlDatabase
+from PyQt.QtCore import *
+from PyQt.QtGui import *
+from PyQt.QtWidgets import *
+from PyQt.QtSql import QSqlDatabase
 
 from ..connector import DBConnector
 from ..plugin import ConnectionError, DbError, Table
 
 import os
 from qgis.core import QGis, QgsApplication
-import QtSqlDB
+from . import QtSqlDB
 import sqlite3
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def classFactory():

@@ -24,6 +24,11 @@ from qgis.core import QgsDataSourceURI
 
 from .plugin import DbError, ConnectionError
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class DBConnector:
 

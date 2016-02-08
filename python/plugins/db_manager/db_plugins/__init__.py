@@ -20,6 +20,8 @@ email                : brush.tyler@gmail.com
  ***************************************************************************/
 """
 
+from qgis.utils import showException
+
 
 class NotSupportedDbType(Exception):
 
@@ -36,16 +38,31 @@ def initDbPluginList():
 
     current_dir = os.path.dirname(__file__)
     for name in os.listdir(current_dir):
+        if name == '__pycache__':
+            continue
         if not os.path.isdir(os.path.join(current_dir, name)):
             continue
 
         try:
-            exec (u"from .%s import plugin as mod" % name)
+            if name == "postgis":
+                from .postgis import plugin as mod
+            elif name == "oracle":
+                from .oracle import plugin as mod
+            elif name == "vlayers":
+                from .vlayers import plugin as mod
+            elif name == "spatialite":
+                from .spatialite import plugin as mod
+            else:
+                raise BaseException("plugin %s unknown" % name)
+            pluginclass = mod.classFactory()
+        except NameError as e:
+            raise e
+            DBPLUGIN_ERRORS.append(u"%s: name error %s" % (name, str(e)))
+            continue
         except ImportError as e:
-            DBPLUGIN_ERRORS.append(u"%s: %s" % (name, e.message))
+            DBPLUGIN_ERRORS.append(u"%s: %s" % (name, str(e)))
             continue
 
-        pluginclass = mod.classFactory()
         SUPPORTED_DBTYPES[pluginclass.typeName()] = pluginclass
 
     return len(SUPPORTED_DBTYPES) > 0

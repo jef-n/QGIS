@@ -1,3 +1,9 @@
+qgis (1:2.13.0) sid-qt5-oracle; urgency=medium
+
+  * qgis with qt5 and oracle
+
+ -- Jürgen E. Fischer <jef@norbit.de>  Sat, 06 Feb 2016 19:18:36 +0100
+
 qgis (2.13.0) UNRELEASED; urgency=medium
 
   * New development version 2.13 after branch of 2.12

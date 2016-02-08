@@ -32,6 +32,11 @@ from paver.easy import (call_task, cmdopts, error, info, options, path,
 
 from owslib.csw import CatalogueServiceWeb
 
+try:
+    unicode
+except:
+    unicode = str
+
 PLUGIN_NAME = 'MetaSearch'
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 USERDIR = os.path.expanduser('~')

@@ -97,6 +97,9 @@ class CORE_EXPORT QgsApplication : public QApplication
     //! Returns the path to the authors file.
     static QString authorsFilePath();
 
+    //! Returns the default config path
+    static QString defaultConfigPath();
+
     /** Returns the path to the contributors file.
      * Contributors are people who have submitted patches
      * but don't have commit access. */

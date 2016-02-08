@@ -20,10 +20,17 @@ email                : brush.tyler@gmail.com
  ***************************************************************************/
 """
 
-from PyQt4.QtCore import Qt, QTime, QRegExp, QAbstractTableModel
-from PyQt4.QtGui import QFont, QStandardItemModel, QStandardItem, QApplication
+from PyQt.QtCore import Qt, QTime, QRegExp, QAbstractTableModel
+from PyQt.QtWidgets import QFont, QStandardItemModel, QStandardItem, QApplication
 
 from .plugin import DbError
+
+from six import iteritems
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class BaseTableModel(QAbstractTableModel):
@@ -266,7 +273,7 @@ class TableConstraintsModel(SimpleTableModel):
                                          QApplication.translate("DBManagerPlugin", 'Column(s)')], editable, parent)
 
     def append(self, constr):
-        field_names = map(lambda k_v: unicode(k_v[1].name), constr.fields().iteritems())
+        field_names = map(lambda k_v: unicode(k_v[1].name), iteritems(constr.fields()))
         data = [constr.name, constr.type2String(), u", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
@@ -302,7 +309,7 @@ class TableIndexesModel(SimpleTableModel):
                                          QApplication.translate("DBManagerPlugin", 'Column(s)')], editable, parent)
 
     def append(self, idx):
-        field_names = map(lambda k_v1: unicode(k_v1[1].name), idx.fields().iteritems())
+        field_names = map(lambda k_v1: unicode(k_v1[1].name), iteritems(idx.fields()))
         data = [idx.name, u", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1

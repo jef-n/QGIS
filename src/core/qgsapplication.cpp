@@ -107,6 +107,15 @@ QgsApplication::QgsApplication( int & argc, char ** argv, bool GUIenabled, const
   init( customConfigPath ); // init can also be called directly by e.g. unit tests that don't inherit QApplication.
 }
 
+QString QgsApplication::defaultConfigPath()
+{
+#if QT_VERSION < 0x050000
+  return QString( "%1/.qgis%2/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
+#else
+  return QString( "%1/.qgis%2-qt5/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
+#endif
+}
+
 void QgsApplication::init( QString customConfigPath )
 {
   if ( customConfigPath.isEmpty() )
@@ -117,11 +126,7 @@ void QgsApplication::init( QString customConfigPath )
     }
     else
     {
-#if QT_VERSION < 0x050000
-      customConfigPath = QString( "%1/.qgis%2/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
-#else
-      customConfigPath = QString( "%1/.qgis%2-qt5/" ).arg( QDir::homePath() ).arg( QGis::QGIS_VERSION_INT / 10000 );
-#endif
+      customConfigPath = defaultConfigPath();
     }
   }
 

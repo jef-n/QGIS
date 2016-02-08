@@ -28,13 +28,19 @@
 #
 #---------------------------------------------------------------------
 
-from PyQt4.QtCore import Qt, QObject, SIGNAL, QVariant, QFile
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QDoubleValidator, QMessageBox, QApplication
+from PyQt.QtCore import Qt, QObject, QVariant, QFile
+from PyQt.QtGui import QDoubleValidator
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QApplication
 from qgis.core import QGis, QgsMapLayerRegistry, QgsMapLayer, QgsRectangle, QgsFields, QgsField, QgsVectorFileWriter, QgsPoint, QgsFeature, QgsGeometry
 
 import ftools_utils
 from ui_frmVectorGrid import Ui_Dialog
 import math
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -43,12 +49,12 @@ class Dialog(QDialog, Ui_Dialog):
         QDialog.__init__(self, iface.mainWindow())
         self.iface = iface
         self.setupUi(self)
-        QObject.connect(self.toolOut, SIGNAL("clicked()"), self.outFile)
-        QObject.connect(self.spnX, SIGNAL("valueChanged(double)"), self.offset)
-        QObject.connect(self.btnUpdate, SIGNAL("clicked()"), self.updateLayer)
-        QObject.connect(self.btnCanvas, SIGNAL("clicked()"), self.updateCanvas)
-        QObject.connect(self.chkAlign, SIGNAL("toggled(bool)"), self.chkAlignToggled)
-        QObject.connect(self.chkLock, SIGNAL("toggled(bool)"), self.chkLockToggled)
+        self.toolOut.clicked.connect(self.outFile)
+        self.spnX.valueChanged.connect(self.offset)
+        self.btnUpdate.clicked.connect(self.updateLayer)
+        self.btnCanvas.clicked.connect(self.updateCanvas)
+        self.chkAlign.toggled.connect(self.chkAlignToggled)
+        self.chkLock.toggled.connect(self.chkLockToggled)
         self.buttonOk = self.buttonBox_2.button(QDialogButtonBox.Ok)
         self.setWindowTitle(self.tr("Vector grid"))
         self.xMin.setValidator(QDoubleValidator(self.xMin))
