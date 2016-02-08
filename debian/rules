@@ -120,6 +120,10 @@ endif
 
 ifneq (,$(findstring $(DISTRIBUTION),"wheezy precise"))
 	CMAKE_OPTS += -DWITH_PYSPATIALITE=TRUE
+else
+ifneq (,$(WITH_QT5))
+	CMAKE_OPTS += -DWITH_PYSPATIALITE=TRUE
+endif
 endif
 
 ifneq (,$(findstring $(DISTRIBUTION),"sid stretch"))
