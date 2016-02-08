@@ -33,6 +33,11 @@ from processing.tools.system import getTempFilename
 
 from processing.tests.TestData import points, polygons
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class GeoAlgorithmTest(unittest.TestCase):
 

@@ -28,9 +28,10 @@ __revision__ = '$Format:%H$'
 import os
 import re
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QSettings
-from PyQt4.QtGui import QDialog, QFileDialog, QApplication, QCursor, QMessageBox
+from PyQt import uic
+from PyQt.QtCore import Qt, QSettings
+from PyQt.QtGui import QCursor
+from PyQt.QtWidgets import QDialog, QFileDialog, QApplication, QMessageBox
 from qgis.gui import QgsEncodingFileDialog
 
 from processing.core.ProcessingConfig import ProcessingConfig
@@ -38,6 +39,11 @@ from processing.core.ProcessingLog import ProcessingLog
 from processing.gui.AlgorithmExecutor import runalg
 from processing.tools import dataobjects
 from processing.gui.Postprocessing import handleAlgorithmResults
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.dirname(__file__)
 WIDGET, BASE = uic.loadUiType(

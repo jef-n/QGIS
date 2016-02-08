@@ -25,7 +25,7 @@ __copyright__ = '(C) 2015, Arnaud Morvan'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4 import QtCore
+from PyQt import QtCore
 from qgis.core import QGis, QgsGeometry, QgsFeature, QgsField
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterVector

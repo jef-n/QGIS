@@ -34,6 +34,11 @@ from processing.core.outputs import OutputHTML
 from processing.core.outputs import OutputNumber
 from processing.tools import dataobjects, vector
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class BasicStatisticsStrings(GeoAlgorithm):
 

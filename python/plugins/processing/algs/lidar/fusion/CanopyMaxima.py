@@ -30,8 +30,13 @@ from processing.core.parameters import ParameterFile
 from processing.core.parameters import ParameterNumber
 from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputTable
-from FusionUtils import FusionUtils
-from FusionAlgorithm import FusionAlgorithm
+from .FusionUtils import FusionUtils
+from .FusionAlgorithm import FusionAlgorithm
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class CanopyMaxima(FusionAlgorithm):

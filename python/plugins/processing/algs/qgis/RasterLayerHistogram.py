@@ -28,7 +28,7 @@ __revision__ = '$Format:%H$'
 import matplotlib.pyplot as plt
 import matplotlib.pylab as lab
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QgsField
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -38,6 +38,11 @@ from processing.core.outputs import OutputTable
 from processing.core.outputs import OutputHTML
 from processing.tools import dataobjects
 from processing.tools import raster
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class RasterLayerHistogram(GeoAlgorithm):

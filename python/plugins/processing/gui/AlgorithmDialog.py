@@ -25,9 +25,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QMessageBox, QApplication, QCursor, QColor, QPalette, QPushButton, QWidget,\
-    QVBoxLayout
+from PyQt.QtCore import Qt
+from PyQt.QtGui import QCursor, QColor, QPalette
+from PyQt.QtWidgets import QMessageBox, QApplication, QPushButton, QWidget, QVBoxLayout
 
 from qgis.core import *
 
@@ -61,6 +61,11 @@ from processing.core.outputs import OutputVector
 from processing.core.outputs import OutputTable
 
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class AlgorithmDialog(AlgorithmDialogBase):

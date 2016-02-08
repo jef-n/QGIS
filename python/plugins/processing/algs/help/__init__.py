@@ -26,7 +26,9 @@ __revision__ = '$Format:%H$'
 import os
 import yaml
 from qgis.core import *
-from PyQt4.QtCore import QSettings, QLocale
+from PyQt.QtCore import QSettings, QLocale
+
+from six import iteritems
 
 
 def loadShortHelp():
@@ -50,7 +52,7 @@ def loadShortHelp():
             return s.replace("{qgisdocs}", "https://docs.qgis.org/%s/%s/docs" % (version, locale))
         else:
             return None
-    h = {k: replace(v) for k, v in h.iteritems()}
+    h = {k: replace(v) for k, v in iteritems(h)}
     return h
 
 

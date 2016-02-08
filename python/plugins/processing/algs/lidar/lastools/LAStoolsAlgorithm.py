@@ -28,10 +28,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from PyQt4 import QtGui
+from PyQt.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 
-from LAStoolsUtils import LAStoolsUtils
+from .LAStoolsUtils import LAStoolsUtils
 
 from processing.core.parameters import ParameterFile
 from processing.core.parameters import ParameterBoolean
@@ -41,6 +41,11 @@ from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputFile
 from processing.core.outputs import OutputRaster
 from processing.core.outputs import OutputVector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class LAStoolsAlgorithm(GeoAlgorithm):
@@ -105,7 +110,7 @@ class LAStoolsAlgorithm(GeoAlgorithm):
 
     def getIcon(self):
         filepath = os.path.dirname(__file__) + "/../../../images/tool.png"
-        return QtGui.QIcon(filepath)
+        return QIcon(filepath)
 
     def checkBeforeOpeningParametersDialog(self):
         path = LAStoolsUtils.LAStoolsPath()

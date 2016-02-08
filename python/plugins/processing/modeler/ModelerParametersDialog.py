@@ -25,9 +25,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import Qt, QUrl, QMetaObject
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QLabel, QLineEdit, QFrame, QPushButton, QSizePolicy, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, QScrollArea, QComboBox, QTableWidgetItem, QMessageBox
-from PyQt4.QtWebKit import QWebView
+from PyQt.QtCore import Qt, QUrl, QMetaObject
+from PyQt.QtWidgets import QDialog, QDialogButtonBox, QLabel, QLineEdit, QFrame, QPushButton, QSizePolicy, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, QScrollArea, QComboBox, QTableWidgetItem, QMessageBox
+from PyQt.QtWebKitWidgets import QWebView
 
 from processing.modeler.ModelerAlgorithm import ValueFromInput, \
     ValueFromOutput, Algorithm, ModelerOutput
@@ -40,6 +40,11 @@ from processing.gui.GeometryPredicateSelectionPanel import \
 from processing.modeler.MultilineTextPanel import MultilineTextPanel
 from processing.core.parameters import ParameterExtent, ParameterRaster, ParameterVector, ParameterBoolean, ParameterTable, ParameterFixedTable, ParameterMultipleInput, ParameterSelection, ParameterRange, ParameterNumber, ParameterString, ParameterCrs, ParameterTableField, ParameterFile, ParameterGeometryPredicate
 from processing.core.outputs import OutputRaster, OutputVector, OutputTable, OutputHTML, OutputFile, OutputDirectory, OutputNumber, OutputString, OutputExtent
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class ModelerParametersDialog(QDialog):

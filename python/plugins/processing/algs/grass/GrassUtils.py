@@ -31,12 +31,18 @@ import codecs
 import subprocess
 import os
 import locale
+
 from qgis.core import QgsApplication
-from PyQt4.QtCore import QCoreApplication
+from PyQt.QtCore import QCoreApplication
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingLog import ProcessingLog
 from processing.tools.system import userFolder, isWindows, isMac, tempFolder, mkdir
 from processing.tests.TestData import points
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class GrassUtils:

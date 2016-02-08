@@ -29,6 +29,11 @@ __revision__ = '$Format:%H$'
 import os
 import subprocess
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 def getAlgParams(f):
     params = []

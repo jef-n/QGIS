@@ -27,7 +27,7 @@ __revision__ = '$Format:%H$'
 
 import math
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QGis, QgsRectangle, QgsFields, QgsField, QgsFeature, QgsGeometry, QgsPoint
 from qgis.utils import iface
 

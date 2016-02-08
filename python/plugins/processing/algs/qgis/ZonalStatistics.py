@@ -34,6 +34,7 @@ except:
     hasSciPy = False
 
 from osgeo import gdal, ogr, osr
+
 from qgis.core import QgsRectangle, QgsGeometry, QgsFeature
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -45,6 +46,11 @@ from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputVector
 from processing.tools.raster import mapToPixel
 from processing.tools import dataobjects, vector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class ZonalStatistics(GeoAlgorithm):

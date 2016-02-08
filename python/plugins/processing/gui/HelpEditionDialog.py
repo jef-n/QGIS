@@ -30,10 +30,15 @@ __revision__ = '$Format:%H$'
 import os
 import json
 
-from PyQt4 import uic
-from PyQt4.QtGui import QDialog, QMessageBox, QTreeWidgetItem
+from PyQt import uic
+from PyQt.QtWidgets import QDialog, QMessageBox, QTreeWidgetItem
 
 from processing.core.ProcessingLog import ProcessingLog
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

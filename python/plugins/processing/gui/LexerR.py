@@ -25,8 +25,8 @@ __copyright__ = '(C) 2013, Alexander Bruy'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtGui import QColor
-from PyQt4.Qsci import QsciLexerCustom
+from PyQt.QtGui import QColor
+from PyQt.Qsci import QsciLexerCustom
 
 
 class LexerR(QsciLexerCustom):

@@ -26,7 +26,7 @@ __copyright__ = '(C) 2010, Michael Minn'
 __revision__ = '$Format:%H$'
 
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QgsFields, QgsVectorLayer
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -35,6 +35,11 @@ from processing.core.parameters import ParameterMultipleInput
 from processing.core.outputs import OutputVector
 
 from processing.tools import dataobjects, vector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Merge(GeoAlgorithm):

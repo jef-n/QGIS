@@ -36,6 +36,11 @@ from processing.tools.system import getTempFilename
 
 from processing.tests.TestData import raster, union
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class GdalTest(unittest.TestCase):
 

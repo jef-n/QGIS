@@ -28,9 +28,9 @@ __revision__ = '$Format:%H$'
 import os
 import webbrowser
 
-from PyQt4 import uic
-from PyQt4.QtCore import QCoreApplication, QSettings, QByteArray, SIGNAL, QUrl
-from PyQt4.QtGui import QApplication, QDialogButtonBox, QDesktopWidget
+from PyQt import uic
+from PyQt.QtCore import QCoreApplication, QSettings, QByteArray, QUrl
+from PyQt.QtWidgets import QApplication, QDialogButtonBox, QDesktopWidget
 
 from qgis.utils import iface
 from qgis.core import *
@@ -89,7 +89,7 @@ class AlgorithmDialogBase(BASE, WIDGET):
 
         def linkClicked(url):
             webbrowser.open(url.toString())
-        self.textShortHelp.connect(self.textShortHelp, SIGNAL("anchorClicked(const QUrl&)"), linkClicked)
+        self.textShortHelp.anchorClicked.connect(linkClicked)
 
         self.textHelp.page().setNetworkAccessManager(QgsNetworkAccessManager.instance())
 

@@ -35,6 +35,11 @@ from processing.algs.gdal.GdalUtils import GdalUtils
 
 import os
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class gdaltindex(GdalAlgorithm):
 

@@ -28,7 +28,7 @@ __revision__ = '$Format:%H$'
 import os
 import time
 
-from PyQt4 import QtGui
+from PyQt import QtGui
 from qgis.core import QgsRasterLayer
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -36,9 +36,14 @@ from processing.core.parameters import ParameterMultipleInput
 from processing.core.parameters import ParameterExtent
 from processing.core.parameters import ParameterNumber
 from processing.core.parameters import ParameterRaster
-from Grass7Utils import Grass7Utils
+from .Grass7Utils import Grass7Utils
 from processing.tools.system import getNumExportedLayers
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.normpath(os.path.join(
     os.path.split(os.path.dirname(__file__))[0], os.pardir))

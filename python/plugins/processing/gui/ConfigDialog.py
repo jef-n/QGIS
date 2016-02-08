@@ -28,16 +28,22 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent, QPyNullVariant
-from PyQt4.QtGui import (QFileDialog, QDialog, QIcon, QStyle,
-                         QStandardItemModel, QStandardItem, QMessageBox, QStyledItemDelegate,
-                         QLineEdit, QWidget, QToolButton, QHBoxLayout,
-                         QComboBox)
+from PyQt import uic
+from PyQt.QtCore import Qt, QEvent, QPyNullVariant
+from PyQt.QtGui import QIcon, QStandardItem, QStandardItemModel
+from PyQt.QtWidgets import (QFileDialog, QDialog, QStyle,
+                            QMessageBox, QStyledItemDelegate,
+                            QLineEdit, QWidget, QToolButton, QHBoxLayout,
+                            QComboBox)
 from qgis.gui import QgsDoubleSpinBox, QgsSpinBox
 
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
 from processing.core.Processing import Processing
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

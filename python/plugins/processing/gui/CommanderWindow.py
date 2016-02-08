@@ -27,13 +27,18 @@ import types
 import os
 import imp
 
-from PyQt4.QtCore import Qt, QSize
-from PyQt4.QtGui import QDialog, QLabel, QSpacerItem, QHBoxLayout, QVBoxLayout, QSizePolicy, QComboBox, QCompleter, QSortFilterProxyModel
+from PyQt.QtCore import Qt, QSize, QSortFilterProxyModel
+from PyQt.QtWidgets import QDialog, QLabel, QSpacerItem, QHBoxLayout, QVBoxLayout, QSizePolicy, QComboBox, QCompleter
 from qgis.utils import iface
 from processing.core.Processing import Processing
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.AlgorithmDialog import AlgorithmDialog
 from processing.tools.system import userFolder, mkdir
+
+try:
+    unicode
+except:
+    unicode = str
 
 ITEMHEIGHT = 30
 OFFSET = 20

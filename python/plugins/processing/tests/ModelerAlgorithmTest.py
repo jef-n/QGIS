@@ -38,6 +38,11 @@ from processing.tools import dataobjects
 
 from processing.tests.TestData import points, polygons, union, raster
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ModelerAlgorithmTest(unittest.TestCase):
 

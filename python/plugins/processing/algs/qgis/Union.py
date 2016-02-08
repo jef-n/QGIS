@@ -38,8 +38,8 @@ wkbTypeGroups = {
     'LineString': (QGis.WKBLineString, QGis.WKBMultiLineString, QGis.WKBLineString25D, QGis.WKBMultiLineString25D,),
     'Polygon': (QGis.WKBPolygon, QGis.WKBMultiPolygon, QGis.WKBPolygon25D, QGis.WKBMultiPolygon25D,),
 }
-for key, value in wkbTypeGroups.items():
-    for const in value:
+for key in ('Point', 'LineString', 'Polygon'):
+    for const in wkbTypeGroups[key]:
         wkbTypeGroups[const] = key
 
 GEOM_25D = [QGis.WKBPoint25D, QGis.WKBLineString25D, QGis.WKBPolygon25D,

@@ -31,6 +31,11 @@ from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputHTML
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class information(GdalAlgorithm):
 

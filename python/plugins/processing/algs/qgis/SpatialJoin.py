@@ -23,7 +23,7 @@ __copyright__ = '(C) 2013, Joshua Arnott'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QGis, QgsFields, QgsField, QgsFeature, QgsGeometry, NULL
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -34,6 +34,11 @@ from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterString
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class SpatialJoin(GeoAlgorithm):

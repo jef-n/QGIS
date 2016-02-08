@@ -27,7 +27,7 @@ __revision__ = '$Format:%H$'
 
 import random
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QGis, QgsGeometry, QgsRectangle, QgsFeature, QgsFields, QgsField, QgsSpatialIndex, QgsPoint
 from qgis.utils import iface
 
@@ -37,6 +37,11 @@ from processing.core.parameters import ParameterExtent
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputVector
 from processing.tools import vector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class RandomPointsExtent(GeoAlgorithm):

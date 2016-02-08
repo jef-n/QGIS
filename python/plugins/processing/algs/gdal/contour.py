@@ -35,6 +35,11 @@ from processing.core.outputs import OutputVector
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class contour(GdalAlgorithm):
 

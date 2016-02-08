@@ -33,6 +33,11 @@ from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputRaster
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class pct2rgb(GdalAlgorithm):
 

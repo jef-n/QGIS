@@ -28,9 +28,10 @@ __revision__ = '$Format:%H$'
 import os
 import json
 
-from PyQt4 import uic
-from PyQt4.QtGui import (QWidget, QIcon, QTableWidgetItem, QComboBox, QLineEdit,
-                         QHeaderView, QFileDialog)
+from PyQt import uic
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import (QWidget, QTableWidgetItem, QComboBox, QLineEdit,
+                            QHeaderView, QFileDialog)
 
 from qgis.core import QgsApplication
 
@@ -53,6 +54,11 @@ from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterFixedTable
 from processing.core.parameters import ParameterMultipleInput
 from processing.core.parameters import ParameterGeometryPredicate
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

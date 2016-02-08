@@ -55,6 +55,7 @@ try:
 except:
     unicode = str
 
+
 def normalizeVersion(s):
     """ remove possible prefix from given string and convert to uppercase """
     prefixes = ['VERSION', 'VER.', 'VER', 'V.', 'V', 'REVISION', 'REV.', 'REV', 'R.', 'R']

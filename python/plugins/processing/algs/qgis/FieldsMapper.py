@@ -37,6 +37,11 @@ from .fieldsmapping import ParameterFieldsMapping
 from .ui.FieldsMapperDialogs import (FieldsMapperParametersDialog,
                                      FieldsMapperModelerParametersDialog)
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class FieldsMapper(GeoAlgorithm):
 

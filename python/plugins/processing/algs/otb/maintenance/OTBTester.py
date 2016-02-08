@@ -32,6 +32,11 @@ from ConfigParser import SafeConfigParser
 
 from processing.otb.OTBHelper import get_OTB_log
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class LowerTemplate(Template):
 

@@ -27,8 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4 import uic
-from PyQt4.QtGui import QMenu, QAction, QCursor, QInputDialog
+from PyQt import uic
+from PyQt.QtGui import QCursor
+from PyQt.QtWidgets import QMenu, QAction, QInputDialog
 
 from qgis.gui import QgsMessageBar
 from qgis.core import QgsRasterLayer, QgsVectorLayer
@@ -40,6 +41,11 @@ from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterMultipleInput
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

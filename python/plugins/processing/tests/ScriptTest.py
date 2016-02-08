@@ -27,9 +27,14 @@ __revision__ = '$Format:%H$'
 
 import unittest
 import processing
-from processing.tools import dataobjects
 
+from processing.tools import dataobjects
 from processing.tests.TestData import polygons, union
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class ScriptTest(unittest.TestCase):

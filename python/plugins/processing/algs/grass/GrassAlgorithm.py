@@ -31,8 +31,8 @@ import uuid
 import importlib
 import re
 
-from PyQt4.QtCore import QCoreApplication
-from PyQt4.QtGui import QIcon
+from PyQt.QtCore import QCoreApplication
+from PyQt.QtGui import QIcon
 
 from qgis.core import QgsRasterLayer
 from qgis.utils import iface
@@ -45,9 +45,14 @@ from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecution
 from processing.core.parameters import getParameterFromString, ParameterVector, ParameterMultipleInput, ParameterExtent, ParameterNumber, ParameterSelection, ParameterRaster, ParameterTable, ParameterBoolean, ParameterString
 from processing.core.outputs import getOutputFromString, OutputRaster, OutputVector, OutputFile, OutputHTML
 
-from GrassUtils import GrassUtils
+from .GrassUtils import GrassUtils
 
 from processing.tools import dataobjects, system
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.normpath(os.path.join(
     os.path.split(os.path.dirname(__file__))[0], os.pardir))

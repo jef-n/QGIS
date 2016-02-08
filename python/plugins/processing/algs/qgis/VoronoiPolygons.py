@@ -25,7 +25,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from sets import Set
+try:
+    from sets import Set as set
+except:
+    pass
 
 from qgis.core import QGis, QgsFeatureRequest, QgsFeature, QgsGeometry, QgsPoint
 
@@ -34,8 +37,9 @@ from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecution
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputVector
-import voronoi
 from processing.tools import dataobjects, vector
+
+from .voronoi import voronoi, Context, SiteList, Site
 
 
 class VoronoiPolygons(GeoAlgorithm):
@@ -70,7 +74,7 @@ class VoronoiPolygons(GeoAlgorithm):
         extraY = extent.width() * (buf / 100.0)
         height = extent.height()
         width = extent.width()
-        c = voronoi.Context()
+        c = Context()
         pts = []
         ptDict = {}
         ptNdx = -1
@@ -92,9 +96,9 @@ class VoronoiPolygons(GeoAlgorithm):
 
         uniqueSet = Set(item for item in pts)
         ids = [pts.index(item) for item in uniqueSet]
-        sl = voronoi.SiteList([voronoi.Site(i[0], i[1], sitenum=j) for (j,
-                                                                        i) in enumerate(uniqueSet)])
-        voronoi.voronoi(sl, c)
+        sl = SiteList([Site(i[0], i[1], sitenum=j) for (j,
+                                                        i) in enumerate(uniqueSet)])
+        voronoi(sl, c)
         inFeat = QgsFeature()
 
         current = 0

@@ -26,10 +26,15 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from PyQt4 import QtGui
+from PyQt.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterString
-from FusionUtils import FusionUtils
+from .FusionUtils import FusionUtils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class FusionAlgorithm(GeoAlgorithm):
@@ -38,7 +43,7 @@ class FusionAlgorithm(GeoAlgorithm):
 
     def getIcon(self):
         filepath = os.path.dirname(__file__) + '/../../../images/tool.png'
-        return QtGui.QIcon(filepath)
+        return QIcon(filepath)
 
     def checkBeforeOpeningParametersDialog(self):
         path = FusionUtils.FusionPath()

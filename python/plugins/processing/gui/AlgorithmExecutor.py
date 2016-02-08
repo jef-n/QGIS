@@ -27,7 +27,8 @@ __revision__ = '$Format:%H$'
 
 import sys
 
-from PyQt4.QtCore import QSettings, QCoreApplication
+from PyQt.QtCore import QSettings, QCoreApplication
+
 from qgis.core import QgsFeature, QgsVectorFileWriter
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
@@ -36,6 +37,11 @@ from processing.tools import dataobjects
 from processing.tools.system import getTempFilename
 from processing.tools import vector
 from processing.gui.SilentProgress import SilentProgress
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def runalg(alg, progress=None):

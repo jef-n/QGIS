@@ -34,9 +34,10 @@ import locale
 
 from qgis.core import *
 
-from PyQt4 import uic
-from PyQt4.QtCore import QCoreApplication, QVariant
-from PyQt4.QtGui import QWidget, QLayout, QVBoxLayout, QHBoxLayout, QToolButton, QIcon, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit
+from PyQt import uic
+from PyQt.QtCore import QCoreApplication, QVariant
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import QWidget, QLayout, QVBoxLayout, QHBoxLayout, QToolButton, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit
 
 from processing.core.ProcessingConfig import ProcessingConfig
 
@@ -73,6 +74,11 @@ from processing.core.outputs import OutputTable
 from processing.core.outputs import OutputVector
 
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

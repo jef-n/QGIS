@@ -23,6 +23,11 @@ __copyright__ = '(C) 2013, CS Systemes d\'information  (CS SI)'
 from collections import namedtuple
 import re
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 def merge_pairs(list, should_merge, merge):
     """

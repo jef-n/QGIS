@@ -36,6 +36,11 @@ from processing.tools.system import getTempFilename
 
 from processing.tests.TestData import polygons2, polygonsGeoJson, raster
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class SagaTest(unittest.TestCase):
 

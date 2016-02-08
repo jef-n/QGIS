@@ -29,12 +29,18 @@ import stat
 import shutil
 import subprocess
 import os
+
 from qgis.core import QgsApplication
-from PyQt4.QtCore import QCoreApplication
+from PyQt.QtCore import QCoreApplication
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingLog import ProcessingLog
 from processing.tools.system import userFolder, isWindows, isMac, tempFolder, mkdir
 from processing.tests.TestData import points
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Grass7Utils:
@@ -171,7 +177,7 @@ class Grass7Utils:
     def createGrass7BatchJobFileFromGrass7Commands(commands):
         fout = open(Grass7Utils.grassBatchJobFilename(), 'w')
         for command in commands:
-            fout.write(command.encode('utf8') + '\n')
+            fout.write(command + '\n')
         fout.write('exit')
         fout.close()
 

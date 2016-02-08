@@ -27,7 +27,7 @@ __revision__ = '$Format:%H$'
 
 
 from qgis.utils import iface
-from PyQt4 import QtGui
+from PyQt import QtGui, QtWidgets
 from processing.core.Processing import Processing
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.AlgorithmDialog import AlgorithmDialog

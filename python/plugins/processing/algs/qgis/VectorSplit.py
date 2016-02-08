@@ -34,6 +34,11 @@ from processing.core.outputs import OutputDirectory
 from processing.tools import dataobjects, vector
 from processing.tools.system import mkdir
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class VectorSplit(GeoAlgorithm):
 

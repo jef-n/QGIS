@@ -38,6 +38,11 @@ from processing.algs.gdal.GdalUtils import GdalUtils
 
 from processing.tools.vector import ogrConnectionString, ogrLayerName
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class rasterize_over(GdalAlgorithm):
 

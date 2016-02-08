@@ -26,7 +26,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 
-from PyQt4.QtCore import QSettings
+from PyQt.QtCore import QSettings
 
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterString
@@ -41,6 +41,11 @@ from processing.algs.gdal.GdalUtils import GdalUtils
 
 from processing.tools.system import isWindows
 from processing.tools.vector import ogrConnectionString, ogrLayerName
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Ogr2OgrToPostGisList(GdalAlgorithm):

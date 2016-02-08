@@ -37,6 +37,11 @@ from processing.tools.system import isWindows
 from processing.algs.gdal.GdalUtils import GdalUtils
 import re
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class retile(GdalAlgorithm):
 

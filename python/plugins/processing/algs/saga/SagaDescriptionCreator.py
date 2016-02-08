@@ -28,6 +28,11 @@ __revision__ = '$Format:%H$'
 import subprocess
 import os
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class SagaDescriptionCreator:
 

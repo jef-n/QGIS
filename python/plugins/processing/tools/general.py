@@ -29,6 +29,11 @@ from processing.core.Processing import Processing
 from processing.gui.Postprocessing import handleAlgorithmResults
 from processing.core.parameters import ParameterSelection
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 def alglist(text=None):
     s = ''
@@ -38,7 +43,7 @@ def alglist(text=None):
             if text is None or text.lower() in alg.name.lower():
                 s += alg.name.ljust(50, '-') + '--->' + alg.commandLineName() \
                     + '\n'
-    print s
+    print (s)
 
 
 def algoptions(name):
@@ -52,19 +57,19 @@ def algoptions(name):
                 for option in param.options:
                     s += '\t' + unicode(i) + ' - ' + unicode(option) + '\n'
                     i += 1
-        print s
+        print (s)
     else:
-        print 'Algorithm not found'
+        print ('Algorithm {} not found'.format(name))
 
 
 def alghelp(name):
     alg = Processing.getAlgorithm(name)
     if alg is not None:
         alg = alg.getCopy()
-        print unicode(alg)
+        print(unicode(alg))
         algoptions(name)
     else:
-        print 'Algorithm not found'
+        print('Algorithm {} not found'.format(name))
 
 
 def runalg(algOrName, *args, **kwargs):

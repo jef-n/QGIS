@@ -31,8 +31,9 @@ from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterBoolean
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputVector
-import Buffer as buff
 from processing.tools import dataobjects
+
+from .Buffer import buffering
 
 
 class FixedDistanceBuffer(GeoAlgorithm):
@@ -68,5 +69,4 @@ class FixedDistanceBuffer(GeoAlgorithm):
             self.OUTPUT).getVectorWriter(layer.pendingFields().toList(),
                                          QGis.WKBPolygon, layer.crs())
 
-        buff.buffering(progress, writer, distance, None, False, layer,
-                       dissolve, segments)
+        buffering(progress, writer, distance, None, False, layer, dissolve, segments)

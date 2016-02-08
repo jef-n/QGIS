@@ -34,6 +34,11 @@ from processing.core.outputs import OutputVector
 
 from processing.tools import dataobjects, vector
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class HubLines(GeoAlgorithm):
     HUBS = 'HUBS'

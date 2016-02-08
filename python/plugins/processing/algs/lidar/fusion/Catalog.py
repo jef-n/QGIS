@@ -27,8 +27,13 @@ import os
 from processing.core.parameters import ParameterFile
 from processing.core.parameters import ParameterString
 from processing.core.outputs import OutputFile
-from FusionUtils import FusionUtils
-from FusionAlgorithm import FusionAlgorithm
+from .FusionUtils import FusionUtils
+from .FusionAlgorithm import FusionAlgorithm
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Catalog(FusionAlgorithm):

@@ -36,6 +36,11 @@ from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 
 from processing.tools.vector import ogrConnectionString
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class OgrInfo(GdalAlgorithm):
 

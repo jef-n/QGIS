@@ -27,14 +27,19 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QDialog, QHeaderView, QTableWidgetItem
+from PyQt import uic
+from PyQt.QtCore import Qt
+from PyQt.QtWidgets import QDialog, QHeaderView, QTableWidgetItem
 
 from processing.gui.RenderingStyles import RenderingStyles
 from processing.gui.RenderingStyleFilePanel import RenderingStyleFilePanel
 from processing.core.outputs import OutputRaster
 from processing.core.outputs import OutputVector
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(

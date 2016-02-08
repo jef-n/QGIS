@@ -30,8 +30,13 @@ from processing.core.parameters import ParameterNumber
 from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterString
 from processing.core.outputs import OutputFile
-from FusionAlgorithm import FusionAlgorithm
-from FusionUtils import FusionUtils
+from .FusionAlgorithm import FusionAlgorithm
+from .FusionUtils import FusionUtils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class TinSurfaceCreate(FusionAlgorithm):

@@ -35,6 +35,11 @@ from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputRaster
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class GridDataMetrics(GdalAlgorithm):
 

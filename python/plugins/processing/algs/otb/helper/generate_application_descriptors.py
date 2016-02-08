@@ -29,6 +29,11 @@ import os
 import otbApplication
 from qgis.core import QgsApplication
 
+try:
+    unicode
+except:
+    unicode = str
+
 outputpath = unicode(QgsApplication.qgisSettingsDirPath()
                      + 'python/plugins/processing/otb/description')
 endl = os.linesep

@@ -25,7 +25,7 @@ __copyright__ = '(C) 2013, Bernhard Ströbl'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import QLocale, QDate
+from PyQt.QtCore import QLocale, QDate
 from qgis.core import QgsFeatureRequest, QgsFeature, QgsGeometry
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
@@ -37,6 +37,11 @@ from processing.core.parameters import ParameterString
 from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class Eliminate(GeoAlgorithm):

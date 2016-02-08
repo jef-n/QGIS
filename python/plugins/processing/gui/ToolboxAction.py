@@ -26,8 +26,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+from PyQt import QtGui, QtCore, QtWidgets
 
 
 class ToolboxAction:

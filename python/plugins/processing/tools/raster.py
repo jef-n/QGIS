@@ -27,8 +27,14 @@ __revision__ = '$Format:%H$'
 
 import struct
 import numpy
+
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 def scanraster(layer, progress):

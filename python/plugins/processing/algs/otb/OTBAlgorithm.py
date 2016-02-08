@@ -31,8 +31,8 @@ __revision__ = '$Format:%H$'
 
 import os
 import re
-from PyQt4.QtCore import QCoreApplication
-from PyQt4.QtGui import QIcon
+from PyQt.QtCore import QCoreApplication
+from PyQt.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterMultipleInput
 from processing.core.parameters import ParameterRaster
@@ -43,11 +43,16 @@ from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecution
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.parameters import getParameterFromString
 from processing.core.outputs import getOutputFromString
-import OTBUtils
+from . import OTBUtils
 from processing.core.parameters import ParameterExtent
 from processing.tools.system import getTempFilename
 import xml.etree.ElementTree as ET
 import traceback
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.normpath(os.path.join(
     os.path.split(os.path.dirname(__file__))[0], os.pardir))

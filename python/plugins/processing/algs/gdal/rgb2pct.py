@@ -33,6 +33,11 @@ from processing.core.outputs import OutputRaster
 from processing.tools.system import isWindows
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class rgb2pct(GdalAlgorithm):
 

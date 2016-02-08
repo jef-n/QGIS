@@ -49,7 +49,7 @@ import functools
 try:
     unicode
 except:
-    unicode=str
+    unicode = str
 
 # ######################
 # ERROR HANDLING
@@ -184,13 +184,11 @@ def qgis_excepthook(type, value, tb):
 
 
 def installErrorHook():
-    #sys.excepthook = qgis_excepthook
-    pass
+    sys.excepthook = qgis_excepthook
 
 
 def uninstallErrorHook():
-    #sys.excepthook = sys.__excepthook__
-    pass
+    sys.excepthook = sys.__excepthook__
 
 # install error hook() on module load
 installErrorHook()
@@ -231,6 +229,7 @@ plugins_metadata_parser = {}
 def findPlugins(path):
     """ for internal use: return list of plugins in given path """
     for plugin in glob.glob(path + "/*"):
+        print ("findPlugin plugin:" + plugin)
         if not os.path.isdir(plugin):
             continue
         if not os.path.exists(os.path.join(plugin, '__init__.py')):
@@ -243,7 +242,9 @@ def findPlugins(path):
         cp = ConfigParser.ConfigParser()
 
         try:
-            cp.readfp(codecs.open(metadataFile, "r", "utf8"))
+            f = codecs.open(metadataFile, "r", "utf8")
+            cp.readfp(f)
+            f.close()
         except:
             cp = None
 

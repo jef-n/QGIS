@@ -28,7 +28,7 @@ __revision__ = '$Format:%H$'
 from random import seed, uniform
 from math import sqrt
 
-from PyQt4.QtCore import QVariant
+from PyQt.QtCore import QVariant
 from qgis.core import QGis, QgsRectangle, QgsFields, QgsField, QgsFeature, QgsGeometry, QgsPoint
 from qgis.utils import iface
 
@@ -37,6 +37,11 @@ from processing.core.parameters import ParameterExtent
 from processing.core.parameters import ParameterNumber
 from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputVector
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class RegularPoints(GeoAlgorithm):

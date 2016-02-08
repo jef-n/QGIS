@@ -28,8 +28,8 @@ __revision__ = '$Format:%H$'
 import os
 import re
 
-from PyQt4.QtGui import QWidget, QPushButton, QLineEdit, QHBoxLayout, QSizePolicy, QFileDialog
-from PyQt4.QtCore import QSettings
+from PyQt.QtWidgets import QWidget, QPushButton, QLineEdit, QHBoxLayout, QSizePolicy, QFileDialog
+from PyQt.QtCore import QSettings
 
 from processing.gui.AutofillDialog import AutofillDialog
 from processing.core.parameters import ParameterMultipleInput
@@ -40,6 +40,11 @@ from processing.core.parameters import ParameterBoolean
 from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterFixedTable
 from processing.core.outputs import OutputDirectory
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class BatchOutputSelectionPanel(QWidget):
@@ -80,7 +85,7 @@ class BatchOutputSelectionPanel(QWidget):
             path = ''
         filename, selectedFileFilter = QFileDialog.getSaveFileNameAndFilter(self,
                                                                             self.tr('Save file'), path, filefilter)
-        print filename, selectedFileFilter
+        print (filename, selectedFileFilter)
         if filename:
             if not filename.lower().endswith(
                     tuple(re.findall("\*(\.[a-z]{1,10})", filefilter))):

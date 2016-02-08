@@ -37,6 +37,11 @@ from processing.core.parameters import ParameterBoolean
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ClipByExtent(GdalAlgorithm):
 

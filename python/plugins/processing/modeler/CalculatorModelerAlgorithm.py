@@ -25,8 +25,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import Qt, QObject, QMetaObject, SIGNAL
-from PyQt4.QtGui import QDialogButtonBox, QTextEdit, QLineEdit, QVBoxLayout
+from PyQt.QtCore import Qt, QObject, QMetaObject
+from PyQt.QtWidgets import QDialogButtonBox, QTextEdit, QLineEdit, QVBoxLayout
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
@@ -36,6 +36,10 @@ from processing.core.outputs import OutputNumber
 from processing.modeler.ModelerParametersDialog import ModelerParametersDialog
 from processing.modeler.ModelerAlgorithm import Algorithm
 
+try:
+    unicode
+except:
+    unicode = str
 
 FORMULA = 'FORMULA'
 NUMBER = 'NUMBER'
@@ -112,8 +116,8 @@ class CalculatorModelerParametersDialog(ModelerParametersDialog):
         self.verticalLayout.addWidget(self.formulaText)
         self.verticalLayout.addWidget(self.buttonBox)
         self.setLayout(self.verticalLayout)
-        QObject.connect(self.buttonBox, SIGNAL('accepted()'), self.okPressed)
-        QObject.connect(self.buttonBox, SIGNAL('rejected()'), self.cancelPressed)
+        self.buttonBox, accepted.connect(self.okPressed)
+        self.buttonBox.rejected.connect(self.cancelPressed)
         QMetaObject.connectSlotsByName(self)
 
     def createAlgorithm(self):

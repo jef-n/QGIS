@@ -42,6 +42,11 @@ from processing.algs.gdal.GdalUtils import GdalUtils
 from processing.tools import dataobjects
 from processing.tools.vector import ogrConnectionString
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ClipByMask(GdalAlgorithm):
 

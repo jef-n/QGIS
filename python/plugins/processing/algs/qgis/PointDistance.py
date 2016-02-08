@@ -35,6 +35,11 @@ from processing.core.parameters import ParameterTableField
 from processing.core.outputs import OutputTable
 from processing.tools import dataobjects, vector
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class PointDistance(GeoAlgorithm):
 

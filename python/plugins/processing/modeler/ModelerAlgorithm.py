@@ -33,8 +33,8 @@ import time
 import json
 import codecs
 import traceback
-from PyQt4.QtCore import QCoreApplication, QPointF
-from PyQt4.QtGui import QIcon
+from PyQt.QtCore import QCoreApplication, QPointF
+from PyQt.QtGui import QIcon
 from qgis.core import QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsMessageBar
 from qgis.utils import iface
@@ -45,6 +45,11 @@ from processing.modeler.ModelerUtils import ModelerUtils
 from processing.core.parameters import getParameterFromString, ParameterRaster, ParameterVector, ParameterTable, ParameterTableField, ParameterBoolean, ParameterString, ParameterNumber, ParameterExtent, ParameterDataObject, ParameterMultipleInput
 from processing.tools import dataobjects
 from processing.gui.Help2Html import getHtmlFromDescriptionsDict
+
+try:
+    unicode
+except:
+    unicode = str
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 

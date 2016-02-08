@@ -28,11 +28,17 @@ __copyright__ = '(C) 2013, Martin Isenburg'
 __revision__ = '$Format:%H$'
 
 import os
-from LAStoolsUtils import LAStoolsUtils
-from LAStoolsAlgorithm import LAStoolsAlgorithm
+
+from .LAStoolsUtils import LAStoolsUtils
+from .LAStoolsAlgorithm import LAStoolsAlgorithm
 
 from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterNumber
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class lasview(LAStoolsAlgorithm):
@@ -72,5 +78,5 @@ class lasview(LAStoolsAlgorithm):
             commands.append("-win " + lasview.SIZES[size])
         self.addParametersAdditionalCommands(commands)
 
-        print commands
+        print (commands)
         LAStoolsUtils.runLAStools(commands, progress)

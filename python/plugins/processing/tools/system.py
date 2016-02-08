@@ -31,8 +31,14 @@ import time
 import sys
 import uuid
 
-from PyQt4.QtCore import QFileInfo, QDir
+from PyQt.QtCore import QFileInfo, QDir
+
 from qgis.core import QgsApplication
+
+try:
+    unicode
+except:
+    unicode = str
 
 numExported = 1
 

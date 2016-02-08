@@ -29,6 +29,11 @@ import os
 from processing.tools.system import userFolder, mkdir
 from processing.core.ProcessingConfig import ProcessingConfig
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ModelerUtils:
 

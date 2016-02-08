@@ -24,7 +24,8 @@ __date__ = '10/01/2011'
 __copyright__ = 'Copyright (c) 2010 by Ivan Mincik, ivan.mincik@gista.sk \
         and Copyright (c) 2011 German Carrillo, geotux_tuxman@linuxmail.org'
 
-from PyQt4.QtCore import QObject
+from PyQt.QtCore import QObject
+
 from qgis.core import QgsMapLayerRegistry
 from qgis.core import QgsRasterLayer, QgsVectorLayer
 

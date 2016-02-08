@@ -30,10 +30,15 @@ import os
 import stat
 import subprocess
 
-from PyQt4.QtCore import QSettings, QCoreApplication
+from PyQt.QtCore import QSettings, QCoreApplication
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingLog import ProcessingLog
 from processing.tools.system import userFolder, isWindows, mkdir
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class RUtils:

@@ -27,9 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QSettings, QCoreApplication, SIGNAL
-from PyQt4.QtGui import QMenu, QAction, QTreeWidgetItem, QLabel, QMessageBox
+from PyQt import uic
+from PyQt.QtCore import Qt, QSettings, QCoreApplication
+from PyQt.QtWidgets import QMenu, QAction, QTreeWidgetItem, QLabel, QMessageBox
 from qgis.utils import iface
 
 from processing.core.Processing import Processing

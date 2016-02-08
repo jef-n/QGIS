@@ -36,10 +36,10 @@ from qgis.utils import iface, plugin_paths
 from .version_compare import compareVersions, normalizeVersion, isCompatible
 
 try:
-   from ConfigParser import ConfigParser
+    from ConfigParser import ConfigParser
 except:
-   from configparser import ConfigParser
-   unicode = str
+    from configparser import ConfigParser
+    unicode = str
 
 """
 Data structure:

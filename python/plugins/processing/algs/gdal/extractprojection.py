@@ -33,6 +33,11 @@ from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 from processing.core.parameters import ParameterRaster
 from processing.core.parameters import ParameterBoolean
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ExtractProjection(GdalAlgorithm):
 

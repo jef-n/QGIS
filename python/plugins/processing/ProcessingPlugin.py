@@ -30,17 +30,18 @@ import inspect
 import os
 import sys
 
-from PyQt4.QtCore import Qt, QCoreApplication, QDir
-from PyQt4.QtGui import QMenu, QAction, QIcon
+from PyQt.QtCore import Qt, QCoreApplication, QDir
+from PyQt.QtGui import QIcon
+from PyQt.QtWidgets import QMenu, QAction
 
-from processing.core.Processing import Processing
-from processing.gui.ProcessingToolbox import ProcessingToolbox
-from processing.gui.HistoryDialog import HistoryDialog
-from processing.gui.ConfigDialog import ConfigDialog
-from processing.gui.ResultsDialog import ResultsDialog
-from processing.gui.CommanderWindow import CommanderWindow
-from processing.modeler.ModelerDialog import ModelerDialog
-from processing.tools.system import tempFolder
+from .core.Processing import Processing
+from .gui.ProcessingToolbox import ProcessingToolbox
+from .gui.HistoryDialog import HistoryDialog
+from .gui.ConfigDialog import ConfigDialog
+from .gui.ResultsDialog import ResultsDialog
+from .gui.CommanderWindow import CommanderWindow
+from .modeler.ModelerDialog import ModelerDialog
+from .tools.system import tempFolder
 
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]

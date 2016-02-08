@@ -27,7 +27,7 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4.QtGui import QIcon
+from PyQt.QtGui import QIcon
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
@@ -51,7 +51,12 @@ from processing.core.outputs import OutputHTML
 from processing.core.outputs import OutputFile
 from processing.tools.system import isWindows
 from processing.script.WrongScriptException import WrongScriptException
-from RUtils import RUtils
+from .RUtils import RUtils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class RAlgorithm(GeoAlgorithm):

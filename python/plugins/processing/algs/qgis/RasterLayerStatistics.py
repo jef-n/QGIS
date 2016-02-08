@@ -35,6 +35,11 @@ from processing.core.outputs import OutputHTML
 from processing.tools import dataobjects
 from processing.tools import raster
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class RasterLayerStatistics(GeoAlgorithm):
 

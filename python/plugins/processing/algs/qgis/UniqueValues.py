@@ -34,6 +34,11 @@ from processing.core.outputs import OutputNumber
 from processing.core.outputs import OutputString
 from processing.tools import dataobjects, vector
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class UniqueValues(GeoAlgorithm):
 

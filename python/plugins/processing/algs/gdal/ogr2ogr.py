@@ -38,6 +38,11 @@ from processing.algs.gdal.GdalUtils import GdalUtils
 from processing.tools.system import isWindows
 from processing.tools.vector import ogrConnectionString, ogrLayerName
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 FORMATS = [
     'ESRI Shapefile',

@@ -28,10 +28,15 @@ __copyright__ = '(C) 2014, Martin Isenburg'
 __revision__ = '$Format:%H$'
 
 import os
-from LAStoolsUtils import LAStoolsUtils
+from .LAStoolsUtils import LAStoolsUtils
 from processing.core.parameters import ParameterExtent
-from LAStoolsAlgorithm import LAStoolsAlgorithm
+from .LAStoolsAlgorithm import LAStoolsAlgorithm
 from qgis.core import QgsMapLayer, QgsMapLayerRegistry
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class lasquery(LAStoolsAlgorithm):

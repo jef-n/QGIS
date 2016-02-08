@@ -32,6 +32,11 @@ from processing.tools import dataobjects, vector
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTableField
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class StatisticsByCategories(GeoAlgorithm):
 

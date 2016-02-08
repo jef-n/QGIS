@@ -28,13 +28,19 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from LAStoolsUtils import LAStoolsUtils
-from LAStoolsAlgorithm import LAStoolsAlgorithm
+
+from .LAStoolsUtils import LAStoolsUtils
+from .LAStoolsAlgorithm import LAStoolsAlgorithm
 
 from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputFile
 from processing.core.parameters import ParameterNumber
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class lasinfo(LAStoolsAlgorithm):

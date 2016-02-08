@@ -39,6 +39,11 @@ from processing.tools.system import isWindows
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class gdalcalc(GdalAlgorithm):
 

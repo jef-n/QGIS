@@ -25,12 +25,17 @@ __copyright__ = '(C) 2012, Victor Olaya, Carterix Geomatics'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import QSettings
+from PyQt.QtCore import QSettings
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterString
 from processing.algs.qgis import postgis_utils
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class PostGISExecuteSQL(GeoAlgorithm):

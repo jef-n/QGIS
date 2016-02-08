@@ -24,13 +24,19 @@ __copyright__ = '(C) 2013, Martin Isenburg'
 __revision__ = '$Format:%H$'
 
 import os
-from LAStoolsUtils import LAStoolsUtils
-from LAStoolsAlgorithm import LAStoolsAlgorithm
+
+from .LAStoolsUtils import LAStoolsUtils
+from .LAStoolsAlgorithm import LAStoolsAlgorithm
 
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterBoolean
 from processing.core.parameters import ParameterNumber
 from processing.core.parameters import ParameterSelection
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class lascontrol(LAStoolsAlgorithm):

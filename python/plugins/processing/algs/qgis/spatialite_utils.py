@@ -25,7 +25,13 @@ __copyright__ = '(C) 2015, René-Luc Dhont'
 
 __revision__ = '$Format:%H$'
 
-from pyspatialite import dbapi2 as sqlite
+#from pyspatialite import dbapi2 as sqlite
+#from pysqlite2 import dbapi2 as sqlite
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class DbError(Exception):
@@ -47,6 +53,8 @@ class GeoDB:
 
         try:
             self.con = sqlite.connect(self.con_info())
+            self.con.enable_load_extension(True)
+            self.con.execute('SELECT load_extension("libspatialite.so.7")')
 
         except (sqlite.InterfaceError, sqlite.OperationalError) as e:
             raise DbError(e.message)

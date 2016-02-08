@@ -32,6 +32,11 @@ from processing.script.WrongScriptException import WrongScriptException
 from processing.core.ProcessingLog import ProcessingLog
 from processing.tools.system import mkdir, userFolder
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class ScriptUtils:
 

@@ -27,8 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4.QtCore import QSettings
-from PyQt4.QtGui import QWidget, QHBoxLayout, QMenu, QPushButton, QLineEdit, QSizePolicy, QAction, QCursor, QFileDialog
+from PyQt.QtCore import QSettings
+from PyQt.QtGui import QCursor
+from PyQt.QtWidgets import QWidget, QHBoxLayout, QMenu, QPushButton, QLineEdit, QSizePolicy, QAction, QFileDialog
 
 from processing.gui.MultipleInputDialog import MultipleInputDialog
 
@@ -38,6 +39,11 @@ from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTable
 
 from processing.tools import dataobjects
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class BatchInputSelectionPanel(QWidget):

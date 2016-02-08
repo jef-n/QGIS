@@ -27,10 +27,10 @@ __revision__ = '$Format:%H$'
 
 
 import os
-from PyQt4 import uic, QtCore, QtGui
+from PyQt import uic, QtCore, QtGui, QtWidgets
 from processing.algs.qgis.postgis_utils import GeoDB
 from qgis.core import *
-from PyQt4.QtGui import QMessageBox
+from PyQt.QtWidgets import QMessageBox, QTreeWidgetItem
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 WIDGET, BASE = uic.loadUiType(
@@ -83,7 +83,7 @@ class PostgisTableSelector(BASE, WIDGET):
         self.close()
 
 
-class ConnectionItem(QtGui.QTreeWidgetItem):
+class ConnectionItem(QTreeWidgetItem):
 
     def __init__(self, connection):
         self.connIcon = QtGui.QIcon(os.path.dirname(__file__) + '/../images/postgis.png')

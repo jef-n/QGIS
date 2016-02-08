@@ -32,6 +32,11 @@ from processing.tools import dataobjects
 from processing.tests.TestData import points, points2, polygons, polygons2, \
     lines, union, table
 
+try:
+    unicode
+except:
+    unicode = str
+
 
 class QgisAlgsTest(unittest.TestCase):
 

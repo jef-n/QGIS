@@ -30,11 +30,16 @@ import os
 import re
 from qgis.core import QGis, QgsProject, QgsVectorFileWriter, QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsMapLayerRegistry, QgsCoordinateReferenceSystem
 from qgis.gui import QgsSublayersDialog
-from PyQt4.QtCore import QSettings
+from PyQt.QtCore import QSettings
 from qgis.utils import iface
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.algs.gdal.GdalUtils import GdalUtils
 from processing.tools.system import getTempFilenameInTempFolder, getTempFilename, isWindows
+
+try:
+    unicode
+except:
+    unicode = str
 
 ALL_TYPES = [-1]
 

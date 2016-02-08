@@ -26,9 +26,16 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-from PyQt4 import QtGui, QtCore
+
+from PyQt import QtGui, QtWidgets, QtCore
+
 from qgis.core import QgsVectorFileWriter
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
+
+try:
+    unicode
+except:
+    unicode = str
 
 
 class AlgorithmProvider(object):
