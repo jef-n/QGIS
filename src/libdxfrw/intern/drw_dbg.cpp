@@ -14,7 +14,7 @@
 #include <iomanip>
 #include "drw_dbg.h"
 
-DRW_dbg *DRW_dbg::instance = NULL;
+DRW_dbg *DRW_dbg::instance = nullptr;
 
 /*********private clases*************/
 class print_none
@@ -52,7 +52,7 @@ class print_debug : public print_none
 /********* debug class *************/
 DRW_dbg *DRW_dbg::getInstance()
 {
-  if ( instance == NULL )
+  if ( !instance )
   {
     instance = new DRW_dbg;
   }

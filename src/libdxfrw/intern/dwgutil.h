@@ -32,12 +32,20 @@ class dwgRSCodec
 class dwgCompressor
 {
   public:
-    dwgCompressor() {}
+    dwgCompressor()
+        : bufC( nullptr )
+        , bufD( nullptr )
+        , sizeC( 0 )
+        , sizeD( 0 )
+        , pos( 0 )
+        , rpos( 0 )
+    {}
+
     ~dwgCompressor() {}
 
     void decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize );
     static void decrypt18Hdr( duint8 *buf, duint32 size, duint32 offset );
-//    static void decrypt18Data(duint8 *buf, duint32 size, duint32 offset);
+//  static void decrypt18Data(duint8 *buf, duint32 size, duint32 offset);
     static void decompress21( duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize );
 
   private:

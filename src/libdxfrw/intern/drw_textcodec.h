@@ -50,7 +50,7 @@ class DRW_Converter
 class DRW_ConvUTF16 : public DRW_Converter
 {
   public:
-    DRW_ConvUTF16(): DRW_Converter( NULL, 0 ) {}
+    DRW_ConvUTF16(): DRW_Converter( nullptr, 0 ) {}
     virtual std::string fromUtf8( std::string *s );
     virtual std::string toUtf8( std::string *s );
 };

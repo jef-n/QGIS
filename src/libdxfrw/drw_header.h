@@ -42,25 +42,26 @@ class DRW_Header
     }
 
     DRW_Header( const DRW_Header& h )
+        : comments( h.comments )
+        , curr( nullptr )
+        , version( h.version )
     {
-      this->version = h.version;
-      this->comments = h.comments;
       for ( std::map<std::string, DRW_Variant*>::const_iterator it = h.vars.begin(); it != h.vars.end(); ++it )
       {
-        this->vars[it->first] = new DRW_Variant( *( it->second ) );
+        vars[it->first] = new DRW_Variant( *( it->second ) );
       }
-      this->curr = NULL;
     }
+
     DRW_Header& operator=( const DRW_Header &h )
     {
       if ( this != &h )
       {
         clearVars();
-        this->version = h.version;
-        this->comments = h.comments;
+        version = h.version;
+        comments = h.comments;
         for ( std::map<std::string, DRW_Variant*>::const_iterator it = h.vars.begin(); it != h.vars.end(); ++it )
         {
-          this->vars[it->first] = new DRW_Variant( *( it->second ) );
+          vars[it->first] = new DRW_Variant( *( it->second ) );
         }
       }
       return *this;

@@ -173,8 +173,8 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
   duint32 compOffset;
   duint32 litCount;
 
-  pos = 0; //current position in compresed buffer
-  rpos = 0; //current position in resulting decompresed buffer
+  pos = 0; //current position in compressed buffer
+  rpos = 0; //current position in resulting decompressed buffer
   litCount = litLength18();
   //copy first lileral lenght
   for ( duint32 i = 0; i < litCount; ++i )
@@ -244,7 +244,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
       DRW_DBG( "\n" );
       return; //fails, not valid
     }
-    //copy "compresed data", TODO Needed verify out of bounds
+    //copy "compressed data", TODO Needed verify out of bounds
     duint32 remaining = sizeD - ( litCount + rpos );
     if ( remaining < compBytes )
     {
@@ -259,7 +259,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
     {
       bufD[rpos++] = bufD[j++];
     }
-    //copy "uncompresed data", TODO Needed verify out of bounds
+    //copy "uncompressed data", TODO Needed verify out of bounds
     for ( duint32 i = 0; i < litCount; i++ )
     {
       bufD[rpos++] = bufC[pos++];
@@ -338,7 +338,7 @@ void dwgCompressor::decompress21( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
     copyCompBytes21( cbuf, dbuf, length, srcIndex, dstIndex );
     srcIndex += length;
     dstIndex += length;
-    if ( dstIndex >= dsize ) break; //check if last chunk are compresed & terminate
+    if ( dstIndex >= dsize ) break; //check if last chunk are compressed & terminate
 
     length = 0;
     opCode = cbuf[srcIndex++];

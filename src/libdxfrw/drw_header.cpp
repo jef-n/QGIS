@@ -16,11 +16,22 @@
 #include "intern/drw_dbg.h"
 #include "intern/dwgbuffer.h"
 
+#include <assert.h>
+
 DRW_Header::DRW_Header()
+    : curr( nullptr )
+    , version( DRW::AC1021 )
+    , linetypeCtrl( 0 )
+    , layerCtrl( 0 )
+    , styleCtrl( 0 )
+    , dimstyleCtrl( 0 )
+    , appidCtrl( 0 )
+    , blockCtrl( 0 )
+    , viewCtrl( 0 )
+    , ucsCtrl( 0 )
+    , vportCtrl( 0 )
+    , vpEntHeaderCtrl( 0 )
 {
-  linetypeCtrl = layerCtrl = styleCtrl = dimstyleCtrl = appidCtrl = 0;
-  blockCtrl = viewCtrl = ucsCtrl = vportCtrl = vpEntHeaderCtrl = 0;
-  version = DRW::AC1021;
 }
 
 void DRW_Header::addComment( std::string c )
@@ -32,15 +43,20 @@ void DRW_Header::addComment( std::string c )
 
 void DRW_Header::parseCode( int code, dxfReader *reader )
 {
+  if ( code == 9 )
+  {
+    curr = new DRW_Variant();
+    name = reader->getString();
+    if ( version < DRW::AC1015 && name == "$DIMUNIT" )
+      name = "$DIMLUNIT";
+    vars[name] = curr;
+    return;
+  }
+
+  assert( curr );
+
   switch ( code )
   {
-    case 9:
-      curr = new DRW_Variant();
-      name = reader->getString();
-      if ( version < DRW::AC1015 && name == "$DIMUNIT" )
-        name = "$DIMLUNIT";
-      vars[name] = curr;
-      break;
     case 1:
       curr->addString( code, reader->getUtf8String() );
       if ( name == "$ACADVER" )
@@ -1826,26 +1842,22 @@ void DRW_Header::write( dxfWriter *writer, DRW::Version ver )
 
 void DRW_Header::addDouble( std::string key, double value, int code )
 {
-  curr = new DRW_Variant( code, value );
-  vars[key] = curr;
+  vars[key] = curr = new DRW_Variant( code, value );
 }
 
 void DRW_Header::addInt( std::string key, int value, int code )
 {
-  curr = new DRW_Variant( code, value );
-  vars[key] = curr;
+  vars[key] = curr = new DRW_Variant( code, value );
 }
 
 void DRW_Header::addStr( std::string key, std::string value, int code )
 {
-  curr = new DRW_Variant( code, value );
-  vars[key] = curr;
+  vars[key] = curr = new DRW_Variant( code, value );
 }
 
 void DRW_Header::addCoord( std::string key, DRW_Coord value, int code )
 {
-  curr = new DRW_Variant( code, value );
-  vars[key] = curr;
+  vars[key] = curr = new DRW_Variant( code, value );
 }
 
 bool DRW_Header::getDouble( std::string key, double *varDouble )
@@ -2720,7 +2732,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     }
   }
 
-  buf->setPosition( size + 16 + 4 ); //readed size +16 start sentinel + 4 size
+  buf->setPosition( size + 16 + 4 ); //read size +16 start sentinel + 4 size
   if ( version > DRW::AC1021 && mv > 3 ) //2010+
   {
     buf->getRawLong32();//advance 4 bytes (hisize)
@@ -2744,7 +2756,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     sz = buf->size() - 16;
     buf->setPosition( sz );
-    DRW_DBG( "\nseting position to: " );
+    DRW_DBG( "\nsetting position to: " );
     DRW_DBG( buf->getPosition() );
     DRW_DBG( "\ndwg header end sentinel= " );
     for ( int i = 0; i < 16;i++ )

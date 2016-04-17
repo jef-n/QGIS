@@ -15,24 +15,27 @@
 #include "../libdwgr.h"
 #include "drw_textcodec.h"
 #include "drw_dbg.h"
+
+#if 0
 //#include <bitset>
-/*#include <fstream>
+#include <fstream>
 #include <algorithm>
 #include <sstream>
-#include "dwgreader.h"*/
-//#include "dxfwriter.h"
+#include "dwgreader.h"
+#include "dxfwriter.h"
 
+#define FIRSTHANDLE 48
 
-//#define FIRSTHANDLE 48
-
-/*enum sections {
-    secUnknown,
-    secHeader,
-    secTables,
-    secBlocks,
-    secEntities,
-    secObjects
-};*/
+enum sections
+{
+  secUnknown,
+  secHeader,
+  secTables,
+  secBlocks,
+  secEntities,
+  secObjects
+};
+#endif
 
 static unsigned int crctable[256] =
 {
@@ -208,10 +211,14 @@ duint64 dwgBuffer::getPosition()
 bool dwgBuffer::setPosition( duint64 pos )
 {
   bitPos = 0;
-  /*    if (pos>=maxSize)
-          return false;*/
+#if 0
+  if ( pos >= maxSize )
+    return false;
+#endif
   return filestr->setPos( pos );
-//    return true;
+#if 0
+  return true;
+#endif
 }
 
 //RLZ: Fails if ... ???
@@ -332,7 +339,7 @@ duint8 dwgBuffer::get3Bits()
 /** Reads tree Bits returns a char (3B) for R24 **/
 //to be written
 
-/** Reads compresed Short (max. 16 + 2 bits) little-endian order, returns a UNsigned 16 bits (BS) **/
+/** Reads compressed Short (max. 16 + 2 bits) little-endian order, returns a UNsigned 16 bits (BS) **/
 duint16 dwgBuffer::getBitShort()
 {
   duint8 b = get2Bits();
@@ -345,7 +352,7 @@ duint16 dwgBuffer::getBitShort()
   else
     return 256;
 }
-/** Reads compresed Short (max. 16 + 2 bits) little-endian order, returns a signed 16 bits (BS) **/
+/** Reads compressed Short (max. 16 + 2 bits) little-endian order, returns a signed 16 bits (BS) **/
 dint16 dwgBuffer::getSBitShort()
 {
   duint8 b = get2Bits();
@@ -359,7 +366,7 @@ dint16 dwgBuffer::getSBitShort()
     return 256;
 }
 
-/** Reads compresed 32 bits Int (max. 32 + 2 bits) little-endian order, returns a signed 32 bits (BL) **/
+/** Reads compressed 32 bits Int (max. 32 + 2 bits) little-endian order, returns a signed 32 bits (BL) **/
 //to be written
 dint32 dwgBuffer::getBitLong()
 {
@@ -372,7 +379,7 @@ dint32 dwgBuffer::getBitLong()
     return 0;
 }
 
-/** Reads compresed 64 bits Int (max. 56 + 3 bits) little-endian order, returns a unsigned 64 bits (BLL) **/
+/** Reads compressed 64 bits Int (max. 56 + 3 bits) little-endian order, returns a unsigned 64 bits (BLL) **/
 duint64 dwgBuffer::getBitLongLong()
 {
   dint8 b = get3Bits();
@@ -385,7 +392,7 @@ duint64 dwgBuffer::getBitLongLong()
   return ret;
 }
 
-/** Reads compresed Double (max. 64 + 2 bits) returns a floating point double of 64 bits (BD) **/
+/** Reads compressed Double (max. 64 + 2 bits) returns a floating point double of 64 bits (BD) **/
 double dwgBuffer::getBitDouble()
 {
   dint8 b = get2Bits();
@@ -410,7 +417,7 @@ double dwgBuffer::getBitDouble()
   return 0.0;
 }
 
-/** Reads 3 compresed Double (max. 64 + 2 bits) returns a DRW_Coord of floating point double of 64 bits (3BD) **/
+/** Reads 3 compressed Double (max. 64 + 2 bits) returns a DRW_Coord of floating point double of 64 bits (3BD) **/
 DRW_Coord dwgBuffer::get3BitDouble()
 {
   DRW_Coord crd;
@@ -507,7 +514,7 @@ duint64 dwgBuffer::getRawLong64()
   return ret;
 }
 
-/** Reads modular unsigner int, char based, compresed form, little-endian order, returns a unsigned int (U-MC) **/
+/** Reads modular unsigner int, char based, compressed form, little-endian order, returns a unsigned int (U-MC) **/
 duint32 dwgBuffer::getUModularChar()
 {
   std::vector<duint8> buffer;
@@ -530,7 +537,7 @@ duint32 dwgBuffer::getUModularChar()
   return result;
 }
 
-/** Reads modular int, char based, compresed form, little-endian order, returns a signed int (MC) **/
+/** Reads modular int, char based, compressed form, little-endian order, returns a signed int (MC) **/
 dint32 dwgBuffer::getModularChar()
 {
   bool negative = false;
@@ -562,7 +569,7 @@ dint32 dwgBuffer::getModularChar()
   return result;
 }
 
-/** Reads modular int, short based, compresed form, little-endian order, returns a unsigned int (MC) **/
+/** Reads modular int, short based, compressed form, little-endian order, returns a unsigned int (MC) **/
 dint32 dwgBuffer::getModularShort()
 {
 //    bool negative = false;
@@ -688,14 +695,14 @@ std::string dwgBuffer::getCP8Text()
 {
   std::string strData;
   strData = get8bitStr();//RLZ correct these function
-  if ( decoder == NULL )
+  if ( !decoder )
     return strData;
 
   return decoder->toUtf8( strData );
 }
 
 //TU unicode 16 bit (UCS) text converted to utf8
-/** Reads 2-bytes char (UCS2, NULL terminated) and convert to std::string (only for Latin-1)
+/** Reads 2-bytes char (UCS2, nullptr terminated) and convert to std::string (only for Latin-1)
    ts= total input size in bytes.
 **/
 std::string dwgBuffer::getUCSStr( duint16 ts )
@@ -704,7 +711,7 @@ std::string dwgBuffer::getUCSStr( duint16 ts )
   if ( ts < 4 ) //at least 1 char
     return std::string();
   strData = get16bitStr( ts / 2, false );
-  if ( decoder == NULL )
+  if ( !decoder )
     return strData;
 
   return decoder->toUtf8( strData );
@@ -720,7 +727,7 @@ std::string dwgBuffer::getUCSText( bool nullTerm )
     return std::string();
 
   strData = get16bitStr( ts, nullTerm );
-  if ( decoder == NULL )
+  if ( !decoder )
     return strData;
 
   return decoder->toUtf8( strData );
@@ -772,7 +779,7 @@ DRW_Coord dwgBuffer::getExtrusion( bool b_R2000_style )
   return ext;
 }
 
-/** Reads compresed Double with default (max. 64 + 2 bits) returns a floating point double of 64 bits (DD) **/
+/** Reads compressed Double with default (max. 64 + 2 bits) returns a floating point double of 64 bits (DD) **/
 double dwgBuffer::getDefaultDouble( double d )
 {
   dint8 b = get2Bits();
@@ -1024,7 +1031,7 @@ duint32 dwgBuffer::crc32( duint32 seed, dint32 start, dint32 end )
     char tmp;
     filestr->read (buffer,size);
     if (!filestr->good())
-        return NULL;
+        return nullptr;
 
     if (bitPos != 0){
         for (int i=0; i<=size;i++){

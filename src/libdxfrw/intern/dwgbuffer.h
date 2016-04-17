@@ -37,7 +37,7 @@ class dwgBasicStream
 class dwgFileStream: public dwgBasicStream
 {
   public:
-    dwgFileStream( std::ifstream *s )
+    explicit dwgFileStream( std::ifstream *s )
     {
       stream = s;
       stream->seekg( 0, std::ios::end );
@@ -83,8 +83,8 @@ class dwgCharStream: public dwgBasicStream
 class dwgBuffer
 {
   public:
-    dwgBuffer( std::ifstream *stream, DRW_TextCodec *decoder = NULL );
-    dwgBuffer( duint8 *buf, int size, DRW_TextCodec *decoder = NULL );
+    dwgBuffer( std::ifstream *stream, DRW_TextCodec *decoder = nullptr );
+    dwgBuffer( duint8 *buf, int size, DRW_TextCodec *decoder = nullptr );
     dwgBuffer( const dwgBuffer& org );
     dwgBuffer& operator=( const dwgBuffer& org );
     ~dwgBuffer();

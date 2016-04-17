@@ -23,30 +23,39 @@
 
 #define FIRSTHANDLE 48
 
-/*enum sections {
-    secUnknown,
-    secHeader,
-    secTables,
-    secBlocks,
-    secEntities,
-    secObjects
-};*/
+#if 0
+enum sections
+{
+  secUnknown,
+  secHeader,
+  secTables,
+  secBlocks,
+  secEntities,
+  secObjects
+};
+#endif
 
 dxfRW::dxfRW( const char* name )
+    : fileName( name )
+    , binFile( false )
+    , reader( nullptr )
+    , writer( nullptr )
+    , iface( nullptr )
+    , entCount( 0 )
+    , wlayer0( false )
+    , dimstyleStd( false )
+    , applyExt( false )
+    , writingBlock( false )
+    , elParts( 128 )  //parts number when convert ellipse to polyline
+    , currHandle( 0 )
 {
   DRW_DBGSL( DRW_dbg::NONE );
-  fileName = name;
-  reader = NULL;
-  writer = NULL;
-  applyExt = false;
-  elParts = 128; //parts munber when convert ellipse to polyline
 }
+
 dxfRW::~dxfRW()
 {
-  if ( reader != NULL )
-    delete reader;
-  if ( writer != NULL )
-    delete writer;
+  delete reader;
+  delete writer;
   for ( std::vector<DRW_ImageDef*>::iterator it = imageDef.begin(); it != imageDef.end(); ++it )
     delete *it;
 
@@ -71,7 +80,7 @@ bool dxfRW::read( DRW_Interface *interface_, bool ext )
   bool isOk = false;
   applyExt = ext;
   std::ifstream filestr;
-  if ( interface_ == NULL )
+  if ( !interface_ )
     return isOk;
   DRW_DBG( "dxfRW::read 1def\n" );
   filestr.open( fileName.c_str(), std::ios_base::in | std::ios::binary );
@@ -107,7 +116,7 @@ bool dxfRW::read( DRW_Interface *interface_, bool ext )
   isOk = processDxf();
   filestr.close();
   delete reader;
-  reader = NULL;
+  reader = nullptr;
   return isOk;
 }
 
@@ -171,7 +180,7 @@ bool dxfRW::write( DRW_Interface *interface_, DRW::Version ver, bool bin )
   filestr.close();
   isOk = true;
   delete writer;
-  writer = NULL;
+  writer = nullptr;
   return isOk;
 }
 
@@ -235,7 +244,7 @@ bool dxfRW::writeLineType( DRW_LType *ent )
   writer->writeUtf8String( 3, ent->desc );
   ent->update();
   writer->writeInt16( 72, 65 );
-  writer->writeInt16( 73, ent->size );
+  writer->writeInt16( 73, static_cast<int>( ent->size ) );
   writer->writeDouble( 40, ent->length );
 
   for ( unsigned int i = 0;  i < ent->path.size(); i++ )
@@ -427,7 +436,7 @@ bool dxfRW::writeVport( DRW_Vport *ent )
     if ( version > DRW::AC1018 )
     {
       writer->writeString( 348, "10020" );
-      writer->writeInt16( 60, ent->gridBehavior );//v2007 undocummented see DRW_Vport class
+      writer->writeInt16( 60, ent->gridBehavior ); // v2007 undocumented see DRW_Vport class
       writer->writeInt16( 61, 5 );
       writer->writeBool( 292, 1 );
       writer->writeInt16( 282, 1 );
@@ -712,7 +721,7 @@ bool dxfRW::writeCircle( DRW_Circle *ent )
   {
     writer->writeDouble( 30, ent->basePoint.z );
   }
-  writer->writeDouble( 40, ent->radious );
+  writer->writeDouble( 40, ent->mRadius );
   return true;
 }
 
@@ -730,7 +739,7 @@ bool dxfRW::writeArc( DRW_Arc *ent )
   {
     writer->writeDouble( 30, ent->basePoint.z );
   }
-  writer->writeDouble( 40, ent->radious );
+  writer->writeDouble( 40, ent->mRadius );
   if ( version > DRW::AC1009 )
   {
     writer->writeString( 100, "AcDbArc" );
@@ -789,9 +798,9 @@ bool dxfRW::writeTrace( DRW_Trace *ent )
   writer->writeDouble( 12, ent->thirdPoint.x );
   writer->writeDouble( 22, ent->thirdPoint.y );
   writer->writeDouble( 32, ent->thirdPoint.z );
-  writer->writeDouble( 13, ent->fourPoint.x );
-  writer->writeDouble( 23, ent->fourPoint.y );
-  writer->writeDouble( 33, ent->fourPoint.z );
+  writer->writeDouble( 13, ent->fourthPoint.x );
+  writer->writeDouble( 23, ent->fourthPoint.y );
+  writer->writeDouble( 33, ent->fourthPoint.z );
   return true;
 }
 
@@ -812,9 +821,9 @@ bool dxfRW::writeSolid( DRW_Solid *ent )
   writer->writeDouble( 12, ent->thirdPoint.x );
   writer->writeDouble( 22, ent->thirdPoint.y );
   writer->writeDouble( 32, ent->thirdPoint.z );
-  writer->writeDouble( 13, ent->fourPoint.x );
-  writer->writeDouble( 23, ent->fourPoint.y );
-  writer->writeDouble( 33, ent->fourPoint.z );
+  writer->writeDouble( 13, ent->fourthPoint.x );
+  writer->writeDouble( 23, ent->fourthPoint.y );
+  writer->writeDouble( 33, ent->fourthPoint.z );
   return true;
 }
 
@@ -835,9 +844,9 @@ bool dxfRW::write3dface( DRW_3Dface *ent )
   writer->writeDouble( 12, ent->thirdPoint.x );
   writer->writeDouble( 22, ent->thirdPoint.y );
   writer->writeDouble( 32, ent->thirdPoint.z );
-  writer->writeDouble( 13, ent->fourPoint.x );
-  writer->writeDouble( 23, ent->fourPoint.y );
-  writer->writeDouble( 33, ent->fourPoint.z );
+  writer->writeDouble( 13, ent->fourthPoint.x );
+  writer->writeDouble( 23, ent->fourthPoint.y );
+  writer->writeDouble( 33, ent->fourthPoint.z );
   writer->writeInt16( 70, ent->invisibleflag );
   return true;
 }
@@ -853,14 +862,14 @@ bool dxfRW::writeLWPolyline( DRW_LWPolyline *ent )
       writer->writeString( 100, "AcDbPolyline" );
     }
     ent->vertexnum = ent->vertlist.size();
-    writer->writeInt32( 90, ent->vertexnum );
+    writer->writeInt32( 90, static_cast<int>( ent->vertexnum ) );
     writer->writeInt16( 70, ent->flags );
     writer->writeDouble( 43, ent->width );
     if ( ent->elevation != 0 )
       writer->writeDouble( 38, ent->elevation );
     if ( ent->thickness != 0 )
       writer->writeDouble( 39, ent->thickness );
-    for ( int i = 0;  i < ent->vertexnum; i++ )
+    for ( std::vector<DRW_Vertex2D *>::size_type i = 0;  i < ent->vertexnum; i++ )
     {
       DRW_Vertex2D *v = ent->vertlist.at( i );
       writer->writeDouble( 10, v->x );
@@ -934,8 +943,8 @@ bool dxfRW::writePolyline( DRW_Polyline *ent )
     writer->writeDouble( 230, crd.z );
   }
 
-  int vertexnum = ent->vertlist.size();
-  for ( int i = 0;  i < vertexnum; i++ )
+  std::vector<DRW_Vertex2D *>::size_type vertexnum = ent->vertlist.size();
+  for ( std::vector<DRW_Vertex2D *>::size_type i = 0;  i < vertexnum; i++ )
   {
     DRW_Vertex *v = ent->vertlist.at( i );
     writer->writeString( 0, "VERTEX" );
@@ -1054,9 +1063,9 @@ bool dxfRW::writeHatch( DRW_Hatch *ent )
     writer->writeInt16( 70, ent->solid );
     writer->writeInt16( 71, ent->associative );
     ent->loopsnum = ent->looplist.size();
-    writer->writeInt16( 91, ent->loopsnum );
+    writer->writeInt16( 91, static_cast<int>( ent->loopsnum ) );
     //write paths data
-    for ( int i = 0;  i < ent->loopsnum; i++ )
+    for ( std::vector<DRW_HatchLoop *>::size_type i = 0;  i < ent->loopsnum; i++ )
     {
       DRW_HatchLoop *loop = ent->looplist.at( i );
       writer->writeInt16( 92, loop->type );
@@ -1068,8 +1077,8 @@ bool dxfRW::writeHatch( DRW_Hatch *ent )
       {
         //boundary path
         loop->update();
-        writer->writeInt16( 93, loop->numedges );
-        for ( int j = 0; j < loop->numedges; ++j )
+        writer->writeInt16( 93, static_cast<int>( loop->numedges ) );
+        for ( std::vector<DRW_Entity *>::size_type j = 0; j < loop->numedges; ++j )
         {
           switch (( loop->objlist.at( j ) )->eType )
           {
@@ -1089,7 +1098,7 @@ bool dxfRW::writeHatch( DRW_Hatch *ent )
               DRW_Arc* a = ( DRW_Arc* )loop->objlist.at( j );
               writer->writeDouble( 10, a->basePoint.x );
               writer->writeDouble( 20, a->basePoint.y );
-              writer->writeDouble( 40, a->radious );
+              writer->writeDouble( 40, a->mRadius );
               writer->writeDouble( 50, a->staangle*ARAD );
               writer->writeDouble( 51, a->endangle*ARAD );
               writer->writeInt16( 73, a->isccw );
@@ -1130,9 +1139,12 @@ bool dxfRW::writeHatch( DRW_Hatch *ent )
       writer->writeInt16( 77, ent->doubleflag );
       writer->writeInt16( 78, ent->deflines );
     }
-    /*        if (ent->deflines > 0){
-                writer->writeInt16(78, ent->deflines);
-            }*/
+#if 0
+    if ( ent->deflines > 0 )
+    {
+      writer->writeInt16( 78, ent->deflines );
+    }
+#endif
     writer->writeInt32( 98, 0 );
   }
   else
@@ -1450,7 +1462,7 @@ DRW_ImageDef* dxfRW::writeImage( DRW_Image *ent, std::string name )
   {
     //search if exist imagedef with this mane (image inserted more than 1 time)
     //RLZ: imagedef_reactor seem needed to read in acad
-    DRW_ImageDef *id = NULL;
+    DRW_ImageDef *id = nullptr;
     for ( unsigned int i = 0; i < imageDef.size(); i++ )
     {
       if ( imageDef.at( i )->name == name )
@@ -1459,7 +1471,7 @@ DRW_ImageDef* dxfRW::writeImage( DRW_Image *ent, std::string name )
         continue;
       }
     }
-    if ( id == NULL )
+    if ( !id )
     {
       id = new DRW_ImageDef();
       imageDef.push_back( id );
@@ -1492,7 +1504,7 @@ DRW_ImageDef* dxfRW::writeImage( DRW_Image *ent, std::string name )
     id->reactors[idReactor] = toHexStr( ent->handle );
     return id;
   }
-  return NULL; //not exist in acad 12
+  return nullptr; //not exist in acad 12
 }
 
 bool dxfRW::writeBlockRecord( std::string name )
@@ -1677,7 +1689,7 @@ bool dxfRW::writeTables()
   writer->writeInt16( 72, 65 );
   writer->writeInt16( 73, 0 );
   writer->writeDouble( 40, 0.0 );
-//Aplication linetypes
+  // Application linetypes
   iface->writeLTypes();
   writer->writeString( 0, "ENDTAB" );
   /*** LAYER ***/
@@ -2175,8 +2187,10 @@ bool dxfRW::processDxf()
         }
       }
     }
-    /*    if (!more)
-            return true;*/
+#if 0
+    if ( !more )
+      return true;
+#endif
   }
   return true;
 }

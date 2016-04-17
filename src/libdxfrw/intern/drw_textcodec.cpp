@@ -12,7 +12,7 @@
 DRW_TextCodec::DRW_TextCodec()
 {
   version = DRW::AC1021;
-  conv = new DRW_Converter( NULL, 0 );
+  conv = new DRW_Converter( nullptr, 0 );
 }
 
 DRW_TextCodec::~DRW_TextCodec()
@@ -102,7 +102,7 @@ void DRW_TextCodec::setCodePage( std::string *c, bool dxfFormat )
     else if ( cp == "UTF-8" ) //DXF older than 2007 are write in win codepages
     {
       cp = "ANSI_1252";
-      conv = new DRW_Converter( NULL, 0 );
+      conv = new DRW_Converter( nullptr, 0 );
     }
     else
       conv = new DRW_ConvTable( DRW_Table1252, CPLENGHTCOMMON );
@@ -110,7 +110,7 @@ void DRW_TextCodec::setCodePage( std::string *c, bool dxfFormat )
   else
   {
     if ( dxfFormat )
-      conv = new DRW_Converter( NULL, 0 );//utf16 to utf8
+      conv = new DRW_Converter( nullptr, 0 );//utf16 to utf8
     else
       conv = new DRW_ConvUTF16();//utf16 to utf8
   }

@@ -18,7 +18,10 @@
 class dxfWriter
 {
   public:
-    dxfWriter( std::ofstream *stream ) {filestr = stream; /*count =0;*/}
+    explicit dxfWriter( std::ofstream *stream )
+        : filestr( stream )
+//    , count( 0 )
+    {}
     virtual ~dxfWriter() {}
     virtual bool writeString( int code, std::string text ) = 0;
     bool writeUtf8String( int code, std::string text );
@@ -41,7 +44,9 @@ class dxfWriter
 class dxfWriterBinary : public dxfWriter
 {
   public:
-    dxfWriterBinary( std::ofstream *stream ): dxfWriter( stream ) {}
+    explicit dxfWriterBinary( std::ofstream *stream )
+        : dxfWriter( stream )
+    {}
     virtual ~dxfWriterBinary() {}
     virtual bool writeString( int code, std::string text );
     virtual bool writeInt16( int code, int data );
@@ -54,7 +59,7 @@ class dxfWriterBinary : public dxfWriter
 class dxfWriterAscii : public dxfWriter
 {
   public:
-    dxfWriterAscii( std::ofstream *stream );
+    explicit dxfWriterAscii( std::ofstream *stream );
     virtual ~dxfWriterAscii() {}
     virtual bool writeString( int code, std::string text );
     virtual bool writeInt16( int code, int data );

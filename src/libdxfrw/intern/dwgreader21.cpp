@@ -146,7 +146,7 @@ bool dwgReader21::parseDataPage( dwgSectionInfo si, duint8 *dData )
     dwgCompressor::decompress21( tmpPageRS, pageData, pi.cSize, pi.uSize );
 
 #ifdef DRW_DBG_DUMP
-    DRW_DBG( "\n\nSection OBJECTS decompresed data=\n" );
+    DRW_DBG( "\n\nSection OBJECTS decompressed data=\n" );
     for ( unsigned int i = 0, j = 0; i < pi.uSize;i++ )
     {
       DRW_DBGH(( unsigned char )pageData[i] );
@@ -218,7 +218,7 @@ bool dwgReader21::readFileHeader()
   }
   else
   {
-    DRW_DBG( "\ndwgReader21:: file header are compresed:\n" );
+    DRW_DBG( "\ndwgReader21:: file header are compressed:\n" );
     duint8 *compByteStr = new duint8[fileHdrCompLength];
     fileHdrBuf.getBytes( compByteStr, fileHdrCompLength );
     fileHdrData = new duint8[fileHdrDataLength];
@@ -386,7 +386,7 @@ bool dwgReader21::readFileHeader()
     DRW_DBGH( secInfo.maxSize );
     secInfo.encrypted = SectionsMapBuf.getRawLong64();
     //encrypted (doc: 0 no, 1 yes, 2 unkn) on read: objects 0 and encrypted yes
-    DRW_DBG( "\nencription= " );
+    DRW_DBG( "\nencryption= " );
     DRW_DBGH( secInfo.encrypted );
     DRW_DBG( "\nHashCode = " );
     DRW_DBGH( SectionsMapBuf.getRawLong64() );
@@ -395,9 +395,9 @@ bool dwgReader21::readFileHeader()
     DRW_DBG( SectionNameLength );
     DRW_DBG( "\nUnknown = " );
     DRW_DBGH( SectionsMapBuf.getRawLong64() );
-    secInfo.compresed = SectionsMapBuf.getRawLong64();
-    DRW_DBG( "\nEncoding (compresed) = " );
-    DRW_DBGH( secInfo.compresed );
+    secInfo.compressed = SectionsMapBuf.getRawLong64();
+    DRW_DBG( "\nEncoding (compressed) = " );
+    DRW_DBGH( secInfo.compressed );
     secInfo.pageCount = SectionsMapBuf.getRawLong64();
     DRW_DBG( "\nPage count= " );
     DRW_DBGH( secInfo.pageCount );
@@ -629,7 +629,7 @@ bool dwgReader21::readDwgTables( DRW_Header& hdr )
 {
   DRW_DBG( "\ndwgReader21::readDwgTables\n" );
   dwgSectionInfo si = sections[secEnum::OBJECTS];
-  if ( si.Id < 0 )//not found, ends
+  if ( si.Id < 0 ) // not found, ends
     return false;
 
   DRW_DBG( "\nprepare section of size " );
@@ -637,28 +637,21 @@ bool dwgReader21::readDwgTables( DRW_Header& hdr )
   DRW_DBG( "\n" );
   dataSize = si.size;
   objData = new duint8 [dataSize];
-  bool ret = dwgReader21::parseDataPage( si, objData );
-  if ( !ret )
-    return ret;
+  if ( !dwgReader21::parseDataPage( si, objData ) )
+    return false;
 
   DRW_DBG( "readDwgTables total data size= " );
   DRW_DBG( dataSize );
   DRW_DBG( "\n" );
   dwgBuffer dataBuf( objData, dataSize, &decoder );
-  ret = dwgReader::readDwgTables( hdr, &dataBuf );
-
-  return ret;
+  return dwgReader::readDwgTables( hdr, &dataBuf );
 }
 
 
 bool dwgReader21::readDwgBlocks( DRW_Interface& intfa )
 {
-  bool ret = true;
   dwgBuffer dataBuf( objData, dataSize, &decoder );
-  ret = dwgReader::readDwgBlocks( intfa, &dataBuf );
-  return ret;
-
-  return false;
+  return dwgReader::readDwgBlocks( intfa, &dataBuf );
 }
 
 
