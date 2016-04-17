@@ -35,26 +35,27 @@ tt: number of errors that can be corrected
 kk: kk = nn-2*tt
 pp: irreducible polynomial coeffts, pp [mm] send as int
 */
-class RScodec {
-public:
-    RScodec(unsigned int pp, int mm, int tt);
+class RScodec
+{
+  public:
+    RScodec( unsigned int pp, int mm, int tt );
 
     ~RScodec();
 //    bool encode(int *data, int *parity);
 //    int decode(int *recd);
-    bool encode(unsigned char *data, unsigned char *parity);
-    int decode(unsigned char *data);
-    bool isOkey(){return isOk;}
+    bool encode( unsigned char *data, unsigned char *parity );
+    int decode( unsigned char *data );
+    bool isOkey() {return isOk;}
     const unsigned int* indexOf() {return index_of;}
     const int* alphaTo() {return alpha_to;}
 
-private:
-    void RSgenerate_gf(unsigned int pp);
+  private:
+    void RSgenerate_gf( unsigned int pp );
     void RSgen_poly();
-    int calcDecode(unsigned char* data, int* recd, int** elp, int* d, int* l, int* u_lu, int* s, int* root, int* loc, int* z, int* err, int* reg, int bb);
-  
+    int calcDecode( unsigned char* data, int* recd, int** elp, int* d, int* l, int* u_lu, int* s, int* root, int* loc, int* z, int* err, int* reg, int bb );
 
-private:
+
+  private:
     int mm; //RS code over GF(2^4)
     int tt; //number of errors that can be corrected
     int nn; //(2^mm) - 1   length of codeword

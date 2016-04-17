@@ -22,22 +22,23 @@
 
 class dwgReader;
 
-class dwgR {
-public:
-    dwgR(const char* name);
+class dwgR
+{
+  public:
+    dwgR( const char* name );
     ~dwgR();
     //read: return true if all ok
-    bool read(DRW_Interface *interface_, bool ext);
+    bool read( DRW_Interface *interface_, bool ext );
     bool getPreview();
-    DRW::Version getVersion(){return version;}
-    DRW::error getError(){return error;}
-bool testReader();
-    void setDebug(DRW::DBG_LEVEL lvl);
+    DRW::Version getVersion() {return version;}
+    DRW::error getError() {return error;}
+    bool testReader();
+    void setDebug( DRW::DBG_LEVEL lvl );
 
-private:
-    bool openFile(std::ifstream *filestr);
+  private:
+    bool openFile( std::ifstream *filestr );
     bool processDwg();
-private:
+  private:
     DRW::Version version;
     DRW::error error;
     std::string fileName;
