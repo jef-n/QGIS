@@ -40,11 +40,11 @@ namespace DRW
     IMAGEDEF
   };
 
-//pending VIEW, UCS, APPID, VP_ENT_HDR, GROUP, MLINESTYLE, LONG_TRANSACTION, XRECORD,
-//ACDBPLACEHOLDER, VBA_PROJECT, ACAD_TABLE, CELLSTYLEMAP, DBCOLOR, DICTIONARYVAR,
-//DICTIONARYWDFLT, FIELD, IDBUFFER, IMAGEDEF, IMAGEDEFREACTOR, LAYER_INDEX, LAYOUT
-//MATERIAL, PLACEHOLDER, PLOTSETTINGS, RASTERVARIABLES, SCALE, SORTENTSTABLE,
-//SPATIAL_INDEX, SPATIAL_FILTER, TABLEGEOMETRY, TABLESTYLES,VISUALSTYLE,
+//@todo VIEW, UCS, APPID, VP_ENT_HDR, GROUP, MLINESTYLE, LONG_TRANSACTION, XRECORD,
+// ACDBPLACEHOLDER, VBA_PROJECT, ACAD_TABLE, CELLSTYLEMAP, DBCOLOR, DICTIONARYVAR,
+// DICTIONARYWDFLT, FIELD, IDBUFFER, IMAGEDEF, IMAGEDEFREACTOR, LAYER_INDEX, LAYOUT,
+// MATERIAL, PLACEHOLDER, PLOTSETTINGS, RASTERVARIABLES, SCALE, SORTENTSTABLE,
+// SPATIAL_INDEX, SPATIAL_FILTER, TABLEGEOMETRY, TABLESTYLES, VISUALSTYLE
 }
 
 #define SETOBJFRIENDS  friend class dxfRW; \
@@ -60,15 +60,17 @@ class DRW_TableEntry
   public:
     //initializes default values
     DRW_TableEntry()
+        : tType( DRW::UNKNOWNT )
+        , parentHandle( 0 )
+        , flags( 0 )
+        , curr( nullptr )
+        , xDictFlag( 0 )
+        , numReactors( 0 )
+        , objSize( 0 )
     {
-      tType = DRW::UNKNOWNT;
-      flags = 0;
-      numReactors = xDictFlag = 0;
-      parentHandle = 0;
-      curr = NULL;
     }
 
-    virtual~DRW_TableEntry()
+    virtual ~DRW_TableEntry()
     {
       for ( std::vector<DRW_Variant*>::iterator it = extData.begin(); it != extData.end(); ++it )
         delete *it;
@@ -77,15 +79,16 @@ class DRW_TableEntry
     }
 
     DRW_TableEntry( const DRW_TableEntry& e )
+        : tType( e.tType )
+        , handle( e.handle )
+        , parentHandle( e.parentHandle )
+        , name( e.name )
+        , flags( e.flags )
+        , curr( e.curr )
+        , xDictFlag( e.xDictFlag )
+        , numReactors( e.numReactors )
+        , objSize( e.objSize )
     {
-      tType = e.tType;
-      handle = e.handle;
-      parentHandle = e.parentHandle;
-      name = e.name;
-      flags = e.flags;
-      numReactors = e.numReactors;
-      xDictFlag = e.xDictFlag;
-      curr = e.curr;
       for ( std::vector<DRW_Variant*>::const_iterator it = e.extData.begin(); it != e.extData.end(); ++it )
       {
         extData.push_back( new DRW_Variant( *( *it ) ) );
@@ -105,15 +108,15 @@ class DRW_TableEntry
     }
 
   public:
-    enum DRW::TTYPE tType;     /*!< enum: entity type, code 0 */
-    duint32 handle;            /*!< entity identifier, code 5 */
-    int parentHandle;          /*!< Soft-pointer ID/handle to owner object, code 330 */
-    UTF8STRING name;           /*!< entry name, code 2 */
-    int flags;                 /*!< Flags relevant to entry, code 70 */
-    std::vector<DRW_Variant*> extData; /*!< FIFO list of extended data, codes 1000 to 1071*/
+    enum DRW::TTYPE tType;              /*!< enum: entity type, code 0 */
+    duint32 handle;                     /*!< entity identifier, code 5 */
+    int parentHandle;                   /*!< Soft-pointer ID/handle to owner object, code 330 */
+    UTF8STRING name;                    /*!< entry name, code 2 */
+    int flags;                          /*!< Flags relevant to entry, code 70 */
+    std::vector<DRW_Variant*> extData;  /*!< FIFO list of extended data, codes 1000 to 1071*/
 
   private:
-    DRW_Variant* curr;
+    DRW_Variant *curr;
 
     //***** dwg parse ********/
   protected:
@@ -244,7 +247,7 @@ class DRW_Dimstyle : public DRW_TableEntry
 *  Class to handle line type symbol table entries
 *  @author Rallaz
 */
-/*TODO: handle complex lineType*/
+/* @todo handle complex lineType*/
 class DRW_LType : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -267,12 +270,12 @@ class DRW_LType : public DRW_TableEntry
     void update();
 
   public:
-    UTF8STRING desc;           /*!< descriptive string, code 3 */
-//    int align;               /*!< align code, always 65 ('A') code 72 */
-    int size;                 /*!< element number, code 73 */
-    double length;            /*!< total length of pattern, code 40 */
-//    int haveShape;      /*!< complex linetype type, code 74 */
-    std::vector<double> path;  /*!< trace, point or space length sequence, code 49 */
+    UTF8STRING desc;                       /*!< descriptive string, code 3 */
+//  int align;                             /*!< align code, always 65 ('A') code 72 */
+    std::vector<double>::size_type size;   /*!< element number, code 73 */
+    double length;                         /*!< total length of pattern, code 40 */
+//  int haveShape;                         /*!< complex linetype type, code 74 */
+    std::vector<double> path;              /*!< trace, point or space length sequence, code 49 */
   private:
     int pathIdx;
 };
@@ -287,7 +290,7 @@ class DRW_Layer : public DRW_TableEntry
 {
     SETOBJFRIENDS
   public:
-    DRW_Layer() { reset();}
+    DRW_Layer() { reset(); }
 
     void reset()
     {
@@ -305,13 +308,13 @@ class DRW_Layer : public DRW_TableEntry
     bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-    UTF8STRING lineType;            /*!< line type, code 6 */
-    int color;                      /*!< layer color, code 62 */
-    int color24;                    /*!< 24-bit color, code 420 */
-    bool plotF;                     /*!< Plot flag, code 290 */
+    UTF8STRING lineType;                 /*!< line type, code 6 */
+    int color;                           /*!< layer color, code 62 */
+    int color24;                         /*!< 24-bit color, code 420 */
+    bool plotF;                          /*!< Plot flag, code 290 */
     enum DRW_LW_Conv::lineWidth lWeight; /*!< layer lineweight, code 370 */
-    std::string handlePlotS;        /*!< Hard-pointer ID/handle of plotstyle, code 390 */
-    std::string handleMaterialS;        /*!< Hard-pointer ID/handle of materialstyle, code 347 */
+    std::string handlePlotS;             /*!< Hard-pointer ID/handle of plotstyle, code 390 */
+    std::string handleMaterialS;         /*!< Hard-pointer ID/handle of materialstyle, code 347 */
     /*only used for read dwg*/
     dwgHandle lTypeH;
 };
@@ -335,20 +338,20 @@ class DRW_Block_Record : public DRW_TableEntry
     }
 
   protected:
-//    void parseCode(int code, dxfReader *reader);
+//  void parseCode(int code, dxfReader *reader);
     bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
 //Note:    int DRW_TableEntry::flags; contains code 70 of block
     int insUnits;             /*!< block insertion units, code 70 of block_record*/
-    DRW_Coord basePoint;      /*!<  block insertion base point dwg only */
+    DRW_Coord basePoint;      /*!< block insertion base point dwg only */
   protected:
     //dwg parser
   private:
-    duint32 block;   //handle for block entity
-    duint32 endBlock;//handle for end block entity
-    duint32 firstEH; //handle of first entity, only in pre-2004
-    duint32 lastEH;  //handle of last entity, only in pre-2004
+    duint32 block;            // handle for block entity
+    duint32 endBlock;         // handle for end block entity
+    duint32 firstEH;          // handle of first entity, only in pre-2004
+    duint32 lastEH;           // handle of last entity, only in pre-2004
     std::vector<duint32>entMap;
 };
 
@@ -449,13 +452,13 @@ class DRW_Vport : public DRW_TableEntry
     int grid;                /*!< grid on/off, code 76 */
     int snapStyle;           /*!< snap style, code 77 */
     int snapIsopair;         /*!< snap isopair, code 78 */
-    int gridBehavior;        /*!< grid behavior, code 60, undocummented */
+    int gridBehavior;        /*!< grid behavior, code 60, undocumented */
     /** Code 60, bit coded possible value are
-    * bit 1 (1) show out of limits
-    * bit 2 (2) adaptive grid
-    * bit 3 (4) allow subdivision
-    * bit 4 (8) follow dinamic SCP
-    **/
+     * bit 1 (1) show out of limits
+     * bit 2 (2) adaptive grid
+     * bit 3 (4) allow subdivision
+     * bit 4 (8) follow dynamic SCP
+     **/
 };
 
 
@@ -485,9 +488,9 @@ class DRW_ImageDef : public DRW_TableEntry  //
     bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-//    std::string handle;       /*!< entity identifier, code 5 */
+//  std::string handle;       /*!< entity identifier, code 5 */
     UTF8STRING name;          /*!< File name of image, code 1 */
-    int imgVersion;              /*!< class version, code 90, 0=R14 version */
+    int imgVersion;           /*!< class version, code 90, 0=R14 version */
     double u;                 /*!< image size in pixels U value, code 10 */
     double v;                 /*!< image size in pixels V value, code 20 */
     double up;                /*!< default size of one pixel U value, code 11 */
@@ -523,10 +526,9 @@ class DRW_AppId : public DRW_TableEntry
 
 namespace DRW
 {
-
-// Extended color palette:
-// The first entry is only for direct indexing starting with [1]
-// Color 1 is red (1,0,0)
+  // Extended color palette:
+  // The first entry is only for direct indexing starting with [1]
+  // Color 1 is red (1,0,0)
   const unsigned char dxfColors[][3] =
   {
     {  0,  0,  0}, // unused
@@ -792,4 +794,3 @@ namespace DRW
 #endif
 
 // EOF
-

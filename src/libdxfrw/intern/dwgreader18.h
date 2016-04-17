@@ -47,13 +47,15 @@ static const int DRW_magicNumEnd18[] =
 class dwgReader18 : public dwgReader
 {
   public:
-    dwgReader18( std::ifstream *stream, dwgR *p ): dwgReader( stream, p )
+    dwgReader18( std::ifstream *stream, dwgR *p )
+        : dwgReader( stream, p )
+        , objData( nullptr )
+        , uncompSize( 0 )
     {
-      objData = NULL;
     }
     virtual ~dwgReader18()
     {
-      if ( objData != NULL )
+      if ( objData )
         delete[] objData;
     }
     bool readMetaData();
@@ -64,10 +66,8 @@ class dwgReader18 : public dwgReader
     bool readDwgTables( DRW_Header& hdr );
     bool readDwgBlocks( DRW_Interface& intfa )
     {
-      bool ret = true;
       dwgBuffer dataBuf( objData, uncompSize, &decoder );
-      ret = dwgReader::readDwgBlocks( intfa, &dataBuf );
-      return ret;
+      return dwgReader::readDwgBlocks( intfa, &dataBuf );
     }
 
     virtual bool readDwgEntities( DRW_Interface& intfa )
@@ -79,16 +79,17 @@ class dwgReader18 : public dwgReader
     }
     virtual bool readDwgObjects( DRW_Interface& intfa )
     {
-      bool ret = true;
       dwgBuffer dataBuf( objData, uncompSize, &decoder );
-      ret = dwgReader::readDwgObjects( intfa, &dataBuf );
-      return ret;
+      return dwgReader::readDwgObjects( intfa, &dataBuf );
     }
 
-//    bool readDwgEntity(objHandle& obj, DRW_Interface& intfa){
-//        bool ret = true;
-//        return ret;
-//    }
+#if 0
+    bool readDwgEntity( objHandle& obj, DRW_Interface& intfa )
+    {
+      bool ret = true;
+      return ret;
+    }
+#endif
 
   protected:
     duint8 *objData;

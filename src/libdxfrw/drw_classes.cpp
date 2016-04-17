@@ -122,8 +122,10 @@ void DRW_Class::toDwgType()
     dwgType = 78;
   else if ( recName == "GROUP" )
     dwgType = 72;
-  /*    else if (recName == "GROUP")
-          dwgType = 72;*/
+#if 0
+  else if ( recName == "GROUP" )
+    dwgType = 72;
+#endif
   else if ( recName == "LAYOUT" )
     dwgType = 82;
   else if ( recName == "IMAGE" )

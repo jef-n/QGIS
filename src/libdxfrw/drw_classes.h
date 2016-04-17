@@ -31,6 +31,12 @@ class DRW_Class
 {
   public:
     DRW_Class()
+        : proxyFlag( 0 )
+        , instanceCount( 0 )
+        , wasaProxyFlag( 0 )
+        , entityFlag( 0 )
+        , classNum( 0 )
+        , dwgType( 0 )
     {
     }
     ~DRW_Class()
@@ -59,4 +65,3 @@ class DRW_Class
 #endif
 
 // EOF
-

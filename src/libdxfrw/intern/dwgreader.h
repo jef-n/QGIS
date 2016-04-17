@@ -45,14 +45,14 @@ class objHandle
  *        address, address in file stream
  *        dataSize, data size for this page
  *        startOffset, start offset for this page
- *        cSize, compresed size of data
- *        uSize, uncompresed size of data
+ *        cSize, compressed size of data
+ *        uSize, uncompressed size of data
  * 2007: page Id, pageCount & pages
  *       size, size in file
  *       dataSize
- *       startOffset, start position in decompresed data stream
- *       cSize, compresed size of data
- *       uSize, uncompresed size of data
+ *       startOffset, start position in decompressed data stream
+ *       cSize, compressed size of data
+ *       uSize, uncompressed size of data
  *       address, address in file stream
  * */
 class dwgPageInfo
@@ -60,10 +60,14 @@ class dwgPageInfo
   public:
     dwgPageInfo() {}
     dwgPageInfo( duint64 i, duint64 ad, duint32 sz )
+        : Id( i )
+        , address( ad )
+        , size( sz )
+        , dataSize( 0 )
+        , startOffset( 0 )
+        , cSize( 0 )
+        , uSize( 0 )
     {
-      Id = i;
-      address = ad;
-      size = sz;
     }
     ~dwgPageInfo() {}
     duint64 Id;
@@ -71,35 +75,36 @@ class dwgPageInfo
     duint64 size; //in file stream, for rd18, rd21
     duint64 dataSize; //for rd18, rd21
     duint32 startOffset; //for rd18, rd21
-    duint64 cSize; //compresed page size, for rd21
-    duint64 uSize; //uncompresed page size, for rd21
+    duint64 cSize; //compressed page size, for rd21
+    duint64 uSize; //uncompressed page size, for rd21
 };
 
 // sections of file
 /* 2000-: No pages, only section Id, size  & address in file
  * 2004+: Id, Section Id
- *        size, total size of uncompresed data
+ *        size, total size of uncompressed data
  *        pageCount & pages, number of pages in section
  *        maxSize, max decompressed Size per page
- *        compresed, (1 = no, 2 = yes, normally 2)
+ *        compressed, (1 = no, 2 = yes, normally 2)
  *        encrypted, (0 = no, 1 = yes, 2 = unknown)
  *        name, read & stored but not used
- * 2007: same as 2004+ except encoding, saved in compresed field
+ * 2007: same as 2004+ except encoding, saved in compressed field
  * */
 class dwgSectionInfo
 {
   public:
     dwgSectionInfo()
+        : Id( -1 )
+	, compressed( 1 ) //1=no, 2=yes
+        , encrypted( 0 ) //???
+        , pageCount( 0 )
+        , address( 0 )
     {
-      compresed = 1;//1=no, 2=yes
-      encrypted = 0;//???
-      pageCount = 0;
-      Id = -1;
     }
     ~dwgSectionInfo() {}
     dint32 Id; //section Id, 2000-   rd15 rd18
     std::string name; //section name rd18
-    duint32 compresed;//is compresed? 1=no, 2=yes rd18, rd21(encoding)
+    duint32 compressed;//is compressed? 1=no, 2=yes rd18, rd21(encoding)
     duint32 encrypted;//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
     std::map<duint32, dwgPageInfo >pages;//index, size, offset
     duint64 size;//size of section,  2000- rd15, rd18, rd21 (data size)
@@ -123,7 +128,7 @@ class DRW_ObjControl : public DRW_TableEntry
     {
     }
     bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
-    std::list<duint32>hadlesList;
+    std::list<duint32> handlesList;
 };
 
 
@@ -132,16 +137,19 @@ class dwgReader
     friend class dwgR;
   public:
     dwgReader( std::ifstream *stream, dwgR *p )
+        : maintenanceVersion( 0 )
+        , fileBuf( new dwgBuffer( stream ) )
+        , parent( p )
+        , nextEntLink( 0 )
+        , prevEntLink( 0 )
     {
-      fileBuf = new dwgBuffer( stream );
-      parent = p;
       decoder.setVersion( DRW::AC1021, false );//default 2007 in utf8(no convert)
       decoder.setCodePage( "UTF-16", false );
-//        blockCtrl=0; //RLZ: temporary
-//        blockCtrl=layerCtrl=styleCtrl=linetypeCtrl=viewCtrl=0;
-//        ucsCtrl=vportCtrl=appidCtrl=dimstyleCtrl=vpEntHeaderCtrl=0;
-      nextEntLink = prevEntLink = 0;
-      maintenanceVersion = 0;
+#if 0
+      blockCtrl = 0; //RLZ: temporary
+      blockCtrl = layerCtrl = styleCtrl = linetypeCtrl = viewCtrl = 0;
+      ucsCtrl = vportCtrl = appidCtrl = dimstyleCtrl = vpEntHeaderCtrl = 0;
+#endif
     }
     virtual ~dwgReader();
 

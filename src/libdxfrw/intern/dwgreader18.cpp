@@ -209,10 +209,13 @@ bool dwgReader18::parseDataPage( dwgSectionInfo si/*, duint8 *dData*/ )
     DRW_DBGH( bufHdr.getRawLong32() );
     DRW_DBG( "\n" );
 
-    //get compresed data
+    //get compressed data
     duint8 *cData = new duint8[pi.cSize];
     if ( !fileBuf->setPosition( pi.address + 32 ) )
+    {
+      delete [] cData;
       return false;
+    }
     fileBuf->getBytes( cData, pi.cSize );
 
     //calculate checksum
@@ -297,7 +300,7 @@ bool dwgReader18::readFileHeader()
     return false;
 
 //    genMagicNumber(); DBG("\n"); DBG("\n");
-  DRW_DBG( "Encripted Header Data=\n" );
+  DRW_DBG( "Encrypted Header Data=\n" );
   duint8 byteStr[0x6C];
   int size = 0x6C;
   for ( int i = 0, j = 0; i < 0x6C;i++ )
@@ -319,7 +322,7 @@ bool dwgReader18::readFileHeader()
   DRW_DBG( "\n" );
 
 //    size =0x6C;
-  DRW_DBG( "Decripted Header Data=\n" );
+  DRW_DBG( "Decrypted Header Data=\n" );
   for ( int i = 0, j = 0; i < size;i++ )
   {
     DRW_DBGH(( unsigned char )byteStr[i] );
@@ -338,7 +341,7 @@ bool dwgReader18::readFileHeader()
   std::string name = reinterpret_cast<char*>( byteStr );
   DRW_DBG( "\nFile ID string (AcFssFcAJMB)= " );
   DRW_DBG( name.c_str() );
-  //ID string + NULL = 12
+  //ID string + nullptr = 12
   buff.setPosition( 12 );
   DRW_DBG( "\n0x00 long= " );
   DRW_DBGH( buff.getRawLong32() );
@@ -438,7 +441,7 @@ bool dwgReader18::readFileHeader()
   duint8 *tmpDecompSec = new duint8[decompSize];
   parseSysPage( tmpDecompSec, decompSize );
 
-//parses "Section page map" decompresed data
+//parses "Section page map" decompressed data
   dwgBuffer buff2( tmpDecompSec, decompSize, &decoder );
   duint32 address = 0x100;
   //stores temporaly info of all pages:
@@ -530,9 +533,9 @@ bool dwgReader18::readFileHeader()
     DRW_DBGH( secInfo.maxSize );
     DRW_DBG( "\nunknown long= " );
     DRW_DBGH( buff3.getRawLong32() );
-    secInfo.compresed = buff3.getRawLong32();
+    secInfo.compressed = buff3.getRawLong32();
     DRW_DBG( "\nis Compressed? 1:no, 2:yes= " );
-    DRW_DBGH( secInfo.compresed );
+    DRW_DBGH( secInfo.compressed );
     secInfo.Id = buff3.getRawLong32();
     DRW_DBG( "\nSection Id= " );
     DRW_DBGH( secInfo.Id );
@@ -609,10 +612,10 @@ bool dwgReader18::readDwgHeader( DRW_Header& hdr )
     }
   }
   //Cleanup: global store for uncompressed data of all pages
-  if ( objData != NULL )
+  if ( objData )
   {
     delete[] objData;
-    objData = NULL;
+    objData = nullptr;
   }
   return ret;
 }
@@ -749,10 +752,10 @@ bool dwgReader18::readDwgClasses()
     ret = strBuf->isGood();
   }
   //Cleanup: global store for uncompressed data of all pages
-  if ( objData != NULL )
+  if ( objData )
   {
     delete[] objData;
-    objData = NULL;
+    objData = nullptr;
   }
   return ret;
 }
@@ -782,10 +785,10 @@ bool dwgReader18::readDwgHandles()
     ret = dwgReader::readDwgHandles( &dataBuf, 0, si.size );
   }
   //Cleanup: global store for uncompressed data of all pages
-  if ( objData != NULL )
+  if ( objData )
   {
     delete[] objData;
-    objData = NULL;
+    objData = nullptr;
     uncompSize = 0;
   }
   return ret;

@@ -29,7 +29,11 @@ class dxfReader
     };
     enum TYPE type;
   public:
-    dxfReader( std::ifstream *stream )
+    explicit dxfReader( std::ifstream *stream, bool aSkip = false )
+        : doubleData( 0. )
+        , intData( 0 )
+        , int64( 0 )
+        , skip( aSkip )
     {
       filestr = stream;
       type = INVALID;
@@ -74,7 +78,9 @@ class dxfReader
 class dxfReaderBinary : public dxfReader
 {
   public:
-    dxfReaderBinary( std::ifstream *stream ): dxfReader( stream ) {skip = false; }
+    explicit dxfReaderBinary( std::ifstream *stream )
+        : dxfReader( stream, false )
+    {}
     virtual ~dxfReaderBinary() {}
     virtual bool readCode( int *code );
     virtual bool readString( std::string *text );
@@ -89,7 +95,9 @@ class dxfReaderBinary : public dxfReader
 class dxfReaderAscii : public dxfReader
 {
   public:
-    dxfReaderAscii( std::ifstream *stream ): dxfReader( stream ) {skip = true; }
+    explicit dxfReaderAscii( std::ifstream *stream )
+        : dxfReader( stream, true )
+    {}
     virtual ~dxfReaderAscii() {}
     virtual bool readCode( int *code );
     virtual bool readString( std::string *text );

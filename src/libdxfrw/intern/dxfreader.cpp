@@ -183,11 +183,7 @@ bool dxfReaderBinary::readInt64()
 bool dxfReaderBinary::readDouble()
 {
   type = DOUBLE;
-  double *result;
-  char buffer[8];
-  filestr->read( buffer, 8 );
-  result = ( double * ) buffer;
-  doubleData = *result;
+  filestr->read(( char* ) &doubleData, sizeof doubleData );
   DRW_DBG( doubleData );
   DRW_DBG( "\n" );
   return ( filestr->good() );
@@ -196,9 +192,9 @@ bool dxfReaderBinary::readDouble()
 //saved as int or add a bool member??
 bool dxfReaderBinary::readBool()
 {
-  char buffer[1];
-  filestr->read( buffer, 1 );
-  intData = ( int )( buffer[0] );
+  char buffer;
+  filestr->read( &buffer, 1 );
+  intData = buffer;
   DRW_DBG( intData );
   DRW_DBG( "\n" );
   return ( filestr->good() );

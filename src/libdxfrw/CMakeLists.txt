@@ -20,6 +20,7 @@ ADD_LIBRARY(libdxfrw STATIC
     intern/rscodec.cpp
 )
 
+IF(FALSE)
 IF(DOXYGEN_FOUND)
   ADD_CUSTOM_TARGET(doxygen-dxfrw ALL
     COMMAND ${DOXYGEN_EXECUTABLE} libdxfrw.dox
@@ -37,7 +38,6 @@ IF(DOXYGEN_FOUND)
       libdwgr.h
       libdxfrw.cpp
       libdxfrw.h
-      main_doc.h
       intern/drw_cptable932.h
       intern/drw_cptable936.h
       intern/drw_cptable949.h
@@ -73,3 +73,4 @@ IF(DOXYGEN_FOUND)
     DEPENDS libdxfrw
     COMMENT "Generating libdxfrw documentation" VERBATIM)
 ENDIF(DOXYGEN_FOUND)
+ENDIF(FALSE)

@@ -68,7 +68,7 @@ void DRW_TableEntry::parseCode( int code, dxfReader *reader )
     case 1033:
       if ( curr )
         curr->setCoordZ( reader->getDouble() );
-      curr = NULL;
+      curr = nullptr;
       break;
     case 1040:
     case 1041:
@@ -108,7 +108,7 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
     DRW_DBG( objSize );
     DRW_DBG( "\n" );
   }
-  if ( strBuf != NULL && version > DRW::AC1018 )  //2007+
+  if ( strBuf && version > DRW::AC1018 )  //2007+
   {
     strBuf->moveBitPos( objSize - 1 );
     DRW_DBG( " strBuf strbit pos 2007: " );
@@ -525,7 +525,7 @@ void DRW_LType::update()
 {
   double d = 0;
   size = path.size();
-  for ( int i = 0;  i < size; i++ )
+  for ( std::vector<double>::size_type i = 0;  i < size; i++ )
   {
     d += fabs( path.at( i ) );
   }
@@ -580,7 +580,7 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   DRW_DBG( size );
   DRW_DBG( "\n    dashes:\n" );
   bool haveStrArea = false;
-  for ( int i = 0; i < size; i++ )
+  for ( std::vector<double>::size_type i = 0; i < size; i++ )
   {
     path.push_back( buf->getBitDouble() );
     /*int bs1 =*/
@@ -1268,9 +1268,10 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   flags |= buf->getBit() << 6;// code 70, bit 7 (64)
   if ( version < DRW::AC1021 ) //2004-
   {
-    /*dint16 xrefindex =*/ buf->getBitShort();
+    /*dint16 xrefindex =*/
+    buf->getBitShort();
   }
-  flags |= buf->getBit() << 4; //is refx dependent, style code 70, bit 5 (16)
+  flags |= buf->getBit() << 4; //is refx dependant, style code 70, bit 5 (16)
   height = buf->getBitDouble();
   ratio = buf->getBitDouble();
   DRW_DBG( "flags: " );
@@ -1310,7 +1311,9 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   viewMode |= buf->getBit() << 4; //view mode, code 71, bit 4 (16)
   if ( version > DRW::AC1014 ) //2000+
   {
-    //duint8 renderMode = buf->getRawChar8();
+#if 0
+    duint8 renderMode = buf->getRawChar8();
+#endif
     DRW_DBG( "\n renderMode: " );
     DRW_DBG( buf->getRawChar8() );
     if ( version > DRW::AC1018 ) //2007+

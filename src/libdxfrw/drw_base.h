@@ -39,12 +39,12 @@
 #endif
 
 #ifndef M_PI
-#define M_PI       3.141592653589793238462643
+#define M_PI   3.141592653589793238462643
 #endif
 #ifndef M_PI_2
-#define M_PI_2       1.57079632679489661923
+#define M_PI_2 1.57079632679489661923
 #endif
-#define M_PIx2      6.283185307179586 // 2*PI
+#define M_PIx2 6.283185307179586 // 2*PI
 #define ARAD 57.29577951308232
 
 typedef signed char dint8;              /* 8 bit signed */
@@ -103,27 +103,27 @@ namespace DRW
     DEBUG
   };
 
-//! Special codes for colors
+  //! Special codes for colors
   enum ColorCodes
   {
     ColorByLayer = 256,
     ColorByBlock = 0
   };
 
-//! Spaces
+  //! Spaces
   enum Space
   {
     ModelSpace = 0,
     PaperSpace = 1
   };
 
-//! Special kinds of handles
+  //! Special kinds of handles
   enum HandleCodes
   {
     NoHandle = 0
   };
 
-//! Shadow mode
+  //! Shadow mode
   enum ShadowMode
   {
     CastAndReceieveShadows = 0,
@@ -132,19 +132,19 @@ namespace DRW
     IgnoreShadows = 3
   };
 
-//! Special kinds of materials
+  //! Special kinds of materials
   enum MaterialCodes
   {
     MaterialByLayer = 0
   };
 
-//! Special kinds of plot styles
+  //! Special kinds of plot styles
   enum PlotStyleCodes
   {
     DefaultPlotStyle = 0
   };
 
-//! Special kinds of transparencies
+  //! Special kinds of transparencies
   enum TransparencyCodes
   {
     Opaque = 0,
@@ -204,11 +204,11 @@ class DRW_Vertex2D
     DRW_Vertex2D( double sx, double sy, double b ): x( sx ), y( sy ), stawidth( 0 ), endwidth( 0 ), bulge( b ) {}
 
   public:
-    double x;                 /*!< x coordinate, code 10 */
-    double y;                 /*!< y coordinate, code 20 */
-    double stawidth;          /*!< Start width, code 40 */
-    double endwidth;          /*!< End width, code 41 */
-    double bulge;             /*!< bulge, code 42 */
+    double x;         /*!< x coordinate, code 10 */
+    double y;         /*!< y coordinate, code 20 */
+    double stawidth;  /*!< Start width, code 40 */
+    double endwidth;  /*!< End width, code 41 */
+    double bulge;     /*!< bulge, code 42 */
 };
 
 
@@ -540,4 +540,3 @@ class DRW_LW_Conv
 #endif
 
 // EOF
-

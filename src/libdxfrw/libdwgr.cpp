@@ -26,31 +26,35 @@
 
 #define FIRSTHANDLE 48
 
-/*enum sections {
-    secUnknown,
-    secHeader,
-    secTables,
-    secBlocks,
-    secEntities,
-    secObjects
-};*/
+#if 0
+enum sections
+{
+  secUnknown,
+  secHeader,
+  secTables,
+  secBlocks,
+  secEntities,
+  secObjects
+};
+#endif
 
 dwgR::dwgR( const char* name )
+    : version( DRW::UNKNOWNV )
+    , error( DRW::BAD_NONE )
+    , fileName( name )
+    , applyExt( false )
+    , iface( nullptr )
+    , reader( nullptr )
+#if 0
+    , writer( nullptr )
+#endif
 {
   DRW_DBGSL( DRW_dbg::NONE );
-  fileName = name;
-  reader = NULL;
-//    writer = NULL;
-  applyExt = false;
-  version = DRW::UNKNOWNV;
-  error = DRW::BAD_NONE;
 }
 
 dwgR::~dwgR()
 {
-  if ( reader != NULL )
-    delete reader;
-
+  delete reader;
 }
 
 void dwgR::setDebug( DRW::DBG_LEVEL lvl )
@@ -68,10 +72,9 @@ void dwgR::setDebug( DRW::DBG_LEVEL lvl )
 /*reads metadata and loads image preview*/
 bool dwgR::getPreview()
 {
-  bool isOk = false;
-
   std::ifstream filestr;
-  isOk = openFile( &filestr );
+
+  bool isOk = openFile( &filestr );
   if ( !isOk )
     return false;
 
@@ -84,11 +87,10 @@ bool dwgR::getPreview()
     error = DRW::BAD_READ_METADATA;
 
   filestr.close();
-  if ( reader != NULL )
-  {
-    delete reader;
-    reader = NULL;
-  }
+
+  delete reader;
+  reader = nullptr;
+
   return isOk;
 }
 
@@ -168,7 +170,7 @@ bool dwgR::testReader()
   DRW_DBG( "\n dataBuf bitpos: " );
   DRW_DBG( dataBuf.getBitPos() );
 
-  delete[]tmpStrData;
+  delete [] tmpStrData;
   filestr.close();
   DRW_DBG( "\n\n" );
   return isOk;
@@ -177,14 +179,16 @@ bool dwgR::testReader()
 /*start reading dwg file header and, if can read it, continue reading all*/
 bool dwgR::read( DRW_Interface *interface_, bool ext )
 {
-  bool isOk = false;
   applyExt = ext;
   iface = interface_;
 
-//testReader();return false;
+#if 0
+  testReader();
+  return false;
+#endif
 
   std::ifstream filestr;
-  isOk = openFile( &filestr );
+  bool isOk = openFile( &filestr );
   if ( !isOk )
     return false;
 
@@ -203,11 +207,9 @@ bool dwgR::read( DRW_Interface *interface_, bool ext )
     error = DRW::BAD_READ_METADATA;
 
   filestr.close();
-  if ( reader != NULL )
-  {
-    delete reader;
-    reader = NULL;
-  }
+
+  delete reader;
+  reader = nullptr;
 
   return isOk;
 }
@@ -282,7 +284,7 @@ bool dwgR::openFile( std::ifstream *filestr )
   else
     version = DRW::UNKNOWNV;
 
-  if ( reader == NULL )
+  if ( !reader )
   {
     error = DRW::BAD_VERSION;
     filestr->close();

@@ -25,12 +25,12 @@ class dwgReader21 : public dwgReader
   public:
     dwgReader21( std::ifstream *stream, dwgR *p ): dwgReader( stream, p )
     {
-      objData = NULL;
+      objData = nullptr;
       dataSize = 0;
     }
     virtual ~dwgReader21()
     {
-      if ( objData != NULL )
+      if ( objData )
         delete[] objData;
     }
     bool readMetaData();

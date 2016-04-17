@@ -30,13 +30,13 @@ namespace DRW
   enum ETYPE
   {
     E3DFACE,
-//        E3DSOLID, //encripted propietry data
-//        ACAD_PROXY_ENTITY,
+//  E3DSOLID, //encrypted proprietary data
+//  ACAD_PROXY_ENTITY,
     ARC,
-//        ATTDEF,
-//        ATTRIB,
+//  ATTDEF,
+//  ATTRIB,
     BLOCK,// and ENDBLK
-//        BODY, //encripted propietry data
+//  BODY, //encrypted proprietary data
     CIRCLE,
     DIMENSION,
     DIMALIGNED,
@@ -48,39 +48,39 @@ namespace DRW
     DIMORDINATE,
     ELLIPSE,
     HATCH,
-//        HELIX,
+//  HELIX,
     IMAGE,
     INSERT,
     LEADER,
-//        LIGHT,
+//  LIGHT,
     LINE,
     LWPOLYLINE,
-//        MESH,
-//        MLINE,
-//        MLEADERSTYLE,
-//        MLEADER,
+//  MESH,
+//  MLINE,
+//  MLEADERSTYLE,
+//  MLEADER,
     MTEXT,
-//        OLEFRAME,
-//        OLE2FRAME,
+//  OLEFRAME,
+//  OLE2FRAME,
     POINT,
     POLYLINE,
     RAY,
-//        REGION, //encripted propietry data
-//        SECTION,
-//        SEQEND,//not needed?? used in polyline and insert/attrib and dwg
-//        SHAPE,
+//  REGION, //encrypted proprietary data
+//  SECTION,
+//  SEQEND,//not needed?? used in polyline and insert/attrib and dwg
+//  SHAPE,
     SOLID,
     SPLINE,
-//        SUN,
-//        SURFACE, //encripted propietry data can be four types
-//        TABLE,
+//  SUN,
+//  SURFACE, //encrypted proprietary data can be four types
+//  TABLE,
     TEXT,
-//        TOLERANCE,
+//  TOLERANCE,
     TRACE,
     UNDERLAY,
     VERTEX,
     VIEWPORT,
-//        WIPEOUT, //WIPEOUTVARIABLE
+//  WIPEOUT, //WIPEOUTVARIABLE
     XLINE,
     UNKNOWN
   };
@@ -93,10 +93,9 @@ namespace DRW
   friend class dwgReader;
 
 //! Base class for entities
-/*!
-*  Base class for entities
-*  @author Rallaz
-*/
+/** Base class for entities
+ *  @author Rallaz
+ */
 class DRW_Entity
 {
     SETENTFRIENDS
@@ -104,41 +103,73 @@ class DRW_Entity
     //initializes default values
     //handles: default no handle (0), color: default BYLAYER (256), 24 bits color: default -1 (not set)
     //line weight: default BYLAYER  (dxf -1, dwg 29), space: default ModelSpace (0)
-    DRW_Entity(): eType( DRW::UNKNOWN ), handle( DRW::NoHandle ), parentHandle( DRW::NoHandle ), appData( 0 ),
-        space( DRW::ModelSpace ), layer( "0" ), lineType( "BYLAYER" ), material( DRW::MaterialByLayer ),
-        color( DRW::ColorByLayer ), lWeight( DRW_LW_Conv::widthByLayer ), ltypeScale( 1.0 ), visible( true ),
-        numProxyGraph( 0 ), proxyGraphics( std::string() ), color24( -1 ), colorName( std::string() ),
-        transparency( DRW::Opaque ), plotStyle( DRW::DefaultPlotStyle ), shadow( DRW::CastAndReceieveShadows ),
-        haveExtrusion( false ), extData(), haveNextLinks( 0 ), plotFlags( 0 ), ltFlags( 0 ), materialFlag( 0 ),
-        shadowFlag( 0 ), lTypeH( dwgHandle() ), layerH( dwgHandle() ), nextEntLink( 0 ), prevEntLink( 0 ),
-        ownerHandle( false ), xDictFlag( 0 ), numReactors( 0 ), objSize( 0 ), oType( 0 ), extAxisX( DRW_Coord() ),
-        extAxisY( DRW_Coord() ), curr( NULL ) {}
+    DRW_Entity( enum DRW::ETYPE aType = DRW::UNKNOWN, const UTF8STRING &aLayer = "0" )
+        : eType( aType )
+        , handle( DRW::NoHandle )
+        , parentHandle( DRW::NoHandle )
+        , appData( 0 )
+        , space( DRW::ModelSpace )
+        , layer( aLayer )
+        , lineType( "BYLAYER" )
+        , material( DRW::MaterialByLayer )
+        , color( DRW::ColorByLayer )
+        , lWeight( DRW_LW_Conv::widthByLayer )
+        , ltypeScale( 1.0 )
+        , visible( true )
+        , numProxyGraph( 0 )
+        , proxyGraphics( std::string() )
+        , color24( -1 )
+        , colorName( std::string() )
+        , transparency( DRW::Opaque )
+        , plotStyle( DRW::DefaultPlotStyle )
+        , shadow( DRW::CastAndReceieveShadows )
+        , haveExtrusion( false )
+        , extData()
+        , haveNextLinks( 0 )
+        , plotFlags( 0 )
+        , ltFlags( 0 )
+        , materialFlag( 0 )
+        , shadowFlag( 0 )
+        , lTypeH( dwgHandle() )
+        , layerH( dwgHandle() )
+        , nextEntLink( 0 )
+        , prevEntLink( 0 )
+        , ownerHandle( false )
+        , xDictFlag( 0 )
+        , numReactors( 0 )
+        , objSize( 0 )
+        , oType( 0 )
+        , extAxisX( DRW_Coord() )
+        , extAxisY( DRW_Coord() )
+        , curr( nullptr )
+    {
+    }
 
     DRW_Entity( const DRW_Entity& e )
+        : eType( e.eType )
+        , handle( e.handle )
+        , parentHandle( e.parentHandle ) //no handle (0)
+        , space( e.space )
+        , layer( e.layer )
+        , lineType( e.lineType )
+        , material( e.material )
+        , color( e.color ) // default BYLAYER (256)
+        , lWeight( e.lWeight )
+        , ltypeScale( e.ltypeScale )
+        , visible( e.visible )
+        , numProxyGraph( e.numProxyGraph )
+        , color24( e.color24 ) //default -1 not set
+        , transparency( e.transparency )
+        , plotStyle( e.plotStyle )
+        , shadow( e.shadow )
+        , haveExtrusion( e.haveExtrusion )
+        , nextEntLink( e.nextEntLink )
+        , prevEntLink( e.prevEntLink )
+        , ownerHandle( false )
+        , xDictFlag( e.xDictFlag )
+        , numReactors( e.numReactors )
+        , curr( nullptr )
     {
-      eType = e.eType;
-      handle = e.handle;
-      parentHandle = e.parentHandle; //no handle (0)
-      lineType = e.lineType;
-      color = e.color; // default BYLAYER (256)
-      ltypeScale = e.ltypeScale;
-      visible = e.visible;
-      layer = e.layer;
-      lWeight = e.lWeight;
-      space = e.space;
-      haveExtrusion = e.haveExtrusion;
-      color24 = e.color24; //default -1 not set
-      numProxyGraph = e.numProxyGraph;
-      shadow = e.shadow;
-      material = e.material;
-      plotStyle = e.plotStyle;
-      transparency = e.transparency;
-      nextEntLink = e.nextEntLink;
-      prevEntLink = e.prevEntLink;
-      numReactors = e.numReactors;
-      xDictFlag = e.xDictFlag;
-      curr = NULL;
-      ownerHandle = false;
       for ( std::vector<DRW_Variant*>::const_iterator it = e.extData.begin(); it != e.extData.end(); ++it )
       {
         extData.push_back( new DRW_Variant( *( *it ) ) );
@@ -179,27 +210,27 @@ class DRW_Entity
     bool parseDxfGroups( int code, dxfReader *reader );
 
   public:
-    enum DRW::ETYPE eType;     /*!< enum: entity type, code 0 */
-    duint32 handle;            /*!< entity identifier, code 5 */
-    duint32 parentHandle;      /*!< Soft-pointer ID/handle to owner BLOCK_RECORD object, code 330 */
+    enum DRW::ETYPE eType;                      /*!< enum: entity type, code 0 */
+    duint32 handle;                             /*!< entity identifier, code 5 */
+    duint32 parentHandle;                       /*!< Soft-pointer ID/handle to owner BLOCK_RECORD object, code 330 */
     std::list<std::list<DRW_Variant> > appData; /*!< list of application data, code 102 */
-    DRW::Space space;          /*!< space indicator, code 67*/
-    UTF8STRING layer;          /*!< layer name, code 8 */
-    UTF8STRING lineType;       /*!< line type, code 6 */
-    duint32 material;          /*!< hard pointer id to material object, code 347 */
-    int color;                 /*!< entity color, code 62 */
-    enum DRW_LW_Conv::lineWidth lWeight; /*!< entity lineweight, code 370 */
-    double ltypeScale;         /*!< linetype scale, code 48 */
-    bool visible;              /*!< entity visibility, code 60 */
-    int numProxyGraph;         /*!< Number of bytes in proxy graphics, code 92 */
-    std::string proxyGraphics; /*!< proxy graphics bytes, code 310 */
-    int color24;               /*!< 24-bit color, code 420 */
-    std::string colorName;     /*!< color name, code 430 */
-    int transparency;          /*!< transparency, code 440 */
-    int plotStyle;             /*!< hard pointer id to plot style object, code 390 */
-    DRW::ShadowMode shadow;    /*!< shadow mode, code 284 */
-    bool haveExtrusion;        /*!< set to true if the entity have extrusion*/
-    std::vector<DRW_Variant*> extData; /*!< FIFO list of extended data, codes 1000 to 1071*/
+    DRW::Space space;                           /*!< space indicator, code 67*/
+    UTF8STRING layer;                           /*!< layer name, code 8 */
+    UTF8STRING lineType;                        /*!< line type, code 6 */
+    duint32 material;                           /*!< hard pointer id to material object, code 347 */
+    int color;                                  /*!< entity color, code 62 */
+    enum DRW_LW_Conv::lineWidth lWeight;        /*!< entity lineweight, code 370 */
+    double ltypeScale;                          /*!< linetype scale, code 48 */
+    bool visible;                               /*!< entity visibility, code 60 */
+    int numProxyGraph;                          /*!< Number of bytes in proxy graphics, code 92 */
+    std::string proxyGraphics;                  /*!< proxy graphics bytes, code 310 */
+    int color24;                                /*!< 24-bit color, code 420 */
+    std::string colorName;                      /*!< color name, code 430 */
+    int transparency;                           /*!< transparency, code 440 */
+    int plotStyle;                              /*!< hard pointer id to plot style object, code 390 */
+    DRW::ShadowMode shadow;                     /*!< shadow mode, code 284 */
+    bool haveExtrusion;                         /*!< set to true if the entity have extrusion*/
+    std::vector<DRW_Variant*> extData;          /*!< FIFO list of extended data, codes 1000 to 1071*/
 
   protected: //only for read dwg
     duint8 haveNextLinks; //aka nolinks //B
@@ -234,12 +265,12 @@ class DRW_Point : public DRW_Entity
 {
     SETENTFRIENDS
   public:
-    DRW_Point()
+    DRW_Point( enum DRW::ETYPE type = DRW::POINT, double sx = 0., double sy = 0., double sz = 0. )
+        : DRW_Entity( type )
+        , basePoint( sx, sy, sz )
+        , thickness( 0 )
+        , extPoint( 0., 0., 1. )
     {
-      eType = DRW::POINT;
-      basePoint.z = extPoint.x = extPoint.y = 0;
-      extPoint.z = 1;
-      thickness = 0;
     }
 
     virtual void applyExtrusion() {}
@@ -265,10 +296,10 @@ class DRW_Line : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Line()
+    DRW_Line( enum DRW::ETYPE type = DRW::LINE )
+        : DRW_Point( type )
+        , secPoint( 0., 0., 0. )
     {
-      eType = DRW::LINE;
-      secPoint.z = 0;
     }
 
     virtual void applyExtrusion() {}
@@ -290,9 +321,9 @@ class DRW_Ray : public DRW_Line
 {
     SETENTFRIENDS
   public:
-    DRW_Ray()
+    DRW_Ray( enum DRW::ETYPE type = DRW::RAY )
+        : DRW_Line( type )
     {
-      eType = DRW::RAY;
     }
   protected:
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
@@ -306,9 +337,9 @@ class DRW_Ray : public DRW_Line
 class DRW_Xline : public DRW_Ray
 {
   public:
-    DRW_Xline()
+    DRW_Xline( enum DRW::ETYPE type = DRW::XLINE )
+        : DRW_Ray( type )
     {
-      eType = DRW::XLINE;
     }
 };
 
@@ -321,9 +352,10 @@ class DRW_Circle : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Circle()
+    DRW_Circle( enum DRW::ETYPE type = DRW::CIRCLE )
+        : DRW_Point( type )
+        , mRadius( 0. )
     {
-      eType = DRW::CIRCLE;
     }
 
     virtual void applyExtrusion();
@@ -333,7 +365,7 @@ class DRW_Circle : public DRW_Point
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-    double radious;                 /*!< radius, code 40 */
+    double mRadius;  /*!< radius, code 40 */
 };
 
 //! Class to handle arc entity
@@ -345,10 +377,12 @@ class DRW_Arc : public DRW_Circle
 {
     SETENTFRIENDS
   public:
-    DRW_Arc()
+    DRW_Arc( enum DRW::ETYPE type = DRW::ARC )
+        : DRW_Circle( type )
+        , staangle( 0 )
+        , endangle( M_PIx2 )
+        , isccw( 1 )
     {
-      eType = DRW::ARC;
-      isccw = 1;
     }
 
     virtual void applyExtrusion();
@@ -356,7 +390,7 @@ class DRW_Arc : public DRW_Circle
     //! center point in OCS
     const DRW_Coord & center() { return basePoint; }
     //! the radius of the circle
-    double radius() { return radious; }
+    double radius() { return mRadius; }
     //! start angle in radians
     double startAngle() { return staangle; }
     //! end angle in radians
@@ -378,21 +412,24 @@ class DRW_Arc : public DRW_Circle
     int isccw;                  /*!< is counter clockwise arc?, only used in hatch, code 73 */
 };
 
-//! Class to handle ellipse entity
-/*!
-*  Class to handle ellipse and elliptic arc entity
-*  Note: start/end parameter are in radians for ellipse entity but
-*  for hatch boundary are in degrees
-*  @author Rallaz
-*/
+/** Class to handle ellipse entity
+ *
+ *  Class to handle ellipse and elliptic arc entity
+ *  Note: start/end parameter are in radians for ellipse entity but
+ *  for hatch boundary are in degrees
+ *  @author Rallaz
+ */
 class DRW_Ellipse : public DRW_Line
 {
     SETENTFRIENDS
   public:
-    DRW_Ellipse()
+    DRW_Ellipse( enum DRW::ETYPE type = DRW::ELLIPSE )
+        : DRW_Line( type )
+        , ratio( 1. )
+        , staparam( 0. )
+        , endparam( M_PIx2 )
+        , isccw( 1 )
     {
-      eType = DRW::ELLIPSE;
-      isccw = 1;
     }
 
     void toPolyline( DRW_Polyline *pol, int parts = 128 );
@@ -414,20 +451,20 @@ class DRW_Ellipse : public DRW_Line
     int isccw;           /*!< is counter clockwise arc?, only used in hatch, code 73 */
 };
 
-//! Class to handle trace entity
-/*!
-*  Class to handle trace entity
-*  @author Rallaz
-*/
+/** Class to handle trace entity
+ *
+ *  Class to handle trace entity
+ *  @author Rallaz
+ */
 class DRW_Trace : public DRW_Line
 {
     SETENTFRIENDS
   public:
-    DRW_Trace()
+    DRW_Trace( enum DRW::ETYPE type = DRW::TRACE )
+        : DRW_Line( type )
+        , thirdPoint( 0., 0., 0. )
+        , fourthPoint( 0., 0., 0. )
     {
-      eType = DRW::TRACE;
-      thirdPoint.z = 0;
-      fourPoint.z = 0;
     }
 
     virtual void applyExtrusion();
@@ -437,22 +474,22 @@ class DRW_Trace : public DRW_Line
     virtual bool parseDwg( DRW::Version v, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-    DRW_Coord thirdPoint;        /*!< third point, code 12, 22 & 32 */
-    DRW_Coord fourPoint;        /*!< four point, code 13, 23 & 33 */
+    DRW_Coord thirdPoint;       /*!< third point, code 12, 22 & 32 */
+    DRW_Coord fourthPoint;        /*!< four point, code 13, 23 & 33 */
 };
 
-//! Class to handle solid entity
-/*!
-*  Class to handle solid entity
-*  @author Rallaz
-*/
+/** Class to handle solid entity
+ *
+ *  Class to handle solid entity
+ *  @author Rallaz
+ */
 class DRW_Solid : public DRW_Trace
 {
     SETENTFRIENDS
   public:
-    DRW_Solid()
+    DRW_Solid( enum DRW::ETYPE type = DRW::SOLID )
+        : DRW_Trace( type )
     {
-      eType = DRW::SOLID;
     }
 
   protected:
@@ -492,16 +529,16 @@ class DRW_3Dface : public DRW_Trace
     {
       NoEdge = 0x00,
       FirstEdge = 0x01,
-      SecodEdge = 0x02,
+      SecondEdge = 0x02,
       ThirdEdge = 0x04,
       FourthEdge = 0x08,
       AllEdges = 0x0F
     };
 
-    DRW_3Dface()
+    DRW_3Dface( enum DRW::ETYPE type = DRW::E3DFACE )
+        : DRW_Trace( type )
+        , invisibleflag( 0 )
     {
-      eType = DRW::E3DFACE;
-      invisibleflag = 0;
     }
 
     virtual void applyExtrusion() {}
@@ -513,7 +550,7 @@ class DRW_3Dface : public DRW_Trace
     //! third corner in WCS
     const DRW_Coord & thirdCorner() { return thirdPoint; }
     //! fourth corner in WCS
-    const DRW_Coord & fourthCorner() { return fourPoint; }
+    const DRW_Coord & fourthCorner() { return fourthPoint; }
     //! edge visibility flags
     InvisibleEdgeFlags edgeFlags() { return ( InvisibleEdgeFlags )invisibleflag; }
 
@@ -537,13 +574,12 @@ class DRW_Block : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Block()
+    DRW_Block( enum DRW::ETYPE type = DRW::BLOCK )
+        : DRW_Point( type )
+        , name( "*U0" )
+        , flags( 0 )
+        , isEnd( false )
     {
-      eType = DRW::BLOCK;
-      layer = "0";
-      flags = 0;
-      name = "*U0";
-      isEnd = false;
     }
 
     virtual void applyExtrusion() {}
@@ -569,17 +605,17 @@ class DRW_Insert : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Insert()
+    DRW_Insert( enum DRW::ETYPE type = DRW::INSERT )
+        : DRW_Point( type )
+        , xscale( 1 )
+        , yscale( 1 )
+        , zscale( 1 )
+        , angle( 0 )
+        , colcount( 1 )
+        , rowcount( 1 )
+        , colspace( 0 )
+        , rowspace( 0 )
     {
-      eType = DRW::INSERT;
-      xscale = 1;
-      yscale = 1;
-      zscale = 1;
-      angle = 0;
-      colcount = 1;
-      rowcount = 1;
-      colspace = 0;
-      rowspace = 0;
     }
 
     virtual void applyExtrusion() {DRW_Point::applyExtrusion();}
@@ -612,29 +648,30 @@ class DRW_LWPolyline : public DRW_Entity
 {
     SETENTFRIENDS
   public:
-    DRW_LWPolyline()
+    DRW_LWPolyline( enum DRW::ETYPE type = DRW::LWPOLYLINE )
+        : DRW_Entity( type )
+        , vertexnum( 0 )
+        , flags( 0 )
+        , width( 0. )
+        , elevation( 0. )
+        , thickness( 0. )
+        , extPoint( 0., 0., 1. )
+        , vertex( nullptr )
     {
-      eType = DRW::LWPOLYLINE;
-      elevation = thickness = width = 0.0;
-      flags = 0;
-      extPoint.x = extPoint.y = 0;
-      extPoint.z = 1;
-      vertex = NULL;
     }
 
-    DRW_LWPolyline( const DRW_LWPolyline& p ): DRW_Entity( p )
+    DRW_LWPolyline( const DRW_LWPolyline& p )
+        : DRW_Entity( p )
+        , vertexnum( 0 )
+        , flags( p.flags )
+        , width( p.width )
+        , elevation( p.elevation )
+        , thickness( p.thickness )
+        , extPoint( p.extPoint )
+        , vertex( nullptr )
     {
-      this->eType = DRW::LWPOLYLINE;
-      this->elevation = p.elevation;
-      this->thickness = p.thickness;
-      this->width = p.width;
-      this->flags = p.flags;
-      this->extPoint = p.extPoint;
-      this->vertex = NULL;
       for ( unsigned i = 0; i < p.vertlist.size(); i++ )// RLZ ok or new
-        this->vertlist.push_back( new DRW_Vertex2D( *( p.vertlist.at( i ) ) ) );
-
-      this->vertex = NULL;
+        vertlist.push_back( new DRW_Vertex2D( *( p.vertlist.at( i ) ) ) );
     }
 
     ~DRW_LWPolyline()
@@ -670,14 +707,14 @@ class DRW_LWPolyline : public DRW_Entity
     bool parseDwg( DRW::Version v, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-    int vertexnum;            /*!< number of vertex, code 90 */
-    int flags;                /*!< polyline flag, code 70, default 0 */
-    double width;             /*!< constant width, code 43 */
-    double elevation;         /*!< elevation, code 38 */
-    double thickness;         /*!< thickness, code 39 */
-    DRW_Coord extPoint;       /*!<  Dir extrusion normal vector, code 210, 220 & 230 */
-    DRW_Vertex2D *vertex;       /*!< current vertex to add data */
-    std::vector<DRW_Vertex2D *> vertlist;  /*!< vertex list */
+    std::vector<DRW_Vertex2D *>::size_type vertexnum; /*!< number of vertices, code 90 */
+    int flags;                                        /*!< polyline flag, code 70, default 0 */
+    double width;                                     /*!< constant width, code 43 */
+    double elevation;                                 /*!< elevation, code 38 */
+    double thickness;                                 /*!< thickness, code 39 */
+    DRW_Coord extPoint;                               /*!< Dir extrusion normal vector, code 210, 220 & 230 */
+    DRW_Vertex2D *vertex;                             /*!< current vertex to add data */
+    std::vector<DRW_Vertex2D *> vertlist;             /*!< vertex list */
 };
 
 //! Class to handle insert entries
@@ -709,16 +746,17 @@ class DRW_Text : public DRW_Line
       HFit           /*!< fit into point = 5 (if VAlign==0) */
     };
 
-    DRW_Text()
+    DRW_Text( enum DRW::ETYPE type = DRW::TEXT )
+        : DRW_Line( type )
+        , height( 0. )
+        , angle( 0. )
+        , widthscale( 1. )
+        , oblique( 0. )
+        , style( "STANDARD" )
+        , textgen( 0 )
+        , alignH( HLeft )
+        , alignV( VBaseLine )
     {
-      eType = DRW::TEXT;
-      angle = 0;
-      widthscale = 1;
-      oblique = 0;
-      style = "STANDARD";
-      textgen = 0;
-      alignH = HLeft;
-      alignV = VBaseLine;
     }
 
     virtual void applyExtrusion() {} //RLZ TODO
@@ -792,22 +830,34 @@ class DRW_Vertex : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Vertex()
+    DRW_Vertex( enum DRW::ETYPE type = DRW::VERTEX )
+        : DRW_Point( type )
+        , stawidth( 0. )
+        , endwidth( 0. )
+        , bulge( 0. )
+        , flags( 0 )
+        , tgdir( 0. )
+        , vindex1( 0 )
+        , vindex2( 0 )
+        , vindex3( 0 )
+        , vindex4( 0 )
+        , identifier( 0 )
     {
-      eType = DRW::VERTEX;
-      stawidth = endwidth = bulge = 0;
-      vindex1 = vindex2 = vindex3 = vindex4 = 0;
-      flags = identifier = 0;
     }
+
     DRW_Vertex( double sx, double sy, double sz, double b )
+        : DRW_Point( DRW::VERTEX, sx, sy, sz )
+        , stawidth( 0. )
+        , endwidth( 0. )
+        , bulge( b )
+        , flags( 0 )
+        , tgdir( 0. )
+        , vindex1( 0 )
+        , vindex2( 0 )
+        , vindex3( 0 )
+        , vindex4( 0 )
+        , identifier( 0 )
     {
-      stawidth = endwidth = 0;
-      vindex1 = vindex2 = vindex3 = vindex4 = 0;
-      flags = identifier = 0;
-      basePoint.x = sx;
-      basePoint.y = sy;
-      basePoint.z = sz;
-      bulge = b;
     }
 
   protected:
@@ -826,12 +876,12 @@ class DRW_Vertex : public DRW_Point
     double endwidth;          /*!< End width, code 41 */
     double bulge;             /*!< bulge, code 42 */
 
-    int flags;                 /*!< vertex flag, code 70, default 0 */
-    double tgdir;           /*!< curve fit tangent direction, code 50 */
-    int vindex1;             /*!< polyface mesh vertex index, code 71, default 0 */
-    int vindex2;             /*!< polyface mesh vertex index, code 72, default 0 */
-    int vindex3;             /*!< polyface mesh vertex index, code 73, default 0 */
-    int vindex4;             /*!< polyface mesh vertex index, code 74, default 0 */
+    int flags;                /*!< vertex flag, code 70, default 0 */
+    double tgdir;             /*!< curve fit tangent direction, code 50 */
+    int vindex1;              /*!< polyface mesh vertex index, code 71, default 0 */
+    int vindex2;              /*!< polyface mesh vertex index, code 72, default 0 */
+    int vindex3;              /*!< polyface mesh vertex index, code 73, default 0 */
+    int vindex4;              /*!< polyface mesh vertex index, code 74, default 0 */
     int identifier;           /*!< vertex identifier, code 91, default 0 */
 };
 
@@ -844,14 +894,21 @@ class DRW_Polyline : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Polyline()
+    DRW_Polyline( enum DRW::ETYPE type = DRW::POLYLINE )
+        : DRW_Point( type )
+        , flags( 0 )
+        , defstawidth( 0. )
+        , defendwidth( 0. )
+        , vertexcount( 0 )
+        , facecount( 0 )
+        , smoothM( 0 )
+        , smoothN( 0 )
+        , curvetype( 0 )
+        , firstEH( 0 )
+        , lastEH( 0 )
     {
-      eType = DRW::POLYLINE;
-      defstawidth = defendwidth = 0.0;
-      basePoint.x = basePoint.y = 0.0;
-      flags = vertexcount = facecount = 0;
-      smoothM = smoothN = curvetype = 0;
     }
+
     ~DRW_Polyline()
     {
       while ( !vertlist.empty() )
@@ -862,9 +919,7 @@ class DRW_Polyline : public DRW_Point
     void addVertex( DRW_Vertex v )
     {
       DRW_Vertex *vert = new DRW_Vertex();
-      vert->basePoint.x = v.basePoint.x;
-      vert->basePoint.y = v.basePoint.y;
-      vert->basePoint.z = v.basePoint.z;
+      vert->basePoint = v.basePoint;
       vert->stawidth = v.stawidth;
       vert->endwidth = v.endwidth;
       vert->bulge = v.bulge;
@@ -892,10 +947,10 @@ class DRW_Polyline : public DRW_Point
     std::vector<DRW_Vertex *> vertlist;  /*!< vertex list */
 
   private:
-    std::list<duint32>hadlesList; //list of handles, only in 2004+
-    duint32 firstEH;      //handle of first entity, only in pre-2004
-    duint32 lastEH;       //handle of last entity, only in pre-2004
-    dwgHandle seqEndH;    //handle of SEQEND entity
+    std::list<duint32> handleList;  // list of handles, only in 2004+
+    duint32 firstEH;                // handle of first entity, only in pre-2004
+    duint32 lastEH;                 // handle of last entity, only in pre-2004
+    dwgHandle seqEndH;              // handle of SEQEND entity
 };
 
 
@@ -909,11 +964,18 @@ class DRW_Spline : public DRW_Entity
     SETENTFRIENDS
   public:
     DRW_Spline()
+        : DRW_Entity( DRW::SPLINE )
+        , flags( 0 )
+        , degree( 0 )
+        , nknots( 0 )
+        , ncontrol( 0 )
+        , nfit( 0 )
+        , tolknot( 0.0000001 )
+        , tolcontrol( 0.0000001 )
+        , tolfit( 0.0000001 )
+        , controlpoint( nullptr )
+        , fitpoint( nullptr )
     {
-      eType = DRW::SPLINE;
-      flags = nknots = ncontrol = nfit = 0;
-      tolknot = tolcontrol = tolfit = 0.0000001;
-
     }
     ~DRW_Spline()
     {
@@ -933,18 +995,18 @@ class DRW_Spline : public DRW_Entity
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-//    double ex;                /*!< normal vector x coordinate, code 210 */
-//    double ey;                /*!< normal vector y coordinate, code 220 */
-//    double ez;                /*!< normal vector z coordinate, code 230 */
+//  double ex;                /*!< normal vector x coordinate, code 210 */
+//  double ey;                /*!< normal vector y coordinate, code 220 */
+//  double ez;                /*!< normal vector z coordinate, code 230 */
     DRW_Coord normalVec;      /*!< normal vector, code 210, 220, 230 */
     DRW_Coord tgStart;        /*!< start tangent, code 12, 22, 32 */
-//    double tgsx;              /*!< start tangent x coordinate, code 12 */
-//    double tgsy;              /*!< start tangent y coordinate, code 22 */
-//    double tgsz;              /*!< start tangent z coordinate, code 32 */
+//  double tgsx;              /*!< start tangent x coordinate, code 12 */
+//  double tgsy;              /*!< start tangent y coordinate, code 22 */
+//  double tgsz;              /*!< start tangent z coordinate, code 32 */
     DRW_Coord tgEnd;          /*!< end tangent, code 13, 23, 33 */
-//    double tgex;              /*!< end tangent x coordinate, code 13 */
-//    double tgey;              /*!< end tangent y coordinate, code 23 */
-//    double tgez;              /*!< end tangent z coordinate, code 33 */
+//  double tgex;              /*!< end tangent x coordinate, code 13 */
+//  double tgey;              /*!< end tangent y coordinate, code 23 */
+//  double tgez;              /*!< end tangent z coordinate, code 33 */
     int flags;                /*!< spline flag, code 70 */
     int degree;               /*!< degree of the spline, code 71 */
     dint32 nknots;            /*!< number of knots, code 72, default 0 */
@@ -954,7 +1016,7 @@ class DRW_Spline : public DRW_Entity
     double tolcontrol;        /*!< control point tolerance, code 43, default 0.0000001 */
     double tolfit;            /*!< fit point tolerance, code 44, default 0.0000001 */
 
-    std::vector<double> knotslist;           /*!< knots list, code 40 */
+    std::vector<double> knotslist;         /*!< knots list, code 40 */
     std::vector<DRW_Coord *> controllist;  /*!< control points list, code 10, 20 & 30 */
     std::vector<DRW_Coord *> fitlist;      /*!< fit points list, code 11, 21 & 31 */
 
@@ -971,17 +1033,20 @@ class DRW_Spline : public DRW_Entity
 class DRW_HatchLoop
 {
   public:
-    DRW_HatchLoop( int t )
+    explicit DRW_HatchLoop( int t )
+        : type( t )
+        , numedges( 0 )
     {
-      type = t;
-      numedges = 0;
     }
 
     ~DRW_HatchLoop()
     {
-      /*        while (!pollist.empty()) {
-                 pollist.pop_back();
-               }*/
+#if 0
+      while ( !pollist.empty() )
+      {
+        pollist.pop_back();
+      }
+#endif
       while ( !objlist.empty() )
       {
         objlist.pop_back();
@@ -994,11 +1059,11 @@ class DRW_HatchLoop
     }
 
   public:
-    int type;               /*!< boundary path type, code 92, polyline=2, default=0 */
-    int numedges;           /*!< number of edges (if not a polyline), code 93 */
+    int type;                                       /*!< boundary path type, code 92, polyline=2, default=0 */
+    std::vector<DRW_Entity *>::size_type numedges;  /*!< number of edges (if not a polyline), code 93 */
 //TODO: store lwpolylines as entities
-//    std::vector<DRW_LWPolyline *> pollist;  /*!< polyline list */
-    std::vector<DRW_Entity *> objlist;      /*!< entities list */
+//  std::vector<DRW_LWPolyline *> pollist;          /*!< polyline list */
+    std::vector<DRW_Entity *> objlist;              /*!< entities list */
 };
 
 //! Class to handle hatch entity
@@ -1011,15 +1076,19 @@ class DRW_Hatch : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Hatch()
+    DRW_Hatch( enum DRW::ETYPE type = DRW::HATCH )
+        : DRW_Point( type )
+        , solid( 1 )
+        , associative( 0 )
+        , hstyle( 0 )
+        , hpattern( 1 )
+        , doubleflag( 0 )
+        , loopsnum( 0 )
+        , angle( 0. )
+        , scale( 0. )
+        , deflines( 0 )
+        , loop( nullptr )
     {
-      eType = DRW::HATCH;
-      angle = scale = 0.0;
-      basePoint.x = basePoint.y = basePoint.z = 0.0;
-      loopsnum = hstyle = associative = 0;
-      solid = hpattern = 1;
-      deflines = doubleflag = 0;
-      loop = NULL;
       clearEntities();
     }
 
@@ -1043,28 +1112,28 @@ class DRW_Hatch : public DRW_Point
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 
   public:
-    UTF8STRING name;           /*!< hatch pattern name, code 2 */
-    int solid;                 /*!< solid fill flag, code 70, solid=1, pattern=0 */
-    int associative;           /*!< associativity, code 71, associatve=1, non-assoc.=0 */
-    int hstyle;                /*!< hatch style, code 75 */
-    int hpattern;              /*!< hatch pattern type, code 76 */
-    int doubleflag;            /*!< hatch pattern double flag, code 77, double=1, single=0 */
-    int loopsnum;              /*!< namber of boundary paths (loops), code 91 */
-    double angle;              /*!< hatch pattern angle, code 52 */
-    double scale;              /*!< hatch pattern scale, code 41 */
-    int deflines;              /*!< number of pattern definition lines, code 78 */
+    UTF8STRING name;                                   /*!< hatch pattern name, code 2 */
+    int solid;                                         /*!< solid fill flag, code 70, solid=1, pattern=0 */
+    int associative;                                   /*!< associativity, code 71, associatve=1, non-assoc.=0 */
+    int hstyle;                                        /*!< hatch style, code 75 */
+    int hpattern;                                      /*!< hatch pattern type, code 76 */
+    int doubleflag;                                    /*!< hatch pattern double flag, code 77, double=1, single=0 */
+    std::vector<DRW_HatchLoop *>::size_type loopsnum;  /*!< number of boundary paths (loops), code 91 */
+    double angle;                                      /*!< hatch pattern angle, code 52 */
+    double scale;                                      /*!< hatch pattern scale, code 41 */
+    int deflines;                                      /*!< number of pattern definition lines, code 78 */
 
-    std::vector<DRW_HatchLoop *> looplist;  /*!< polyline list */
+    std::vector<DRW_HatchLoop *> looplist;             /*!< polyline list */
 
   private:
     void clearEntities()
     {
-      pt = line = NULL;
-      pline = NULL;
-      arc = NULL;
-      ellipse = NULL;
-      spline = NULL;
-      plvert = NULL;
+      pt = line = nullptr;
+      pline = nullptr;
+      arc = nullptr;
+      ellipse = nullptr;
+      spline = nullptr;
+      plvert = nullptr;
     }
 
     void addLine()
@@ -1102,7 +1171,7 @@ class DRW_Hatch : public DRW_Point
       clearEntities();
       if ( loop )
       {
-        pt = NULL;
+        pt = nullptr;
         spline = new DRW_Spline;
         loop->objlist.push_back( spline );
       }
@@ -1128,11 +1197,17 @@ class DRW_Image : public DRW_Line
 {
     SETENTFRIENDS
   public:
-    DRW_Image()
+    DRW_Image( enum DRW::ETYPE type = DRW::IMAGE )
+        : DRW_Line( type )
+        , ref( 0 )
+        , sizeu( 0. )
+        , sizev( 0. )
+        , dz( 0. )
+        , clip( 0 )
+        , brightness( 50 )
+        , contrast( 50 )
+        , fade( 0 )
     {
-      eType = DRW::IMAGE;
-      fade = clip = 0;
-      brightness = contrast = 50;
     }
 
   protected:
@@ -1142,9 +1217,6 @@ class DRW_Image : public DRW_Line
   public:
     duint32 ref;               /*!< Hard reference to imagedef object, code 340 */
     DRW_Coord vVector;         /*!< V-vector of single pixel, x coordinate, code 12, 22 & 32 */
-//    double vx;                 /*!< V-vector of single pixel, x coordinate, code 12 */
-//    double vy;                 /*!< V-vector of single pixel, y coordinate, code 22 */
-//    double vz;                 /*!< V-vector of single pixel, z coordinate, code 32 */
     double sizeu;              /*!< image size in pixels, U value, code 13 */
     double sizev;              /*!< image size in pixels, V value, code 23 */
     double dz;                 /*!< z coordinate, code 33 */
@@ -1165,44 +1237,47 @@ class DRW_Dimension : public DRW_Entity
 {
     SETENTFRIENDS
   public:
-    DRW_Dimension()
+    DRW_Dimension( enum DRW::ETYPE type = DRW::DIMENSION )
+        : DRW_Entity( type )
+        , type( 0 )
+        , style( "STANDARD" )
+        , align( 5 )
+        , linesty( 1 )
+        , linefactor( 1. )
+        , rot( 0. )
+        , extPoint( 0., 0., 1. )
+        , hdir( 0 )   // correct default?
+        , angle( 0. )
+        , oblique( 0. )
+        , length( 0. )
     {
-      eType = DRW::DIMENSION;
-      type = 0;
-      linesty = 1;
-      linefactor = extPoint.z = 1.0;
-      angle = oblique = rot = 0.0;
-      align = 5;
-      style = "STANDARD";
-      defPoint.z = extPoint.x = extPoint.y = 0;
-      textPoint.z = rot = 0;
-      clonePoint.x = clonePoint.y = clonePoint.z = 0;
     }
 
-    DRW_Dimension( const DRW_Dimension& d ): DRW_Entity( d )
+    DRW_Dimension( const DRW_Dimension &d )
+        : DRW_Entity( d )
+        , type( d.type )
+        , name( d.name )
+        , defPoint( d.defPoint )
+        , textPoint( d.textPoint )
+        , text( d.text )
+        , style( d.style )
+        , align( d.align )
+        , linesty( d.linesty )
+        , linefactor( d.linefactor )
+        , rot( d.rot )
+        , extPoint( d.extPoint )
+        , hdir( d.hdir )
+        , clonePoint( d.clonePoint )
+        , def1( d.def1 )
+        , def2( d.def2 )
+        , angle( d.angle )
+        , oblique( d.oblique )
+        , circlePoint( d.circlePoint )
+        , arcPoint( d.arcPoint )
+        , length( d.length )
     {
-      eType = DRW::DIMENSION;
-      type = d.type;
-      name = d.name;
-      defPoint = d.defPoint;
-      textPoint = d.textPoint;
-      text = d.text;
-      style = d.style;
-      align = d.align;
-      linesty = d.linesty;
-      linefactor = d.linefactor;
-      rot = d.rot;
-      extPoint = d.extPoint;
-      clonePoint = d.clonePoint;
-      def1 = d.def1;
-      def2 = d.def2;
-      angle = d.angle;
-      oblique = d.oblique;
-      arcPoint = d.arcPoint;
-      circlePoint = d.circlePoint;
-      length = d.length;
-      //RLZ needed a def value for this: hdir = ???
     }
+
     virtual ~DRW_Dimension() {}
 
     virtual void applyExtrusion() {}
@@ -1220,39 +1295,39 @@ class DRW_Dimension : public DRW_Entity
 
   public:
     DRW_Coord getDefPoint() const {return defPoint;}      /*!< Definition point, code 10, 20 & 30 */
-    void setDefPoint( const DRW_Coord p ) {defPoint = p;}
+    void setDefPoint( const DRW_Coord &p ) {defPoint = p;}
     DRW_Coord getTextPoint() const {return textPoint;}    /*!< Middle point of text, code 11, 21 & 31 */
-    void setTextPoint( const DRW_Coord p ) {textPoint = p;}
+    void setTextPoint( const DRW_Coord &p ) {textPoint = p;}
     std::string getStyle() const {return style;}          /*!< Dimension style, code 3 */
-    void setStyle( const std::string s ) {style = s;}
+    void setStyle( const std::string &s ) {style = s;}
     int getAlign() const { return align;}                 /*!< attachment point, code 71 */
     void setAlign( const int a ) { align = a;}
     int getTextLineStyle() const { return linesty;}       /*!< Dimension text line spacing style, code 72, default 1 */
     void setTextLineStyle( const int l ) { linesty = l;}
     std::string getText() const {return text;}            /*!< Dimension text explicitly entered by the user, code 1 */
-    void setText( const std::string t ) {text = t;}
+    void setText( const std::string &t ) {text = t;}
     double getTextLineFactor() const { return linefactor;} /*!< Dimension text line spacing factor, code 41, default 1? */
     void setTextLineFactor( const double l ) { linefactor = l;}
     double getDir() const { return rot;}                  /*!< rotation angle of the dimension text, code 53 (optional) default 0 */
     void setDir( const double d ) { rot = d;}
 
     DRW_Coord getExtrusion() {return extPoint;}           /*!< extrusion, code 210, 220 & 230 */
-    void setExtrusion( const DRW_Coord p ) {extPoint = p;}
+    void setExtrusion( const DRW_Coord &p ) {extPoint = p;}
     std::string getName() {return name;}                  /*!< Name of the block that contains the entities, code 2 */
-    void setName( const std::string s ) {name = s;}
-//    int getType(){ return type;}                      /*!< Dimension type, code 70 */
+    void setName( const std::string &s ) {name = s;}
+//  int getType(){ return type;}                          /*!< Dimension type, code 70 */
 
   protected:
     DRW_Coord getPt2() const {return clonePoint;}
-    void setPt2( const DRW_Coord p ) {clonePoint = p;}
+    void setPt2( const DRW_Coord &p ) {clonePoint = p;}
     DRW_Coord getPt3() const {return def1;}
-    void setPt3( const DRW_Coord p ) {def1 = p;}
+    void setPt3( const DRW_Coord &p ) {def1 = p;}
     DRW_Coord getPt4() const {return def2;}
-    void setPt4( const DRW_Coord p ) {def2 = p;}
+    void setPt4( const DRW_Coord &p ) {def2 = p;}
     DRW_Coord getPt5() const {return circlePoint;}
-    void setPt5( const DRW_Coord p ) {circlePoint = p;}
+    void setPt5( const DRW_Coord &p ) {circlePoint = p;}
     DRW_Coord getPt6() const {return arcPoint;}
-    void setPt6( const DRW_Coord p ) {arcPoint = p;}
+    void setPt6( const DRW_Coord &p ) {arcPoint = p;}
     double getAn50() const {return angle;}      /*!< Angle of rotated, horizontal, or vertical dimensions, code 50 */
     void setAn50( const double d ) {angle = d;}
     double getOb52() const {return oblique;}    /*!< oblique angle, code 52 */
@@ -1269,7 +1344,7 @@ class DRW_Dimension : public DRW_Entity
     UTF8STRING style;          /*!< Dimension style, code 3 */
     int align;                 /*!< attachment point, code 71 */
     int linesty;               /*!< Dimension text line spacing style, code 72, default 1 */
-    double linefactor;         /*!< Dimension text line spacing factor, code 41, default 1? (value range 0.25 to 4.00*/
+    double linefactor;         /*!< Dimension text line spacing factor, code 41, default 1? (value range 0.25 to 4.00) */
     double rot;                /*!< rotation angle of the dimension text, code 53 */
     DRW_Coord extPoint;        /*!<  extrusion normal vector, code 210, 220 & 230 */
 
@@ -1299,24 +1374,25 @@ class DRW_DimAligned : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimAligned()
+    DRW_DimAligned() : DRW_Dimension()
     {
       eType = DRW::DIMALIGNED;
     }
-    DRW_DimAligned( const DRW_Dimension& d ): DRW_Dimension( d )
+
+    explicit DRW_DimAligned( const DRW_Dimension &d ) : DRW_Dimension( d )
     {
       eType = DRW::DIMALIGNED;
     }
 
     DRW_Coord getClonepoint() const {return getPt2();}      /*!< Insertion for clones (Baseline & Continue), 12, 22 & 32 */
-    void setClonePoint( DRW_Coord c ) {setPt2( c );}
+    void setClonePoint( DRW_Coord &c ) {setPt2( c );}
 
     DRW_Coord getDimPoint() const {return getDefPoint();}   /*!< dim line location point, code 10, 20 & 30 */
-    void setDimPoint( const DRW_Coord p ) {setDefPoint( p );}
+    void setDimPoint( const DRW_Coord &p ) {setDefPoint( p );}
     DRW_Coord getDef1Point() const {return getPt3();}       /*!< Definition point 1, code 13, 23 & 33 */
-    void setDef1Point( const DRW_Coord p ) {setPt3( p );}
+    void setDef1Point( const DRW_Coord &p ) {setPt3( p );}
     DRW_Coord getDef2Point() const {return getPt4();}       /*!< Definition point 2, code 14, 24 & 34 */
-    void setDef2Point( const DRW_Coord p ) {setPt4( p );}
+    void setDef2Point( const DRW_Coord &p ) {setPt4( p );}
 
   protected:
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
@@ -1330,16 +1406,17 @@ class DRW_DimAligned : public DRW_Dimension
 class DRW_DimLinear : public DRW_DimAligned
 {
   public:
-    DRW_DimLinear()
-    {
-      eType = DRW::DIMLINEAR;
-    }
-    DRW_DimLinear( const DRW_Dimension& d ): DRW_DimAligned( d )
+    DRW_DimLinear() : DRW_DimAligned()
     {
       eType = DRW::DIMLINEAR;
     }
 
-    double getAngle() const {return getAn50();}          /*!< Angle of rotated, horizontal, or vertical dimensions, code 50 */
+    explicit DRW_DimLinear( const DRW_Dimension &d ) : DRW_DimAligned( d )
+    {
+      eType = DRW::DIMLINEAR;
+    }
+
+    double getAngle() const {return getAn50();}        /*!< Angle of rotated, horizontal, or vertical dimensions, code 50 */
     void setAngle( const double d ) {setAn50( d );}
     double getOblique() const {return getOb52();}      /*!< oblique angle, code 52 */
     void setOblique( const double d ) {setOb52( d );}
@@ -1354,19 +1431,20 @@ class DRW_DimRadial : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimRadial()
+    DRW_DimRadial() : DRW_Dimension()
     {
       eType = DRW::DIMRADIAL;
     }
-    DRW_DimRadial( const DRW_Dimension& d ): DRW_Dimension( d )
+
+    explicit DRW_DimRadial( const DRW_Dimension &d ) : DRW_Dimension( d )
     {
       eType = DRW::DIMRADIAL;
     }
 
     DRW_Coord getCenterPoint() const {return getDefPoint();}   /*!< center point, code 10, 20 & 30 */
-    void setCenterPoint( const DRW_Coord p ) {setDefPoint( p );}
+    void setCenterPoint( const DRW_Coord &p ) {setDefPoint( p );}
     DRW_Coord getDiameterPoint() const {return getPt5();}      /*!< Definition point for radius, code 15, 25 & 35 */
-    void setDiameterPoint( const DRW_Coord p ) {setPt5( p );}
+    void setDiameterPoint( const DRW_Coord &p ) {setPt5( p );}
     double getLeaderLength() const {return getRa40();}         /*!< Leader length, code 40 */
     void setLeaderLength( const double d ) {setRa40( d );}
 
@@ -1383,19 +1461,20 @@ class DRW_DimDiametric : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimDiametric()
+    DRW_DimDiametric() : DRW_Dimension()
     {
       eType = DRW::DIMDIAMETRIC;
     }
-    DRW_DimDiametric( const DRW_Dimension& d ): DRW_Dimension( d )
+
+    DRW_DimDiametric( const DRW_Dimension &d ) : DRW_Dimension( d )
     {
       eType = DRW::DIMDIAMETRIC;
     }
 
     DRW_Coord getDiameter1Point() const {return getPt5();}      /*!< First definition point for diameter, code 15, 25 & 35 */
-    void setDiameter1Point( const DRW_Coord p ) {setPt5( p );}
+    void setDiameter1Point( const DRW_Coord &p ) {setPt5( p );}
     DRW_Coord getDiameter2Point() const {return getDefPoint();} /*!< Oposite point for diameter, code 10, 20 & 30 */
-    void setDiameter2Point( const DRW_Coord p ) {setDefPoint( p );}
+    void setDiameter2Point( const DRW_Coord &p ) {setDefPoint( p );}
     double getLeaderLength() const {return getRa40();}          /*!< Leader length, code 40 */
     void setLeaderLength( const double d ) {setRa40( d );}
 
@@ -1412,25 +1491,26 @@ class DRW_DimAngular : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimAngular()
+    DRW_DimAngular() : DRW_Dimension()
     {
       eType = DRW::DIMANGULAR;
     }
-    DRW_DimAngular( const DRW_Dimension& d ): DRW_Dimension( d )
+
+    DRW_DimAngular( const DRW_Dimension &d ) : DRW_Dimension( d )
     {
       eType = DRW::DIMANGULAR;
     }
 
     DRW_Coord getFirstLine1() const {return getPt3();}       /*!< Definition point line 1-1, code 13, 23 & 33 */
-    void setFirstLine1( const DRW_Coord p ) {setPt3( p );}
+    void setFirstLine1( const DRW_Coord &p ) {setPt3( p );}
     DRW_Coord getFirstLine2() const {return getPt4();}       /*!< Definition point line 1-2, code 14, 24 & 34 */
-    void setFirstLine2( const DRW_Coord p ) {setPt4( p );}
+    void setFirstLine2( const DRW_Coord &p ) {setPt4( p );}
     DRW_Coord getSecondLine1() const {return getPt5();}      /*!< Definition point line 2-1, code 15, 25 & 35 */
-    void setSecondLine1( const DRW_Coord p ) {setPt5( p );}
+    void setSecondLine1( const DRW_Coord &p ) {setPt5( p );}
     DRW_Coord getSecondLine2() const {return getDefPoint();} /*!< Definition point line 2-2, code 10, 20 & 30 */
-    void setSecondLine2( const DRW_Coord p ) {setDefPoint( p );}
+    void setSecondLine2( const DRW_Coord &p ) {setDefPoint( p );}
     DRW_Coord getDimPoint() const {return getPt6();}         /*!< Dimension definition point, code 16, 26 & 36 */
-    void setDimPoint( const DRW_Coord p ) {setPt6( p );}
+    void setDimPoint( const DRW_Coord &p ) {setPt6( p );}
 
   protected:
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
@@ -1446,23 +1526,24 @@ class DRW_DimAngular3p : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimAngular3p()
-    {
-      eType = DRW::DIMANGULAR3P;
-    }
-    DRW_DimAngular3p( const DRW_Dimension& d ): DRW_Dimension( d )
+    DRW_DimAngular3p() : DRW_Dimension()
     {
       eType = DRW::DIMANGULAR3P;
     }
 
-    DRW_Coord getFirstLine() const {return getPt3();}       /*!< Definition point line 1, code 13, 23 & 33 */
-    void setFirstLine( const DRW_Coord p ) {setPt3( p );}
+    DRW_DimAngular3p( const DRW_Dimension &d ) : DRW_Dimension( d )
+    {
+      eType = DRW::DIMANGULAR3P;
+    }
+
+    DRW_Coord getFirstLine() const {return getPt3();}        /*!< Definition point line 1, code 13, 23 & 33 */
+    void setFirstLine( const DRW_Coord &p ) {setPt3( p );}
     DRW_Coord getSecondLine() const {return getPt4();}       /*!< Definition point line 2, code 14, 24 & 34 */
-    void setSecondLine( const DRW_Coord p ) {setPt4( p );}
+    void setSecondLine( const DRW_Coord &p ) {setPt4( p );}
     DRW_Coord getVertexPoint() const {return getPt5();}      /*!< Vertex point, code 15, 25 & 35 */
-    void SetVertexPoint( const DRW_Coord p ) {setPt5( p );}
+    void SetVertexPoint( const DRW_Coord &p ) {setPt5( p );}
     DRW_Coord getDimPoint() const {return getDefPoint();}    /*!< Dimension definition point, code 10, 20 & 30 */
-    void setDimPoint( const DRW_Coord p ) {setDefPoint( p );}
+    void setDimPoint( const DRW_Coord &p ) {setDefPoint( p );}
 
   protected:
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
@@ -1477,21 +1558,22 @@ class DRW_DimOrdinate : public DRW_Dimension
 {
     SETENTFRIENDS
   public:
-    DRW_DimOrdinate()
+    DRW_DimOrdinate() : DRW_Dimension()
     {
       eType = DRW::DIMORDINATE;
     }
-    DRW_DimOrdinate( const DRW_Dimension& d ): DRW_Dimension( d )
+
+    DRW_DimOrdinate( const DRW_Dimension &d ) : DRW_Dimension( d )
     {
       eType = DRW::DIMORDINATE;
     }
 
     DRW_Coord getOriginPoint() const {return getDefPoint();}   /*!< Origin definition point, code 10, 20 & 30 */
-    void setOriginPoint( const DRW_Coord p ) {setDefPoint( p );}
+    void setOriginPoint( const DRW_Coord &p ) {setDefPoint( p );}
     DRW_Coord getFirstLine() const {return getPt3();}          /*!< Feature location point, code 13, 23 & 33 */
-    void setFirstLine( const DRW_Coord p ) {setPt3( p );}
+    void setFirstLine( const DRW_Coord &p ) {setPt3( p );}
     DRW_Coord getSecondLine() const {return getPt4();}         /*!< Leader end point, code 14, 24 & 34 */
-    void setSecondLine( const DRW_Coord p ) {setPt4( p );}
+    void setSecondLine( const DRW_Coord &p ) {setPt4( p );}
 
   protected:
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
@@ -1507,15 +1589,23 @@ class DRW_Leader : public DRW_Entity
 {
     SETENTFRIENDS
   public:
-    DRW_Leader()
+    DRW_Leader( enum DRW::ETYPE type = DRW::LEADER )
+        : DRW_Entity( type )
+        , arrow( 1 )
+        , leadertype( 0 )
+        , flag( 3 )
+        , hookline( 1 )
+        , hookflag( 0 )
+        , textheight( 0. )
+        , textwidth( 0. )
+        , vertnum( 0 )
+        , coloruse( 0 )
+        , annotHandle( 0 )
+        , extrusionPoint( 0., 0., 1. )
+        , vertexpoint( nullptr )
     {
-      eType = DRW::LEADER;
-      flag = 3;
-      hookflag = vertnum = leadertype = 0;
-      extrusionPoint.x = extrusionPoint.y = 0.0;
-      arrow = 1;
-      extrusionPoint.z = 1.0;
     }
+
     ~DRW_Leader()
     {
       while ( !vertexlist.empty() )
@@ -1564,14 +1654,26 @@ class DRW_Viewport : public DRW_Point
 {
     SETENTFRIENDS
   public:
-    DRW_Viewport()
+    DRW_Viewport( enum DRW::ETYPE type = DRW::VIEWPORT )
+        : DRW_Point( type )
+        , pswidth( 205 )
+        , psheight( 156 )
+        , vpstatus( 0 )
+        , vpID( 0 )
+        , centerPX( 128.5 )
+        , centerPY( 97.5 )
+        , snapPX( 0. )
+        , snapPY( 0. )
+        , snapSpPX( 0. )
+        , snapSpPY( 0. )
+        , viewLength( 0. )
+        , frontClip( 0. )
+        , backClip( 0. )
+        , viewHeight( 0. )
+        , snapAngle( 0. )
+        , twistAngle( 0. )
+        , frozenLyCount( 0 )
     {
-      eType = DRW::VIEWPORT;
-      vpstatus = 0;
-      pswidth = 205;
-      psheight = 156;
-      centerPX = 128.5;
-      centerPY = 97.5;
     }
 
     virtual void applyExtrusion() {}
@@ -1587,8 +1689,8 @@ class DRW_Viewport : public DRW_Point
     int vpID;                 /*!< Viewport ID, code 69 */
     double centerPX;          /*!< view center point X, code 12 */
     double centerPY;          /*!< view center point Y, code 22 */
-    double snapPX;          /*!< Snap base point X, code 13 */
-    double snapPY;          /*!< Snap base point Y, code 23 */
+    double snapPX;            /*!< Snap base point X, code 13 */
+    double snapPY;            /*!< Snap base point Y, code 23 */
     double snapSpPX;          /*!< Snap spacing X, code 14 */
     double snapSpPY;          /*!< Snap spacing Y, code 24 */
     //TODO: complete in dxf
@@ -1605,32 +1707,34 @@ class DRW_Viewport : public DRW_Point
     duint32 frozenLyCount;
 };//RLZ: missing 15,25, 72, 331, 90, 340, 1, 281, 71, 74, 110, 120, 130, 111, 121,131, 112,122, 132, 345,346, and more...
 
-//used  //DRW_Coord basePoint;      /*!<  base point, code 10, 20 & 30 */
+#if 0
+//used
+DRW_Coord basePoint;      /*!<  base point, code 10, 20 & 30 */
 
-//double thickness;         /*!< thickness, code 39 */
-//DRW_Coord extPoint;       /*!<  Dir extrusion normal vector, code 210, 220 & 230 */
-//enum DRW::ETYPE eType;     /*!< enum: entity type, code 0 */
-//duint32 handle;            /*!< entity identifier, code 5 */
-//std::list<std::list<DRW_Variant> > appData; /*!< list of application data, code 102 */
-//duint32 parentHandle;      /*!< Soft-pointer ID/handle to owner BLOCK_RECORD object, code 330 */
-//DRW::Space space;          /*!< space indicator, code 67*/
-//UTF8STRING layer;          /*!< layer name, code 8 */
-//UTF8STRING lineType;       /*!< line type, code 6 */
-//duint32 material;          /*!< hard pointer id to material object, code 347 */
-//int color;                 /*!< entity color, code 62 */
-//enum DRW_LW_Conv::lineWidth lWeight; /*!< entity lineweight, code 370 */
-//double ltypeScale;         /*!< linetype scale, code 48 */
-//bool visible;              /*!< entity visibility, code 60 */
-//int numProxyGraph;         /*!< Number of bytes in proxy graphics, code 92 */
-//std::string proxyGraphics; /*!< proxy graphics bytes, code 310 */
-//int color24;               /*!< 24-bit color, code 420 */
-//std::string colorName;     /*!< color name, code 430 */
-//int transparency;          /*!< transparency, code 440 */
-//int plotStyle;             /*!< hard pointer id to plot style object, code 390 */
-//DRW::ShadowMode shadow;    /*!< shadow mode, code 284 */
-//bool haveExtrusion;        /*!< set to true if the entity have extrusion*/
+double thickness;          /*!< thickness, code 39 */
+DRW_Coord extPoint;        /*!<  Dir extrusion normal vector, code 210, 220 & 230 */
+enum DRW::ETYPE eType;     /*!< enum: entity type, code 0 */
+duint32 handle;            /*!< entity identifier, code 5 */
+std::list<std::list<DRW_Variant> > appData; /*!< list of application data, code 102 */
+duint32 parentHandle;      /*!< Soft-pointer ID/handle to owner BLOCK_RECORD object, code 330 */
+DRW::Space space;          /*!< space indicator, code 67*/
+UTF8STRING layer;          /*!< layer name, code 8 */
+UTF8STRING lineType;       /*!< line type, code 6 */
+duint32 material;          /*!< hard pointer id to material object, code 347 */
+int color;                 /*!< entity color, code 62 */
+enum DRW_LW_Conv::lineWidth lWeight; /*!< entity lineweight, code 370 */
+double ltypeScale;         /*!< linetype scale, code 48 */
+bool visible;              /*!< entity visibility, code 60 */
+int numProxyGraph;         /*!< Number of bytes in proxy graphics, code 92 */
+std::string proxyGraphics; /*!< proxy graphics bytes, code 310 */
+int color24;               /*!< 24-bit color, code 420 */
+std::string colorName;     /*!< color name, code 430 */
+int transparency;          /*!< transparency, code 440 */
+int plotStyle;             /*!< hard pointer id to plot style object, code 390 */
+DRW::ShadowMode shadow;    /*!< shadow mode, code 284 */
+bool haveExtrusion;        /*!< set to true if the entity have extrusion*/
+#endif
 
 #endif
 
 // EOF
-
