@@ -20,75 +20,81 @@
 class DRW_Coord;
 class DRW_TextCodec;
 
-class dwgBasicStream{
-protected:
-    dwgBasicStream(){}
-public:
-    virtual ~dwgBasicStream(){}
-    virtual bool read(duint8* s, duint64 n) = 0;
+class dwgBasicStream
+{
+  protected:
+    dwgBasicStream() {}
+  public:
+    virtual ~dwgBasicStream() {}
+    virtual bool read( duint8* s, duint64 n ) = 0;
     virtual duint64 size() = 0;
     virtual duint64 getPos() = 0;
-    virtual bool setPos(duint64 p) = 0;
+    virtual bool setPos( duint64 p ) = 0;
     virtual bool good() = 0;
     virtual dwgBasicStream* clone() = 0;
 };
 
-class dwgFileStream: public dwgBasicStream{
-public:
-    dwgFileStream(std::ifstream *s){
-        stream =s;
-        stream->seekg (0, std::ios::end);
-        sz = stream->tellg();
-        stream->seekg(0, std::ios_base::beg);
+class dwgFileStream: public dwgBasicStream
+{
+  public:
+    dwgFileStream( std::ifstream *s )
+    {
+      stream = s;
+      stream->seekg( 0, std::ios::end );
+      sz = stream->tellg();
+      stream->seekg( 0, std::ios_base::beg );
     }
-    virtual ~dwgFileStream(){}
-    virtual bool read(duint8* s, duint64 n);
-    virtual duint64 size(){return sz;}
-    virtual duint64 getPos(){return stream->tellg();}
-    virtual bool setPos(duint64 p);
-    virtual bool good(){return stream->good();}
-    virtual dwgBasicStream* clone(){return new dwgFileStream(stream);}
-private:
+    virtual ~dwgFileStream() {}
+    virtual bool read( duint8* s, duint64 n );
+    virtual duint64 size() {return sz;}
+    virtual duint64 getPos() {return stream->tellg();}
+    virtual bool setPos( duint64 p );
+    virtual bool good() {return stream->good();}
+    virtual dwgBasicStream* clone() {return new dwgFileStream( stream );}
+  private:
     std::ifstream *stream;
     duint64 sz;
 };
 
-class dwgCharStream: public dwgBasicStream{
-public:
-    dwgCharStream(duint8 *buf, int s){
-        stream =buf;
-        sz = s;
-        pos = 0;
-        isOk = true;
+class dwgCharStream: public dwgBasicStream
+{
+  public:
+    dwgCharStream( duint8 *buf, int s )
+    {
+      stream = buf;
+      sz = s;
+      pos = 0;
+      isOk = true;
     }
-    virtual ~dwgCharStream(){}
-    virtual bool read(duint8* s, duint64 n);
-    virtual duint64 size(){return sz;}
-    virtual duint64 getPos(){return pos;}
-    virtual bool setPos(duint64 p);
-    virtual bool good(){return isOk;}
-    virtual dwgBasicStream* clone(){return new dwgCharStream(stream, sz);}
-private:
+    virtual ~dwgCharStream() {}
+    virtual bool read( duint8* s, duint64 n );
+    virtual duint64 size() {return sz;}
+    virtual duint64 getPos() {return pos;}
+    virtual bool setPos( duint64 p );
+    virtual bool good() {return isOk;}
+    virtual dwgBasicStream* clone() {return new dwgCharStream( stream, sz );}
+  private:
     duint8 *stream;
     duint64 sz;
     duint64 pos;
     bool isOk;
 };
 
-class dwgBuffer {
-public:
-    dwgBuffer(std::ifstream *stream, DRW_TextCodec *decoder = NULL);
-    dwgBuffer(duint8 *buf, int size, DRW_TextCodec *decoder= NULL);
+class dwgBuffer
+{
+  public:
+    dwgBuffer( std::ifstream *stream, DRW_TextCodec *decoder = NULL );
+    dwgBuffer( duint8 *buf, int size, DRW_TextCodec *decoder = NULL );
     dwgBuffer( const dwgBuffer& org );
     dwgBuffer& operator=( const dwgBuffer& org );
     ~dwgBuffer();
-    duint64 size(){return filestr->size();}
-    bool setPosition(duint64 pos);
+    duint64 size() {return filestr->size();}
+    bool setPosition( duint64 pos );
     duint64 getPosition();
-    void resetPosition(){setPosition(0); setBitPos(0);}
-    void setBitPos(duint8 pos);
-    duint8 getBitPos(){return bitPos;}
-    bool moveBitPos(dint32 size);
+    void resetPosition() {setPosition( 0 ); setBitPos( 0 );}
+    void setBitPos( duint8 pos );
+    duint8 getBitPos() {return bitPos;}
+    bool moveBitPos( dint32 size );
 
     duint8 getBit();  //B
     bool getBoolBit();  //B as bool
@@ -112,44 +118,44 @@ public:
     dint32 getModularChar(); //MC
     dint32 getModularShort(); //MS
     dwgHandle getHandle(); //H
-    dwgHandle getOffsetHandle(duint32 href); //H converted to hard
-    UTF8STRING getVariableText(DRW::Version v, bool nullTerm = true); //TV => call TU for 2007+ or T for previous versions
+    dwgHandle getOffsetHandle( duint32 href ); //H converted to hard
+    UTF8STRING getVariableText( DRW::Version v, bool nullTerm = true ); //TV => call TU for 2007+ or T for previous versions
     UTF8STRING getCP8Text(); //T 8 bit text converted from codepage to utf8
-    UTF8STRING getUCSText(bool nullTerm = true); //TU unicode 16 bit (UCS) text converted to utf8
-    UTF8STRING getUCSStr(duint16 ts);
+    UTF8STRING getUCSText( bool nullTerm = true ); //TU unicode 16 bit (UCS) text converted to utf8
+    UTF8STRING getUCSStr( duint16 ts );
 
-    duint16 getObjType(DRW::Version v);  //OT
+    duint16 getObjType( DRW::Version v );  //OT
 
     //X, U, SN,
 
-    DRW_Coord getExtrusion(bool b_R2000_style); //BE
-    double getDefaultDouble(double d); //DD
-    double getThickness(bool b_R2000_style);//BT
+    DRW_Coord getExtrusion( bool b_R2000_style ); //BE
+    double getDefaultDouble( double d ); //DD
+    double getThickness( bool b_R2000_style );//BT
     //3DD
-    duint32 getCmColor(DRW::Version v); //CMC
-    duint32 getEnColor(DRW::Version v); //ENC
+    duint32 getCmColor( DRW::Version v ); //CMC
+    duint32 getEnColor( DRW::Version v ); //ENC
     //TC
 
     duint16 getBERawShort16();  //RS big-endian order
 
-    bool isGood(){return filestr->good();}
-    bool getBytes(duint8 *buf, int size);
-    int numRemainingBytes(){return (maxSize- filestr->getPos());}
+    bool isGood() {return filestr->good();}
+    bool getBytes( duint8 *buf, int size );
+    int numRemainingBytes() {return ( maxSize - filestr->getPos() );}
 
-    duint16 crc8(duint16 dx,dint32 start,dint32 end);
-    duint32 crc32(duint32 seed,dint32 start,dint32 end);
+    duint16 crc8( duint16 dx, dint32 start, dint32 end );
+    duint32 crc32( duint32 seed, dint32 start, dint32 end );
 
 //    duint8 getCurrByte(){return currByte;}
     DRW_TextCodec *decoder;
 
-private:
+  private:
     dwgBasicStream *filestr;
     int maxSize;
     duint8 currByte;
     duint8 bitPos;
 
     UTF8STRING get8bitStr();
-    UTF8STRING get16bitStr(duint16 textSize, bool nullTerm = true);
+    UTF8STRING get16bitStr( duint16 textSize, bool nullTerm = true );
 };
 
 #endif // DWGBUFFER_H

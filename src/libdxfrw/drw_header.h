@@ -22,7 +22,7 @@ class dxfWriter;
 class dwgBuffer;
 
 #define SETHDRFRIENDS  friend class dxfRW; \
-                       friend class dwgReader;
+  friend class dwgReader;
 
 //! Class to handle header entries
 /*!
@@ -31,60 +31,68 @@ class dwgBuffer;
 *  or use add* helper functions.
 *  @author Rallaz
 */
-class DRW_Header {
+class DRW_Header
+{
     SETHDRFRIENDS
-public:
+  public:
     DRW_Header();
-    ~DRW_Header() {
-        clearVars();
+    ~DRW_Header()
+    {
+      clearVars();
     }
 
-    DRW_Header(const DRW_Header& h){
+    DRW_Header( const DRW_Header& h )
+    {
+      this->version = h.version;
+      this->comments = h.comments;
+      for ( std::map<std::string, DRW_Variant*>::const_iterator it = h.vars.begin(); it != h.vars.end(); ++it )
+      {
+        this->vars[it->first] = new DRW_Variant( *( it->second ) );
+      }
+      this->curr = NULL;
+    }
+    DRW_Header& operator=( const DRW_Header &h )
+    {
+      if ( this != &h )
+      {
+        clearVars();
         this->version = h.version;
         this->comments = h.comments;
-        for (std::map<std::string,DRW_Variant*>::const_iterator it=h.vars.begin(); it!=h.vars.end(); ++it){
-            this->vars[it->first] = new DRW_Variant( *(it->second) );
+        for ( std::map<std::string, DRW_Variant*>::const_iterator it = h.vars.begin(); it != h.vars.end(); ++it )
+        {
+          this->vars[it->first] = new DRW_Variant( *( it->second ) );
         }
-        this->curr = NULL;
-    }
-    DRW_Header& operator=(const DRW_Header &h) {
-       if(this != &h) {
-           clearVars();
-           this->version = h.version;
-           this->comments = h.comments;
-           for (std::map<std::string,DRW_Variant*>::const_iterator it=h.vars.begin(); it!=h.vars.end(); ++it){
-               this->vars[it->first] = new DRW_Variant( *(it->second) );
-           }
-       }
-       return *this;
+      }
+      return *this;
     }
 
-    void addDouble(std::string key, double value, int code);
-    void addInt(std::string key, int value, int code);
-    void addStr(std::string key, std::string value, int code);
-    void addCoord(std::string key, DRW_Coord value, int code);
+    void addDouble( std::string key, double value, int code );
+    void addInt( std::string key, int value, int code );
+    void addStr( std::string key, std::string value, int code );
+    void addCoord( std::string key, DRW_Coord value, int code );
     std::string getComments() const {return comments;}
-    void write(dxfWriter *writer, DRW::Version ver);
-    void addComment(std::string c);
+    void write( dxfWriter *writer, DRW::Version ver );
+    void addComment( std::string c );
 
-protected:
-    void parseCode(int code, dxfReader *reader);
-    bool parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf, duint8 mv=0);
-private:
-    bool getDouble(std::string key, double *varDouble);
-    bool getInt(std::string key, int *varInt);
-    bool getStr(std::string key, std::string *varStr);
-    bool getCoord(std::string key, DRW_Coord *varStr);
-    void clearVars(){
-        for (std::map<std::string,DRW_Variant*>::iterator it=vars.begin(); it!=vars.end(); ++it)
-            delete it->second;
+  protected:
+    void parseCode( int code, dxfReader *reader );
+    bool parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf, duint8 mv = 0 );
+  private:
+    bool getDouble( std::string key, double *varDouble );
+    bool getInt( std::string key, int *varInt );
+    bool getStr( std::string key, std::string *varStr );
+    bool getCoord( std::string key, DRW_Coord *varStr );
+    void clearVars()
+    {
+      for ( std::map<std::string, DRW_Variant*>::iterator it = vars.begin(); it != vars.end(); ++it )
+        delete it->second;
 
-        vars.clear();
+      vars.clear();
     }
 
-public:
-    std::map<std::string,DRW_Variant*> vars;
-private:
+  public:
+    std::map<std::string, DRW_Variant*> vars;
+  private:
     std::string comments;
     std::string name;
     DRW_Variant* curr;
