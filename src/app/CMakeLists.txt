@@ -162,6 +162,9 @@ SET(QGIS_APP_SRCS
   openstreetmap/qgsosmimportdialog.cpp
   openstreetmap/qgsosmexportdialog.cpp
 
+  dwg/qgsdwgimportdialog.cpp
+  dwg/qgsdwgimporter.cpp
+
   pluginmanager/qgspluginmanager.cpp
   pluginmanager/qgspluginmanager_texts.cpp
   pluginmanager/qgsapppluginmanagerinterface.cpp
@@ -329,6 +332,8 @@ SET (QGIS_APP_MOC_HDRS
   openstreetmap/qgsosmdownloaddialog.h
   openstreetmap/qgsosmimportdialog.h
   openstreetmap/qgsosmexportdialog.h
+
+  dwg/qgsdwgimportdialog.h
 
   pluginmanager/qgspluginmanager.h
   pluginmanager/qgsapppluginmanagerinterface.h
@@ -546,8 +551,10 @@ INCLUDE_DIRECTORIES(
   ../gui/layertree
   ../plugins
   ../python
+  ../libdxfrw
   gps
   openstreetmap
+  dwg
 )
 INCLUDE_DIRECTORIES(SYSTEM
   ${SPATIALITE_INCLUDE_DIR}
@@ -581,7 +588,8 @@ ENDIF (ANDROID)
 REMOVE_DEFINITIONS("-DAPP_EXPORT=${DLLIMPORT}")
 ADD_DEFINITIONS("\"-DAPP_EXPORT=${DLLEXPORT}\"")
 
-# Putting IMAGE_RCC_SRCS into qgis_app lib is cousing problems when the lib is loaded (by plugin for example) in test unit (qgis_composerpicturetest).
+# Putting IMAGE_RCC_SRCS into qgis_app lib is causing problems when the lib is
+# loaded (by plugin for example) in test unit (qgis_composerpicturetest).
 ADD_LIBRARY(qgis_app SHARED ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${QGIS_APP_HDRS} ${QGIS_APP_MOC_HDRS})
 
 TARGET_LINK_LIBRARIES(qgis_app
@@ -596,6 +604,7 @@ TARGET_LINK_LIBRARIES(qgis_app
   qgis_core
   qgis_gui
   qgis_analysis
+  libdxfrw
 )
 
 IF (NOT ANDROID)
