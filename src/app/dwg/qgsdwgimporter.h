@@ -18,8 +18,7 @@
 #include "drw_interface.h"
 
 #include <QString>
-
-struct sqlite3;
+#include <ogr_api.h>
 
 class QgsDwgImporter : public DRW_Interface
 {
@@ -161,11 +160,12 @@ class QgsDwgImporter : public DRW_Interface
   private:
     void startTransaction();
     void commitTransaction();
-    bool exec( QString sql );
+    bool exec( QString sql, bool logError = true );
+    OGRLayerH query( QString sql );
 
-    void addEntity( const DRW_Entity &data );
+    void addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data );
 
-    sqlite3 *mDb;
+    OGRDataSourceH mDs;
     QString mDatabase;
     int mDrawing;
 };
