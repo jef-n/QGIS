@@ -88,7 +88,7 @@ void RScodec::RSgenerate_gf( unsigned int pp )
     else alpha_to[i] = alpha_to[i-1] << 1 ;
     index_of[alpha_to[i]] = i ;
   }
-  index_of[0] = -1 ;
+  index_of[0] = UINT_MAX;
 }
 
 

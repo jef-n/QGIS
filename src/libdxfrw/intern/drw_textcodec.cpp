@@ -514,7 +514,7 @@ std::string DRW_Conv932Table::toUtf8( std::string *s )
     {
       ++it;
       int code = ( c << 8 ) | ( unsigned char )( *it );
-      int sta;
+      int sta = 0;
       int end = 0;
       if ( c > 0x80 && c < 0xA0 )
       {
