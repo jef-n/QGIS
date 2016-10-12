@@ -351,9 +351,7 @@ IF (PEDANTIC)
   MESSAGE (STATUS "Pedantic compiler settings enabled")
   IF(MSVC)
     SET(_warnings "")
-    IF (NOT USING_NMAKE AND NOT USING_NINJA)
-      SET(_warnings "${_warnings} /W4" )
-    ENDIF (NOT USING_NMAKE AND NOT USING_NINJA)
+
 
     # disable warnings
     SET(_warnings "${_warnings} /wd4100 ")  # unused formal parameters
@@ -369,8 +367,9 @@ IF (PEDANTIC)
     SET(_warnings "${_warnings} /wd4610 ")  # user defined constructor required (sqlite3_index_info)
     SET(_warnings "${_warnings} /wd4706 ")  # assignment within conditional expression (pal)
     SET(_warnings "${_warnings} /wd4800 ")  # 'int' : forcing value to bool 'true' or 'false' (performance warning)
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${_warnings}")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_warnings}")
+
+    SET(CMAKE_CXX_FLAGS "/DWIN32 /D_WINDOWS /W4 /GR /EHsc /FR ${_warnings}")
+    SET(CMAKE_C_FLAGS "/DWIN32 /D_WINDOWS /W4 ${_warnings}")
   ELSE (MSVC)
     # add warnings via flags (not as definitions as on Mac -Wall can not be overridden per language )
     SET(_warnings "-Wall -Wextra -Wno-long-long -Wformat-security -Wno-strict-aliasing")

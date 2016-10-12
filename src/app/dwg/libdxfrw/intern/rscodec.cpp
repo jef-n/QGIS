@@ -28,6 +28,7 @@
 #include "rscodec.h"
 #include <new>          // std::nothrow
 #include <fstream>
+#include <climits>
 
 RScodec::RScodec( unsigned int pp, int mm, int tt )
 {

@@ -1,3 +1,5 @@
+ADD_SUBDIRECTORY(dwg/libdxfrw)
+
 SET(QGIS_APP_SRCS
   qgisapp.cpp
   qgisappinterface.cpp
@@ -551,10 +553,10 @@ INCLUDE_DIRECTORIES(
   ../gui/layertree
   ../plugins
   ../python
-  ../libdxfrw
   gps
   openstreetmap
   dwg
+  dwg/libdxfrw
 )
 INCLUDE_DIRECTORIES(SYSTEM
   ${SPATIALITE_INCLUDE_DIR}

@@ -24,13 +24,11 @@ class dwgBuffer;
 #define SETHDRFRIENDS  friend class dxfRW; \
   friend class dwgReader;
 
-//! Class to handle header entries
-/*!
-*  Class to handle header vars, to read iterate over "std::map vars"
-*  to write add a DRW_Variant* into "std::map vars" (do not delete it, are cleared in dtor)
-*  or use add* helper functions.
-*  @author Rallaz
-*/
+/** Class to handle header vars, to read iterate over "std::map vars"
+ *  to write add a DRW_Variant* into "std::map vars" (do not delete it, are cleared in dtor)
+ *  or use add* helper functions.
+ *  @author Rallaz
+ */
 class DRW_Header
 {
     SETHDRFRIENDS

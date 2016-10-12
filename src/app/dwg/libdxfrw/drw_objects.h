@@ -50,11 +50,9 @@ namespace DRW
 #define SETOBJFRIENDS  friend class dxfRW; \
   friend class dwgReader;
 
-//! Base class for tables entries
-/*!
-*  Base class for tables entries
-*  @author Rallaz
-*/
+/** Base class for tables entries
+ *  @author Rallaz
+ */
 class DRW_TableEntry
 {
   public:
@@ -127,11 +125,9 @@ class DRW_TableEntry
 };
 
 
-//! Class to handle dimstyle entries
-/*!
-*  Class to handle dim style symbol table entries
-*  @author Rallaz
-*/
+/** Class to handle dim style symbol table entries
+ *  @author Rallaz
+ */
 class DRW_Dimstyle : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -242,12 +238,10 @@ class DRW_Dimstyle : public DRW_TableEntry
 };
 
 
-//! Class to handle line type entries
-/*!
-*  Class to handle line type symbol table entries
-*  @author Rallaz
-*/
-/* @todo handle complex lineType*/
+/** Class to handle line type symbol table entries
+ *  @author Rallaz
+ * @todo handle complex lineType
+ */
 class DRW_LType : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -281,11 +275,9 @@ class DRW_LType : public DRW_TableEntry
 };
 
 
-//! Class to handle layer entries
-/*!
-*  Class to handle layer symbol table entries
-*  @author Rallaz
-*/
+/** Class to handle layer symbol table entries
+ *  @author Rallaz
+ */
 class DRW_Layer : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -319,11 +311,9 @@ class DRW_Layer : public DRW_TableEntry
     dwgHandle lTypeH;
 };
 
-//! Class to handle block record entries
-/*!
-*  Class to handle block record table entries
-*  @author Rallaz
-*/
+/** Class to handle block record table entries
+ *  @author Rallaz
+ */
 class DRW_Block_Record : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -355,11 +345,9 @@ class DRW_Block_Record : public DRW_TableEntry
     std::vector<duint32>entMap;
 };
 
-//! Class to handle text style entries
-/*!
-*  Class to handle text style symbol table entries
-*  @author Rallaz
-*/
+/** Class to handle text style symbol table entries
+ *  @author Rallaz
+ */
 class DRW_Textstyle : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -392,11 +380,9 @@ class DRW_Textstyle : public DRW_TableEntry
     int fontFamily;         /*!< ttf font family, italic and bold flags, code 1071 */
 };
 
-//! Class to handle vport entries
-/*!
-*  Class to handle vport symbol table entries
-*  @author Rallaz
-*/
+/** Class to handle vport symbol table entries
+ *  @author Rallaz
+ */
 class DRW_Vport : public DRW_TableEntry
 {
     SETOBJFRIENDS
@@ -462,11 +448,9 @@ class DRW_Vport : public DRW_TableEntry
 };
 
 
-//! Class to handle imagedef entries
-/*!
-*  Class to handle image definitions object entries
-*  @author Rallaz
-*/
+/** Class to handle image definitions object entries
+ *  @author Rallaz
+ */
 class DRW_ImageDef : public DRW_TableEntry  //
 {
     SETOBJFRIENDS
@@ -501,11 +485,9 @@ class DRW_ImageDef : public DRW_TableEntry  //
     std::map<std::string, std::string> reactors;
 };
 
-//! Class to handle AppId entries
-/*!
-*  Class to handle AppId symbol table entries
-*  @author Rallaz
-*/
+/** Class to handle AppId symbol table entries
+ *  @author Rallaz
+ */
 class DRW_AppId : public DRW_TableEntry
 {
     SETOBJFRIENDS
