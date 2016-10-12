@@ -30,13 +30,13 @@ namespace DRW
   enum ETYPE
   {
     E3DFACE,
-//  E3DSOLID, //encrypted proprietary data
+//  E3DSOLID, // encrypted proprietary data
 //  ACAD_PROXY_ENTITY,
     ARC,
 //  ATTDEF,
 //  ATTRIB,
-    BLOCK,// and ENDBLK
-//  BODY, //encrypted proprietary data
+    BLOCK, // and ENDBLK
+//  BODY, // encrypted proprietary data
     CIRCLE,
     DIMENSION,
     DIMALIGNED,
@@ -65,14 +65,14 @@ namespace DRW
     POINT,
     POLYLINE,
     RAY,
-//  REGION, //encrypted proprietary data
+//  REGION, // encrypted proprietary data
 //  SECTION,
-//  SEQEND,//not needed?? used in polyline and insert/attrib and dwg
+//  SEQEND, // not needed?? used in polyline and insert/attrib and dwg
 //  SHAPE,
     SOLID,
     SPLINE,
 //  SUN,
-//  SURFACE, //encrypted proprietary data can be four types
+//  SURFACE, // encrypted proprietary data can be four types
 //  TABLE,
     TEXT,
 //  TOLERANCE,
@@ -80,7 +80,7 @@ namespace DRW
     UNDERLAY,
     VERTEX,
     VIEWPORT,
-//  WIPEOUT, //WIPEOUTVARIABLE
+//  WIPEOUT, // WIPEOUTVARIABLE
     XLINE,
     UNKNOWN
   };
@@ -92,7 +92,6 @@ namespace DRW
 #define SETENTFRIENDS  friend class dxfRW; \
   friend class dwgReader;
 
-//! Base class for entities
 /** Base class for entities
  *  @author Rallaz
  */
@@ -233,11 +232,11 @@ class DRW_Entity
     std::vector<DRW_Variant*> extData;          /*!< FIFO list of extended data, codes 1000 to 1071*/
 
   protected: //only for read dwg
-    duint8 haveNextLinks; //aka nolinks //B
-    duint8 plotFlags; //presence of plot style //BB
-    duint8 ltFlags; //presence of linetype handle //BB
-    duint8 materialFlag; //presence of material handle //BB
-    duint8 shadowFlag; //presence of shadow handle ?? (in dwg may be plotflag)//RC
+    duint8 haveNextLinks; // aka nolinks //B
+    duint8 plotFlags; // presence of plot style //BB
+    duint8 ltFlags; // presence of linetype handle //BB
+    duint8 materialFlag; // presence of material handle //BB
+    duint8 shadowFlag; // presence of shadow handle ?? (in dwg may be plotflag)//RC
     dwgHandle lTypeH;
     dwgHandle layerH;
     duint32 nextEntLink;
@@ -245,8 +244,8 @@ class DRW_Entity
     bool ownerHandle;
 
     duint8 xDictFlag;
-    dint32 numReactors; //
-    duint32 objSize;  //RL 32bits object data size in bits
+    dint32 numReactors;
+    duint32 objSize;  // RL 32bits object data size in bits
     dint16 oType;
 
   private:
@@ -256,11 +255,9 @@ class DRW_Entity
 };
 
 
-//! Class to handle point entity
-/*!
-*  Class to handle point entity
-*  @author Rallaz
-*/
+/** Class to handle point entity
+ *  @author Rallaz
+ */
 class DRW_Point : public DRW_Entity
 {
     SETENTFRIENDS
@@ -287,11 +284,9 @@ class DRW_Point : public DRW_Entity
     // the UCS in effect when the point was drawn
 };
 
-//! Class to handle line entity
-/*!
-*  Class to handle line entity
-*  @author Rallaz
-*/
+/** Class to handle line entity
+ *  @author Rallaz
+ */
 class DRW_Line : public DRW_Point
 {
     SETENTFRIENDS
@@ -312,11 +307,9 @@ class DRW_Line : public DRW_Point
     DRW_Coord secPoint;        /*!< second point, code 11, 21 & 31 */
 };
 
-//! Class to handle ray entity
-/*!
-*  Class to handle ray entity
-*  @author Rallaz
-*/
+/** Class to handle ray entity
+ *  @author Rallaz
+ */
 class DRW_Ray : public DRW_Line
 {
     SETENTFRIENDS
@@ -329,11 +322,9 @@ class DRW_Ray : public DRW_Line
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 };
 
-//! Class to handle xline entity
-/*!
-*  Class to handle xline entity
-*  @author Rallaz
-*/
+/** Class to handle xline entity
+ *  @author Rallaz
+ */
 class DRW_Xline : public DRW_Ray
 {
   public:
@@ -343,11 +334,9 @@ class DRW_Xline : public DRW_Ray
     }
 };
 
-//! Class to handle circle entity
-/*!
-*  Class to handle circle entity
-*  @author Rallaz
-*/
+/** Class to handle circle entity
+ *  @author Rallaz
+ */
 class DRW_Circle : public DRW_Point
 {
     SETENTFRIENDS
@@ -368,11 +357,9 @@ class DRW_Circle : public DRW_Point
     double mRadius;  /*!< radius, code 40 */
 };
 
-//! Class to handle arc entity
-/*!
-*  Class to handle arc entity
-*  @author Rallaz
-*/
+/** Class to handle arc entity
+ *  @author Rallaz
+ */
 class DRW_Arc : public DRW_Circle
 {
     SETENTFRIENDS
@@ -412,9 +399,8 @@ class DRW_Arc : public DRW_Circle
     int isccw;                  /*!< is counter clockwise arc?, only used in hatch, code 73 */
 };
 
-/** Class to handle ellipse entity
+/** Class to handle ellipse and elliptic arc entity
  *
- *  Class to handle ellipse and elliptic arc entity
  *  Note: start/end parameter are in radians for ellipse entity but
  *  for hatch boundary are in degrees
  *  @author Rallaz
@@ -453,7 +439,6 @@ class DRW_Ellipse : public DRW_Line
 
 /** Class to handle trace entity
  *
- *  Class to handle trace entity
  *  @author Rallaz
  */
 class DRW_Trace : public DRW_Line
@@ -475,12 +460,11 @@ class DRW_Trace : public DRW_Line
 
   public:
     DRW_Coord thirdPoint;       /*!< third point, code 12, 22 & 32 */
-    DRW_Coord fourthPoint;        /*!< four point, code 13, 23 & 33 */
+    DRW_Coord fourthPoint;      /*!< four point, code 13, 23 & 33 */
 };
 
 /** Class to handle solid entity
  *
- *  Class to handle solid entity
  *  @author Rallaz
  */
 class DRW_Solid : public DRW_Trace
@@ -516,11 +500,9 @@ class DRW_Solid : public DRW_Trace
 
 };
 
-//! Class to handle 3dface entity
-/*!
-*  Class to handle 3dface entity
-*  @author Rallaz
-*/
+/** Class to handle 3dface entity
+ *  @author Rallaz
+ */
 class DRW_3Dface : public DRW_Trace
 {
     SETENTFRIENDS
@@ -565,11 +547,9 @@ class DRW_3Dface : public DRW_Trace
 
 };
 
-//! Class to handle block entries
-/*!
-*  Class to handle block entries
-*  @author Rallaz
-*/
+/** Class to handle block entries
+ *  @author Rallaz
+ */
 class DRW_Block : public DRW_Point
 {
     SETENTFRIENDS
@@ -596,11 +576,9 @@ class DRW_Block : public DRW_Point
 };
 
 
-//! Class to handle insert entries
-/*!
-*  Class to handle insert entries
-*  @author Rallaz
-*/
+/** Class to handle insert entries
+ *  @author Rallaz
+ */
 class DRW_Insert : public DRW_Point
 {
     SETENTFRIENDS
@@ -639,11 +617,9 @@ class DRW_Insert : public DRW_Point
     dwgHandle seqendH; //RLZ: on implement attrib remove this handle from obj list (see pline/vertex code)
 };
 
-//! Class to handle lwpolyline entity
-/*!
-*  Class to handle lwpolyline entity
-*  @author Rallaz
-*/
+/** Class to handle lwpolyline entity
+ *  @author Rallaz
+ */
 class DRW_LWPolyline : public DRW_Entity
 {
     SETENTFRIENDS
@@ -717,11 +693,9 @@ class DRW_LWPolyline : public DRW_Entity
     std::vector<DRW_Vertex2D *> vertlist;             /*!< vertex list */
 };
 
-//! Class to handle insert entries
-/*!
-*  Class to handle insert entries
-*  @author Rallaz
-*/
+/** Class to handle insert entries
+ *  @author Rallaz
+ */
 class DRW_Text : public DRW_Line
 {
     SETENTFRIENDS
@@ -778,11 +752,9 @@ class DRW_Text : public DRW_Line
     dwgHandle styleH;          /*!< handle for text style */
 };
 
-//! Class to handle insert entries
-/*!
-*  Class to handle insert entries
-*  @author Rallaz
-*/
+/** Class to handle insert entries
+ *  @author Rallaz
+ */
 class DRW_MText : public DRW_Text
 {
     SETENTFRIENDS
@@ -821,11 +793,9 @@ class DRW_MText : public DRW_Text
     bool haveXAxis;
 };
 
-//! Class to handle vertex
-/*!
-*  Class to handle vertex  for polyline entity
-*  @author Rallaz
-*/
+/** Class to handle vertex for polyline entity
+ *  @author Rallaz
+ */
 class DRW_Vertex : public DRW_Point
 {
     SETENTFRIENDS
@@ -885,11 +855,9 @@ class DRW_Vertex : public DRW_Point
     int identifier;           /*!< vertex identifier, code 91, default 0 */
 };
 
-//! Class to handle polyline entity
-/*!
-*  Class to handle polyline entity
-*  @author Rallaz
-*/
+/** Class to handle polyline entity
+ *  @author Rallaz
+ */
 class DRW_Polyline : public DRW_Point
 {
     SETENTFRIENDS
@@ -954,11 +922,9 @@ class DRW_Polyline : public DRW_Point
 };
 
 
-//! Class to handle spline entity
-/*!
-*  Class to handle spline entity
-*  @author Rallaz
-*/
+/** Class to handle spline entity
+ *  @author Rallaz
+ */
 class DRW_Spline : public DRW_Entity
 {
     SETENTFRIENDS
@@ -1025,11 +991,9 @@ class DRW_Spline : public DRW_Entity
     DRW_Coord *fitpoint;       /*!< current fit point to add data */
 };
 
-//! Class to handle hatch loop
-/*!
-*  Class to handle hatch loop
-*  @author Rallaz
-*/
+/** Class to handle hatch loop
+ *  @author Rallaz
+ */
 class DRW_HatchLoop
 {
   public:
@@ -1066,11 +1030,9 @@ class DRW_HatchLoop
     std::vector<DRW_Entity *> objlist;              /*!< entities list */
 };
 
-//! Class to handle hatch entity
-/*!
-*  Class to handle hatch entity
-*  @author Rallaz
-*/
+/** Class to handle hatch entity
+ *  @author Rallaz
+ */
 //TODO: handle lwpolylines, splines and ellipses
 class DRW_Hatch : public DRW_Point
 {
@@ -1188,11 +1150,9 @@ class DRW_Hatch : public DRW_Point
     bool ispol;
 };
 
-//! Class to handle image entity
-/*!
-*  Class to handle image entity
-*  @author Rallaz
-*/
+/** Class to handle image entity
+ *  @author Rallaz
+ */
 class DRW_Image : public DRW_Line
 {
     SETENTFRIENDS
@@ -1228,11 +1188,9 @@ class DRW_Image : public DRW_Line
 };
 
 
-//! Base class for dimension entity
-/*!
-*  Base class for dimension entity
-*  @author Rallaz
-*/
+/** Base class for dimension entity
+ *  @author Rallaz
+ */
 class DRW_Dimension : public DRW_Entity
 {
     SETENTFRIENDS
@@ -1365,11 +1323,9 @@ class DRW_Dimension : public DRW_Entity
 };
 
 
-//! Class to handle  aligned dimension entity
-/*!
-*  Class to handle aligned dimension entity
-*  @author Rallaz
-*/
+/** Class to handle aligned dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimAligned : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1398,11 +1354,9 @@ class DRW_DimAligned : public DRW_Dimension
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 };
 
-//! Class to handle  linear or rotated dimension entity
-/*!
-*  Class to handle linear or rotated dimension entity
-*  @author Rallaz
-*/
+/** Class to handle linear or rotated dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimLinear : public DRW_DimAligned
 {
   public:
@@ -1422,11 +1376,9 @@ class DRW_DimLinear : public DRW_DimAligned
     void setOblique( const double d ) {setOb52( d );}
 };
 
-//! Class to handle radial dimension entity
-/*!
-*  Class to handle aligned, linear or rotated dimension entity
-*  @author Rallaz
-*/
+/** Class to handle aligned, linear or rotated dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimRadial : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1452,11 +1404,9 @@ class DRW_DimRadial : public DRW_Dimension
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 };
 
-//! Class to handle radial dimension entity
-/*!
-*  Class to handle aligned, linear or rotated dimension entity
-*  @author Rallaz
-*/
+/** Class to handle aligned, linear or rotated dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimDiametric : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1482,11 +1432,9 @@ class DRW_DimDiametric : public DRW_Dimension
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 };
 
-//! Class to handle angular dimension entity
-/*!
-*  Class to handle angular dimension entity
-*  @author Rallaz
-*/
+/** Class to handle angular dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimAngular : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1517,11 +1465,9 @@ class DRW_DimAngular : public DRW_Dimension
 };
 
 
-//! Class to handle angular 3p dimension entity
-/*!
-*  Class to handle angular 3p dimension entity
-*  @author Rallaz
-*/
+/** Class to handle angular 3p dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimAngular3p : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1549,11 +1495,9 @@ class DRW_DimAngular3p : public DRW_Dimension
     virtual bool parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs = 0 );
 };
 
-//! Class to handle ordinate dimension entity
-/*!
-*  Class to handle ordinate dimension entity
-*  @author Rallaz
-*/
+/** Class to handle ordinate dimension entity
+ *  @author Rallaz
+ */
 class DRW_DimOrdinate : public DRW_Dimension
 {
     SETENTFRIENDS
@@ -1580,11 +1524,9 @@ class DRW_DimOrdinate : public DRW_Dimension
 };
 
 
-//! Class to handle leader entity
-/*!
-*  Class to handle leader entity
-*  @author Rallaz
-*/
+/** Class to handle leader entity
+ *  @author Rallaz
+ */
 class DRW_Leader : public DRW_Entity
 {
     SETENTFRIENDS
@@ -1645,11 +1587,9 @@ class DRW_Leader : public DRW_Entity
     dwgHandle AnnotH;
 };
 
-//! Class to handle viewport entity
-/*!
-*  Class to handle viewport entity
-*  @author Rallaz
-*/
+/** Class to handle viewport entity
+ *  @author Rallaz
+ */
 class DRW_Viewport : public DRW_Point
 {
     SETENTFRIENDS
@@ -1705,7 +1645,7 @@ class DRW_Viewport : public DRW_Point
 
   private:
     duint32 frozenLyCount;
-};//RLZ: missing 15,25, 72, 331, 90, 340, 1, 281, 71, 74, 110, 120, 130, 111, 121,131, 112,122, 132, 345,346, and more...
+}; //RLZ: missing 15,25, 72, 331, 90, 340, 1, 281, 71, 74, 110, 120, 130, 111, 121,131, 112,122, 132, 345,346, and more...
 
 #if 0
 //used

@@ -21,12 +21,10 @@ class dxfReader;
 class dxfWriter;
 class dwgBuffer;
 
-//! Class to handle classes entries
-/*!
-*  Class to handle classes table entries
-*  TODO: verify the dxf read/write part
-*  @author Rallaz
-*/
+/** Class to handle classes table entries
+ *  TODO: verify the dxf read/write part
+ *  @author Rallaz
+ */
 class DRW_Class
 {
   public:

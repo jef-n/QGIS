@@ -20,6 +20,8 @@
 #include <QString>
 #include <ogr_api.h>
 
+#include <qgsabstractgeometryv2.h>
+
 class QgsDwgImporter : public DRW_Interface
 {
   public:
@@ -165,7 +167,13 @@ class QgsDwgImporter : public DRW_Interface
 
     void addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data );
 
+    QgsPointSequenceV2 getStrokePoints( const QgsPointSequenceV2 &cps, bool closed ) const;
+    void strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const;
+    int getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool closed, QgsPointV2 &start, QgsPointV2 &control, QgsPointV2 &end ) const;
+    QgsPointV2 getQuadPoint( const QgsPointV2& x1, const QgsPointV2& c1, const QgsPointV2& x2, double dt ) const;
+
     OGRDataSourceH mDs;
     QString mDatabase;
-    int mDrawing;
+    bool mInTransaction;
+    int mSplineSegs;
 };
