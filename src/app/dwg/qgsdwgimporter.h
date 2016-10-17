@@ -22,6 +22,8 @@
 
 #include <qgsabstractgeometryv2.h>
 
+class QgsCompoundCurveV2;
+
 class QgsDwgImporter : public DRW_Interface
 {
   public:
@@ -171,6 +173,7 @@ class QgsDwgImporter : public DRW_Interface
     void strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const;
     int getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool closed, QgsPointV2 &start, QgsPointV2 &control, QgsPointV2 &end ) const;
     QgsPointV2 getQuadPoint( const QgsPointV2& x1, const QgsPointV2& c1, const QgsPointV2& x2, double dt ) const;
+    bool curveFromLWPolyline( const DRW_LWPolyline& data, QgsCompoundCurveV2 &cc );
 
     OGRDataSourceH mDs;
     QString mDatabase;

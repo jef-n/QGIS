@@ -19,6 +19,7 @@ ADD_LIBRARY(libdxfrw STATIC
     intern/dxfwriter.cpp
     intern/rscodec.cpp
 )
+SET_PROPERTY(TARGET libdxfrw PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 IF(FALSE)
 IF(DOXYGEN_FOUND)

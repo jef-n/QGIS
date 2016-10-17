@@ -368,7 +368,7 @@ IF (PEDANTIC)
     SET(_warnings "${_warnings} /wd4706 ")  # assignment within conditional expression (pal)
     SET(_warnings "${_warnings} /wd4800 ")  # 'int' : forcing value to bool 'true' or 'false' (performance warning)
 
-    SET(CMAKE_CXX_FLAGS "/DWIN32 /D_WINDOWS /W4 /GR /EHsc /FR ${_warnings}")
+    SET(CMAKE_CXX_FLAGS "/DWIN32 /D_WINDOWS /W4 /GR /EHsc ${_warnings}")
     SET(CMAKE_C_FLAGS "/DWIN32 /D_WINDOWS /W4 ${_warnings}")
   ELSE (MSVC)
     # add warnings via flags (not as definitions as on Mac -Wall can not be overridden per language )

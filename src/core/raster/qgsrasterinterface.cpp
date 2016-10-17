@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include <limits>
-#include <typeinfo>
 
 #include <QByteArray>
 #include <QTime>

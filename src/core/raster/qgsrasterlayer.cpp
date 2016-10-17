@@ -49,7 +49,6 @@ email                : tim at linfiniti.com
 #include <cmath>
 #include <cstdio>
 #include <limits>
-#include <typeinfo>
 
 #include <QApplication>
 #include <QCursor>

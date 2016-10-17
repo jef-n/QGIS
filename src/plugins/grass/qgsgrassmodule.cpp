@@ -31,7 +31,6 @@
 #include "qgslogger.h"
 #include "qgsmapcanvas.h"
 
-#include <typeinfo>
 #include <QDomDocument>
 #include <QMessageBox>
 #include <QSvgRenderer>
