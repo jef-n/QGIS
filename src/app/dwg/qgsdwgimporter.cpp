@@ -26,6 +26,7 @@
 #include "qgslinestringv2.h"
 #include "qgscircularstringv2.h"
 #include "qgscurvepolygonv2.h"
+#include "qgscompoundcurvev2.h"
 
 #include <QString>
 #include <QStringList>
@@ -179,7 +180,7 @@ bool QgsDwgImporter::import( const QString &drawing )
     OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "drawing" );
     if ( !layer )
     {
-      LOG( QObject::tr( "Query for drawing failed." ).arg( drawing ) );
+      LOG( QObject::tr( "Query for drawing %1 failed." ).arg( drawing ) );
       OGR_DS_Destroy( mDs );
       mDs = nullptr;
       return false;
@@ -205,7 +206,7 @@ bool QgsDwgImporter::import( const QString &drawing )
     int year, month, day, hour, minute, second, tzf;
     if ( !OGR_F_GetFieldAsDateTime( f, lastmodifiedIdx, &year, &month, &day, &hour, &minute, &second, &tzf ) )
     {
-      LOG( QObject::tr( "Recorded Last modification date unreadable [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      LOG( QObject::tr( "Recorded last modification date unreadable [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
       OGR_F_Destroy( f );
       OGR_DS_Destroy( mDs );
       mDs = nullptr;
@@ -388,11 +389,23 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   ENTITY_ATTRIBUTES
                                   << field( "ext", OFTRealList )
                                 )
-                        << table( "lwpolylines", QObject::tr( "LWPOLYLINE entities" ), wkbLineString25D, QList<field>()
+                        << table( "lwpolylines", QObject::tr( "LWPOLYLINE entities" ), wkbCompoundCurveZ, QList<field>()  // TODO ZM for width?
                                   ENTITY_ATTRIBUTES
                                   << field( "width", OFTReal )
                                   << field( "thickness", OFTReal )
                                   << field( "ext", OFTRealList )
+                                )
+                        << table( "polylines", QObject::tr( "POLYLINE entities" ), wkbCompoundCurveZ, QList<field>()  // TODO ZM for width?
+                                  ENTITY_ATTRIBUTES
+                                  << field( "thickness", OFTReal )
+                                  << field( "ext", OFTRealList )
+                                  << field( "defstawidth", OFTReal )
+                                  << field( "defendwidth", OFTReal )
+                                  << field( "smoothM", OFTInteger )
+                                  << field( "smoothN", OFTInteger )
+                                  << field( "curvetype", OFTInteger )
+                                  << field( "stawidths", OFTRealList )
+                                  << field( "endwidths", OFTRealList )
                                 )
                         << table( "texts", QObject::tr( "TEXT entities" ), wkbPoint25D, QList<field>()
                                   ENTITY_ATTRIBUTES
@@ -539,7 +552,7 @@ bool QgsDwgImporter::import( const QString &drawing )
 
   OGR_F_Destroy( f );
 
-  LOG( QObject::tr( "Updating database from %1." ).arg( drawing ).arg( fi.lastModified().toString() ) );
+  LOG( QObject::tr( "Updating database from %1 [%2]." ).arg( drawing ).arg( fi.lastModified().toString() ) );
 
   if ( fi.suffix().toLower() == "dxf" )
   {
@@ -866,6 +879,7 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
 #define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
 #define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
 
+  QgsDebugMsg( QString( "handle:0x%1" ).arg( data.handle, 0, 16 ) );
   SETINTEGER( handle );
   SETINTEGER( eType );
   SETINTEGER( space );
@@ -938,14 +952,55 @@ void QgsDwgImporter::addXline( const DRW_Xline &data )
 
 void QgsDwgImporter::addArc( const DRW_Arc &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "ARC entities" ) );
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "circles" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+  QVector<double> ext( 3 );
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
+  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+  double half = ( data.staangle + data.endangle ) / 2.0;
+  if ( data.isccw )
+    half += M_PI;
+
+  QgsCircularStringV2 c;
+  c.setPoints( QgsPointSequenceV2()
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( data.staangle ) * data.mRadius, data.basePoint.y + cos( data.staangle ) * data.mRadius )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( half ) * data.mRadius, data.basePoint.y + cos( half ) * data.mRadius )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( data.endangle ) * data.mRadius, data.basePoint.y + cos( data.endangle ) * data.mRadius )
+             );
+
+  int binarySize;
+  unsigned char *wkb = c.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
 }
 
 void QgsDwgImporter::addCircle( const DRW_Circle &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "circles" );
@@ -991,14 +1046,84 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
 void QgsDwgImporter::addEllipse( const DRW_Ellipse &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "ELLIPSE entities" ) );
+
+  DRW_Polyline pol;
+  data.toPolyline( &pol );
+  addPolyline( pol );
+}
+
+bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoundCurveV2 &cc )
+{
+  int vertexnum = data.vertlist.size();
+  if ( vertexnum == 0 )
+  {
+    QgsDebugMsg( "polyline without points" );
+    return false;
+  }
+
+  QgsPointSequenceV2 s;
+  bool hadBulge( data.vertlist[0]->bulge != 0.0 );
+  std::vector<DRW_Vertex2D *>::size_type n = data.flags & 1 ? vertexnum + 1 : vertexnum;
+  for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < n; i++ )
+  {
+    int i0 = i % vertexnum;
+
+    Q_ASSERT( data.vertlist[i0] != nullptr );
+    QgsDebugMsg( QString( "%1: %2,%3 bulge:%4" ).arg( i ).arg( data.vertlist[i0]->x ).arg( data.vertlist[i0]->y ).arg( data.vertlist[i0]->bulge ) );
+
+    QgsPointV2 p( QgsWKBTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
+    s << p;
+
+    bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
+
+    if ( hasBulge != hadBulge || i == n - 1 )
+    {
+      if ( hadBulge )
+      {
+        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        c->setPoints( s );
+        cc.addCurve( c );
+      }
+      else
+      {
+        QgsLineStringV2 *c = new QgsLineStringV2();
+        c->setPoints( s );
+        cc.addCurve( c );
+      }
+
+      hadBulge = hasBulge;
+      s.clear();
+      s << p;
+    }
+
+    if ( hasBulge && i < n - 1 )
+    {
+      int i1 = ( i + 1 ) % vertexnum;
+
+      double a = 2.0 * atan( data.vertlist[i]->bulge );
+      double dx = data.vertlist[i1]->x - data.vertlist[i0]->x;
+      double dy = data.vertlist[i1]->y - data.vertlist[i0]->y;
+      double c = sqrt( dx * dx + dy * dy );
+      double r = c / 2.0 / sin( a );
+      double h = r * ( 1 - cos( a ) );
+
+      s << QgsPointV2( QgsWKBTypes::PointZ,
+                       data.vertlist[i0]->x + 0.5 * dx + h * dy / c,
+                       data.vertlist[i0]->y + 0.5 * dy - h * dx / c,
+                       data.elevation );
+    }
+  }
+
+  return true;
 }
 
 void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 {
   QgsDebugCall;
+  int vertexnum = data.vertlist.size();
+  if ( vertexnum == 0 )
+    return;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lwpolylines" );
   Q_ASSERT( layer );
@@ -1018,24 +1143,11 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
   ext[2] = data.extPoint.z;
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
 
-  QgsPointSequenceV2 s;
-
-  Q_ASSERT( data.vertlist.size() == data.vertexnum );
-
-  for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < data.vertexnum; i++ )
-  {
-    Q_ASSERT( data.vertlist[i] != nullptr );
-    s << QgsPointV2( QgsWKBTypes::PointZ, data.vertlist[i]->x, data.vertlist[i]->y, data.elevation );
-  }
-
-  if ( data.flags )
-    s << s[0];
-
-  QgsLineStringV2 l;
-  l.setPoints( s );
+  QgsCompoundCurveV2 cc;
+  curveFromLWPolyline( data, cc );
 
   int binarySize;
-  unsigned char *wkb = l.asWkb( binarySize );
+  unsigned char *wkb = cc.asWkb( binarySize );
   OGRGeometryH geom;
   if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
   {
@@ -1053,9 +1165,72 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
 void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "POLYLINE entities" ) );
+
+  int vertexnum = data.vertlist.size();
+  if ( vertexnum == 0 )
+  {
+    QgsDebugMsg( "Polyline without vertices" );
+    return;
+  }
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+  QVector<double> ext( 3 );
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
+  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+  QgsDebugMsg( QString( "handle:0x%1 defstawidth:%2 defendwidth:%3" ).arg( data.handle, 0, 16 ).arg( data.defstawidth ).arg( data.defendwidth ) );
+
+  if ( data.defstawidth == data.defendwidth )
+  {
+  }
+
+  std::vector<DRW_Vertex *>::size_type n = data.flags & 1 ? vertexnum + 1 : vertexnum;
+  for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < n; i++ )
+  {
+    int i0 = i % vertexnum;
+    const DRW_Vertex *v( data.vertlist[i0] );
+    QgsDebugMsg( QString( "i:%1 stawidth:%2 endwidth:%3" ).arg( i ).arg( v->stawidth ).arg( v->endwidth ) );
+  }
+
+#if 0
+  QgsCompoundCurveV2 c;
+
+  QgsCircularStringV2 c;
+  c.setPoints( QgsPointSequenceV2()
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + data.mRadius, data.basePoint.y, data.basePoint.z )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
+             );
+
+  int binarySize;
+  unsigned char *wkb = c.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
+#endif
 }
 
 void QgsDwgImporter::addSpline( const DRW_Spline *data )
@@ -1305,14 +1480,31 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *data )
   {
     const DRW_HatchLoop &hatchLoop = *data->looplist[i];
 
+    // TODO when do we get more than one hatch loop?
+    Q_ASSERT( hatchLoop.objlist.size() == 1 );
     for ( std::vector<DRW_Entity *>::size_type j = 0;  j < hatchLoop.objlist.size(); j++ )
     {
       Q_ASSERT( hatchLoop.objlist[j] );
-      const DRW_Entity &entity = *hatchLoop.objlist[j];
+      const DRW_Entity *entity = hatchLoop.objlist[j];
 
-      QgsDebugMsg( QString( "obj %1.%2: %3" ).arg( i ).arg( j ).arg( typeid( entity ).name() ) );
+      const DRW_LWPolyline *lwp = dynamic_cast<const DRW_LWPolyline *>( entity );
+      if ( lwp )
+      {
+        QgsCompoundCurveV2 *cc = new QgsCompoundCurveV2();
 
-      // p.insertVertex( QgsVertexId( 0, i, j ), << QgsPointV2( QgsWKBTypes::PointZ, hatch.basePoint.x, hatch.basePoint.y, hatch.basePoint.z ) );
+        if ( curveFromLWPolyline( *lwp, *cc ) )
+        {
+          if ( i == 0 && j == 0 )
+            p.setExteriorRing( cc );
+          else
+            p.addInteriorRing( cc );
+        }
+      }
+      else
+      {
+        QgsDebugMsg( QString( "unknown obj %1.%2: %3" ).arg( i ).arg( j ).arg( typeid( *entity ).name() ) );
+      }
+
       // entities
     }
   }
@@ -1460,7 +1652,7 @@ void QgsDwgImporter::writeAppId()
 QgsPointV2 QgsDwgImporter::getQuadPoint( const QgsPointV2& x1, const QgsPointV2& c1, const QgsPointV2& x2, double dt ) const
 {
   return QgsPointV2(
-           QgsWKBTypes::QgsWKBTypes::PointZ,
+           QgsWKBTypes::PointZ,
            x1.x()*( 1.0 - dt )*( 1.0 - dt ) + c1.x() * 2.0 * dt * ( 1.0 - dt ) + x2.x()*dt*dt,
            x1.y()*( 1.0 - dt )*( 1.0 - dt ) + c1.y() * 2.0 * dt * ( 1.0 - dt ) + x2.y()*dt*dt,
            x1.z()*( 1.0 - dt )*( 1.0 - dt ) + c1.z() * 2.0 * dt * ( 1.0 - dt ) + x2.z()*dt*dt
@@ -1469,11 +1661,11 @@ QgsPointV2 QgsDwgImporter::getQuadPoint( const QgsPointV2& x1, const QgsPointV2&
 
 int QgsDwgImporter::getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool closed, QgsPointV2 &start, QgsPointV2 &control, QgsPointV2 &end ) const
 {
-  size_t n = cps.size();
+  int n = cps.size();
 
-  size_t i1 = iSeg - 1;
-  size_t i2 = iSeg;
-  size_t i3 = iSeg + 1;
+  int i1 = iSeg - 1;
+  int i2 = iSeg;
+  int i3 = iSeg + 1;
 
   if ( closed )
   {
@@ -1484,14 +1676,14 @@ int QgsDwgImporter::getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool
     i2--;
     i3 = ( i3 + n - 1 ) % n;
 
-    start = QgsPointV2( QgsWKBTypes::QgsWKBTypes::PointZ,
+    start = QgsPointV2( QgsWKBTypes::PointZ,
                         ( cps.at( i1 ).x() + cps.at( i2 ).x() ) / 2.0,
                         ( cps.at( i1 ).y() + cps.at( i2 ).y() ) / 2.0,
                         ( cps.at( i1 ).z() + cps.at( i2 ).z() ) / 2.0 );
 
     control = cps.at( i2 );
 
-    end = QgsPointV2( QgsWKBTypes::QgsWKBTypes::PointZ,
+    end = QgsPointV2( QgsWKBTypes::PointZ,
                       ( cps.at( i2 ).x() + cps.at( i3 ).x() ) / 2.0,
                       ( cps.at( i2 ).y() + cps.at( i3 ).y() ) / 2.0,
                       ( cps.at( i2 ).z() + cps.at( i3 ).z() ) / 2.0 );
@@ -1517,14 +1709,14 @@ int QgsDwgImporter::getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool
     if ( n < 4 )
       return 3;
 
-    start = i1 < 1 ? cps.at( 0 ) : QgsPointV2( QgsWKBTypes::QgsWKBTypes::PointZ,
+    start = i1 < 1 ? cps.at( 0 ) : QgsPointV2( QgsWKBTypes::PointZ,
             ( cps.at( i1 ).x() + cps.at( i2 ).x() ) / 2.0,
             ( cps.at( i1 ).y() + cps.at( i2 ).y() ) / 2.0,
             ( cps.at( i1 ).z() + cps.at( i2 ).z() ) / 2.0 );
 
     control = cps.at( i2 );
 
-    end = i3 > n - 2 ?  cps.at( n - 1 ) : QgsPointV2( QgsWKBTypes::QgsWKBTypes::PointZ,
+    end = i3 > n - 2 ?  cps.at( n - 1 ) : QgsPointV2( QgsWKBTypes::PointZ,
           ( cps.at( i2 ).x() + cps.at( i3 ).x() ) / 2.0,
           ( cps.at( i2 ).y() + cps.at( i3 ).y() ) / 2.0,
           ( cps.at( i2 ).z() + cps.at( i3 ).z() ) / 2.0 );
@@ -1551,13 +1743,12 @@ QgsPointSequenceV2 QgsDwgImporter::getStrokePoints( const QgsPointSequenceV2 &cp
 {
   QgsPointSequenceV2 ps;
 
-  size_t iSplines = cps.size();
+  int iSplines = ( int ) cps.size();
   if ( !closed )
     iSplines -= 2;
 
   QgsPointV2 end;
-  bool endSet = false;
-  for ( size_t i = 1; i <= iSplines; ++i )
+  for ( int i = 1; i <= iSplines; ++i )
   {
     QgsPointV2 start, control;
     int iPts = getQuadPoints( i, ps, closed, start, control, end );
@@ -1565,10 +1756,9 @@ QgsPointSequenceV2 QgsDwgImporter::getStrokePoints( const QgsPointSequenceV2 &cp
       strokeQuad( ps, start, control, end );
     else if ( iPts > 1 )
       ps << start;
-    endSet = true;
   }
 
-  if ( !closed && endSet )
+  if ( !closed && iSplines > 0 )
     ps << end;
 
   return ps;
