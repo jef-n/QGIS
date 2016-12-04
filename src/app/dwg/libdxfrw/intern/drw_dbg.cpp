@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include "drw_dbg.h"
+#include <QDebug>
 
 DRW_dbg *DRW_dbg::instance = nullptr;
 
@@ -45,8 +46,6 @@ class print_debug : public print_none
     virtual void printPT( double x, double y, double z );
     print_debug();
     virtual ~print_debug() {}
-  private:
-    std::ios_base::fmtflags flags;
 };
 
 /********* debug class *************/
@@ -63,7 +62,6 @@ DRW_dbg::DRW_dbg()
 {
   level = NONE;
   prClass = new print_none;
-  flags = std::cerr.flags();
 }
 
 void DRW_dbg::setLevel( LEVEL lvl )
@@ -141,52 +139,44 @@ void DRW_dbg::printPT( double x, double y, double z )
 
 print_debug::print_debug()
 {
-  flags = std::cerr.flags();
 }
 
 void print_debug::printS( std::string s )
 {
-  std::cerr << s;
+  qDebug() << QString::fromStdString( s );
 }
 
 void print_debug::printI( long long int i )
 {
-  std::cerr << i;
+  qDebug() << i;
 }
 
 void print_debug::printUI( long long unsigned int i )
 {
-  std::cerr << i;
+  qDebug() << i;
 }
 
 void print_debug::printD( double d )
 {
-  std::cerr << std::fixed << d;
+  qDebug() << QString( "%1 " ).arg( d, 0, 'g' );
 }
 
 void print_debug::printH( long long  i )
 {
-  std::cerr << "0x" << std::setw( 2 ) << std::setfill( '0' );
-  std::cerr << std::hex << i;
-  std::cerr.flags( flags );
+  qDebug() << QString( "0x%1" ).arg( i, 0, 16 );
 }
 
 void print_debug::printB( int i )
 {
-  std::cerr << std::setw( 8 ) << std::setfill( '0' );
-  std::cerr << std::setbase( 2 ) << i;
-  std::cerr.flags( flags );
+  qDebug() << QString( "0%1" ).arg( i, 0, 8 );
 }
 
 void print_debug::printHL( int c, int s, int h )
 {
-  std::cerr << c << '.' << s << '.';
-  std::cerr << "0x" << std::setw( 2 ) << std::setfill( '0' );
-  std::cerr << std::hex << h;
-  std::cerr.flags( flags );
+  qDebug() << QString( "%1.%2 0x%3" ).arg( c ).arg( s ).arg( h, 0, 16 );
 }
 
 void print_debug::printPT( double x, double y, double z )
 {
-  std::cerr << std::fixed << "x: " << x << ", y: " << y << ", z: " << z;
+  qDebug() << QString( "x:%1 y:%2 z:%3" ).arg( x, 0, 'g' ).arg( y, 0, 'g' ).arg( z, 0, 'g' );
 }
