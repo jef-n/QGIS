@@ -55,7 +55,6 @@ class DRW_dbg
     DRW_dbg();
     static DRW_dbg *instance;
     LEVEL level;
-    std::ios_base::fmtflags flags;
     print_none* prClass;
 };
 

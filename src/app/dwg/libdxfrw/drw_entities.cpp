@@ -1023,36 +1023,34 @@ bool DRW_Ellipse::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 //parts are the number of vertices to split the polyline, default 128
 void DRW_Ellipse::toPolyline( DRW_Polyline *pol, int parts ) const
 {
-  double radMajor, radMinor, cosRot, sinRot, incAngle, curAngle;
-  double cosCurr, sinCurr;
-  radMajor = sqrt( secPoint.x * secPoint.x + secPoint.y * secPoint.y );
-  radMinor = radMajor * ratio;
+  double radMajor = sqrt( secPoint.x * secPoint.x + secPoint.y * secPoint.y );
+  double radMinor = radMajor * ratio;
   //calculate sin & cos of included angle
-  incAngle = atan2( secPoint.y, secPoint.x );
-  cosRot = cos( incAngle );
-  sinRot = sin( incAngle );
+  double incAngle = atan2( secPoint.y, secPoint.x );
+  double cosRot = cos( incAngle );
+  double sinRot = sin( incAngle );
+
   incAngle = M_PIx2 / parts;
-  curAngle = staparam;
-  int i = static_cast<int>( curAngle / incAngle );
-  do
+  double curAngle = staparam;
+  double endAngle = endparam;
+  if ( endAngle <= curAngle )
+    endAngle += M_PIx2;
+
+  while ( curAngle < endAngle )
   {
-    if ( curAngle > endparam )
-    {
-      curAngle = endparam;
-      i = parts + 2;
-    }
-    cosCurr = cos( curAngle );
-    sinCurr = sin( curAngle );
-    double x = basePoint.x + ( cosCurr * cosRot * radMajor ) - ( sinCurr * sinRot * radMinor );
-    double y = basePoint.y + ( cosCurr * sinRot * radMajor ) + ( sinCurr * cosRot * radMinor );
+    double cosCurr = cos( curAngle );
+    double sinCurr = sin( curAngle );
+    double x = basePoint.x + cosCurr * cosRot * radMajor - sinCurr * sinRot * radMinor;
+    double y = basePoint.y + cosCurr * sinRot * radMajor + sinCurr * cosRot * radMinor;
     pol->addVertex( DRW_Vertex( x, y, 0.0, 0.0 ) );
-    curAngle = ( ++i ) * incAngle;
+    curAngle += incAngle;
   }
-  while ( i < parts );
-  if ( fabs( endparam - staparam - M_PIx2 ) < 1.0e-10 )
+
+  if ( fabs( endAngle - staparam - M_PIx2 ) < 1.0e-10 )
   {
     pol->flags = 1;
   }
+
   pol->layer = layer;
   pol->lineType = lineType;
   pol->color = color;
@@ -1629,7 +1627,7 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
     {
       double staW = buf->getBitDouble();
       double endW = buf->getBitDouble();
-      if ( vertlist.size() < i )
+      if ( i < vertlist.size() )
       {
         vertlist.at( i )->stawidth = staW;
         vertlist.at( i )->endwidth = endW;
