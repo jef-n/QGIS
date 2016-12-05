@@ -27,6 +27,7 @@
 #include "qgscircularstringv2.h"
 #include "qgscurvepolygonv2.h"
 #include "qgscompoundcurvev2.h"
+#include "qgspolygonv2.h"
 
 #include <QString>
 #include <QStringList>
@@ -39,7 +40,11 @@
 #include <cpl_string.h>
 #include <gdal.h>
 
-#define LOG( x ) QgsMessageLog::logMessage( x, QObject::tr( "DWG/DXF import" ) )
+#ifdef QGISDEBUG
+#include "intern/drw_dbg.h"
+#endif
+
+#define LOG( x ) { QgsDebugMsg( x ); QgsMessageLog::logMessage( x, QObject::tr( "DWG/DXF import" ) ); }
 #define ONCE( x ) { static bool show=true; if( show ) LOG( x ); show=false; }
 #define NYI( x ) { static bool show=true; if( show ) LOG( QObject::tr("Not yet implemented %1").arg( x ) ); show=false; }
 
@@ -389,23 +394,11 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   ENTITY_ATTRIBUTES
                                   << field( "ext", OFTRealList )
                                 )
-                        << table( "lwpolylines", QObject::tr( "LWPOLYLINE entities" ), wkbCompoundCurveZ, QList<field>()  // TODO ZM for width?
+                        << table( "polylines", QObject::tr( "POLYLINE entities" ), wkbCompoundCurveZ, QList<field>()
                                   ENTITY_ATTRIBUTES
                                   << field( "width", OFTReal )
                                   << field( "thickness", OFTReal )
                                   << field( "ext", OFTRealList )
-                                )
-                        << table( "polylines", QObject::tr( "POLYLINE entities" ), wkbCompoundCurveZ, QList<field>()  // TODO ZM for width?
-                                  ENTITY_ATTRIBUTES
-                                  << field( "thickness", OFTReal )
-                                  << field( "ext", OFTRealList )
-                                  << field( "defstawidth", OFTReal )
-                                  << field( "defendwidth", OFTReal )
-                                  << field( "smoothM", OFTInteger )
-                                  << field( "smoothN", OFTInteger )
-                                  << field( "curvetype", OFTInteger )
-                                  << field( "stawidths", OFTRealList )
-                                  << field( "endwidths", OFTRealList )
                                 )
                         << table( "texts", QObject::tr( "TEXT entities" ), wkbPoint25D, QList<field>()
                                   ENTITY_ATTRIBUTES
@@ -553,6 +546,10 @@ bool QgsDwgImporter::import( const QString &drawing )
   OGR_F_Destroy( f );
 
   LOG( QObject::tr( "Updating database from %1 [%2]." ).arg( drawing ).arg( fi.lastModified().toString() ) );
+
+#ifdef QGISDEBUG
+  DRW_DBGSL( DRW_dbg::DEBUG );
+#endif
 
   if ( fi.suffix().toLower() == "dxf" )
   {
@@ -995,7 +992,7 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add arc [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 }
 
@@ -1040,7 +1037,7 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add circle [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 }
 
@@ -1118,48 +1115,240 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
   return true;
 }
 
+
 void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 {
   QgsDebugCall;
+
   int vertexnum = data.vertlist.size();
   if ( vertexnum == 0 )
-    return;
-
-  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lwpolylines" );
-  Q_ASSERT( layer );
-  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
-  Q_ASSERT( dfn );
-  OGRFeatureH f = OGR_F_Create( dfn );
-  Q_ASSERT( f );
-
-  addEntity( dfn, f, data );
-
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), data.width );
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
-
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
-
-  QgsCompoundCurveV2 cc;
-  curveFromLWPolyline( data, cc );
-
-  int binarySize;
-  unsigned char *wkb = cc.asWkb( binarySize );
-  OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
-
+    QgsDebugMsg( "LWPolyline without vertices" );
+    return;
   }
 
-  OGR_F_SetGeometryDirectly( f, geom );
+  QgsPointSequenceV2 s;
+  QgsCompoundCurveV2 cc;
+  double width;
+  bool hadBulge( false );
 
-  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  std::vector<DRW_Vertex2D *>::size_type n = data.flags & 1 ? vertexnum : vertexnum - 1;
+  for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < n; i++ )
   {
-    LOG( QObject::tr( "Could not add line [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    int i0 = i % vertexnum;
+    int i1 = ( i + 1 ) % vertexnum;
+
+    QgsPointV2 p0( QgsWKBTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
+    QgsPointV2 p1( QgsWKBTypes::PointZ, data.vertlist[i1]->x, data.vertlist[i1]->y, data.elevation );
+    double staWidth = data.vertlist[i0]->stawidth == 0.0 ? data.width : data.vertlist[i0]->stawidth;
+    double endWidth = data.vertlist[i0]->endwidth == 0.0 ? data.width : data.vertlist[i0]->endwidth;
+    bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
+
+    QgsDebugMsg( QString( "i:%1,%2/%3 width=%4 staWidth=%5 endWidth=%6 hadBulge=%7 hasBulge=%8 l=%9 <=> %10" )
+                 .arg( i0 ).arg( i1 ).arg( n )
+                 .arg( width ).arg( staWidth ).arg( endWidth )
+                 .arg( hadBulge ).arg( hasBulge )
+                 .arg( p0.asWkt() )
+                 .arg( p1.asWkt() )
+               );
+
+    if ( s.size() > 0 && ( width != staWidth || width != endWidth || hadBulge != hasBulge ) )
+    {
+      if ( hadBulge )
+      {
+        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        c->setPoints( s );
+        QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+        cc.addCurve( c );
+      }
+      else
+      {
+        QgsLineStringV2 *c = new QgsLineStringV2();
+        c->setPoints( s );
+        QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+        cc.addCurve( c );
+      }
+
+      s.clear();
+
+      if ( width != staWidth || width != endWidth )
+      {
+        // write out entity
+        OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
+        Q_ASSERT( layer );
+        OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+        Q_ASSERT( dfn );
+        OGRFeatureH f = OGR_F_Create( dfn );
+        Q_ASSERT( f );
+
+        addEntity( dfn, f, data );
+
+        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+
+        QVector<double> ext( 3 );
+        ext[0] = data.extPoint.x;
+        ext[1] = data.extPoint.y;
+        ext[2] = data.extPoint.z;
+        OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+        QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+
+        int binarySize;
+        unsigned char *wkb = cc.asWkb( binarySize );
+
+        OGRGeometryH geom;
+        if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+        {
+          LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+        }
+
+        OGR_F_SetGeometryDirectly( f, geom );
+        if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+        {
+          LOG( QObject::tr( "Could not add linestring [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+        }
+
+        cc.clear();
+      }
+    }
+
+    if ( staWidth == endWidth )
+    {
+      if ( s.size() == 0 )
+      {
+        s << p0;
+        hadBulge = hasBulge;
+        width = staWidth;
+      }
+
+      if ( hasBulge )
+      {
+        double a = 2.0 * atan( data.vertlist[i]->bulge );
+        double dx = p1.x() - p0.x();
+        double dy = p1.y() - p0.y();
+        double c = sqrt( dx * dx + dy * dy );
+        double r = c / 2.0 / sin( a );
+        double h = r * ( 1 - cos( a ) );
+
+        s << QgsPointV2( QgsWKBTypes::PointZ,
+                         p0.x() + 0.5 * dx + h * dy / c,
+                         p0.y() + 0.5 * dy - h * dx / c,
+                         data.elevation );
+      }
+
+      s << p1;
+    }
+    else
+    {
+      OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
+      Q_ASSERT( layer );
+      OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+      Q_ASSERT( dfn );
+      OGRFeatureH f = OGR_F_Create( dfn );
+      Q_ASSERT( f );
+
+      addEntity( dfn, f, data );
+
+      OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+      QVector<double> ext( 3 );
+      ext[0] = data.extPoint.x;
+      ext[1] = data.extPoint.y;
+      ext[2] = data.extPoint.z;
+      OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+      QgsPoint ps( p0.x(), p0.y() );
+      QgsPoint pe( p1.x(), p1.y() );
+      QgsVector v(( pe - ps ).perpVector().normalized() );
+      QgsVector vs( v * 0.5 * staWidth );
+      QgsVector ve( v * 0.5 * endWidth );
+
+      QgsPolygonV2 poly;
+      QgsLineStringV2 *ls = new QgsLineStringV2();
+      ls->setPoints( QgsPointSequenceV2()
+                     << QgsPointV2( ps + vs )
+                     << QgsPointV2( pe + ve )
+                     << QgsPointV2( pe - ve )
+                     << QgsPointV2( ps - vs )
+                     << QgsPointV2( ps + vs )
+                   );
+      ls->addZValue( data.elevation );
+      poly.setExteriorRing( ls );
+      QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
+
+      int binarySize;
+      unsigned char *wkb = poly.asWkb( binarySize );
+      OGRGeometryH geom;
+      if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+      {
+        LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      }
+
+      OGR_F_SetGeometryDirectly( f, geom );
+
+      if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+      {
+        LOG( QObject::tr( "Could not add polygon [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      }
+    }
+  }
+
+  if ( s.size() > 0 )
+  {
+    if ( hadBulge )
+    {
+      QgsCircularStringV2 *c = new QgsCircularStringV2();
+      c->setPoints( s );
+      QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+      cc.addCurve( c );
+    }
+    else
+    {
+      QgsLineStringV2 *c = new QgsLineStringV2();
+      c->setPoints( s );
+      QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+      cc.addCurve( c );
+    }
+  }
+
+  if ( cc.nCurves() > 0 )
+  {
+    // write out entity
+    OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
+    Q_ASSERT( layer );
+    OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+    Q_ASSERT( dfn );
+    OGRFeatureH f = OGR_F_Create( dfn );
+    Q_ASSERT( f );
+
+    addEntity( dfn, f, data );
+
+    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+
+    QVector<double> ext( 3 );
+    ext[0] = data.extPoint.x;
+    ext[1] = data.extPoint.y;
+    ext[2] = data.extPoint.z;
+    OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+    QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+
+    int binarySize;
+    unsigned char *wkb = cc.asWkb( binarySize );
+
+    OGRGeometryH geom;
+    if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+    {
+      LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    }
+
+    OGR_F_SetGeometryDirectly( f, geom );
+    if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+    {
+      LOG( QObject::tr( "Could not add linestring [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    }
   }
 }
 
@@ -1174,63 +1363,234 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     return;
   }
 
-  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
-  Q_ASSERT( layer );
-  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
-  Q_ASSERT( dfn );
-  OGRFeatureH f = OGR_F_Create( dfn );
-  Q_ASSERT( f );
+  QgsPointSequenceV2 s;
+  QgsCompoundCurveV2 cc;
+  double width;
+  bool hadBulge( false );
 
-  addEntity( dfn, f, data );
-
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
-
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
-
-  QgsDebugMsg( QString( "handle:0x%1 defstawidth:%2 defendwidth:%3" ).arg( data.handle, 0, 16 ).arg( data.defstawidth ).arg( data.defendwidth ) );
-
-  if ( data.defstawidth == data.defendwidth )
-  {
-  }
-
-  std::vector<DRW_Vertex *>::size_type n = data.flags & 1 ? vertexnum + 1 : vertexnum;
-  for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < n; i++ )
+  std::vector<DRW_Vertex *>::size_type n = data.flags & 1 ? vertexnum : vertexnum - 1;
+  for ( std::vector<DRW_Vertex *>::size_type i = 0; i < n; i++ )
   {
     int i0 = i % vertexnum;
-    const DRW_Vertex *v( data.vertlist[i0] );
-    QgsDebugMsg( QString( "i:%1 stawidth:%2 endwidth:%3" ).arg( i ).arg( v->stawidth ).arg( v->endwidth ) );
+    int i1 = ( i + 1 ) % vertexnum;
+
+    QgsPointV2 p0( QgsWKBTypes::PointZ, data.vertlist[i0]->basePoint.x, data.vertlist[i0]->basePoint.y, data.vertlist[i0]->basePoint.z );
+    QgsPointV2 p1( QgsWKBTypes::PointZ, data.vertlist[i1]->basePoint.x, data.vertlist[i1]->basePoint.y, data.vertlist[i1]->basePoint.z );
+    double staWidth = data.vertlist[i0]->endwidth == 0.0 ? data.defendwidth : data.vertlist[i0]->stawidth;
+    double endWidth = data.vertlist[i0]->stawidth == 0.0 ? data.defstawidth : data.vertlist[i0]->endwidth;
+    bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
+
+    QgsDebugMsg( QString( "i:%1,%2/%3 width=%4 staWidth=%5 endWidth=%6 hadBulge=%7 hasBulge=%8 l=%9 <=> %10" )
+                 .arg( i0 ).arg( i1 ).arg( n )
+                 .arg( width ).arg( staWidth ).arg( endWidth )
+                 .arg( hadBulge ).arg( hasBulge )
+                 .arg( p0.asWkt() )
+                 .arg( p1.asWkt() )
+               );
+
+    if ( s.size() > 0 && ( width != staWidth || width != endWidth || hadBulge != hasBulge ) )
+    {
+      if ( hadBulge )
+      {
+        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        c->setPoints( s );
+        QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+        cc.addCurve( c );
+      }
+      else
+      {
+        QgsLineStringV2 *c = new QgsLineStringV2();
+        c->setPoints( s );
+        QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+        cc.addCurve( c );
+      }
+
+      s.clear();
+
+      if ( width != staWidth || width != endWidth )
+      {
+        // write out entity
+        OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
+        Q_ASSERT( layer );
+        OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+        Q_ASSERT( dfn );
+        OGRFeatureH f = OGR_F_Create( dfn );
+        Q_ASSERT( f );
+
+        addEntity( dfn, f, data );
+
+        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+
+        QVector<double> ext( 3 );
+        ext[0] = data.extPoint.x;
+        ext[1] = data.extPoint.y;
+        ext[2] = data.extPoint.z;
+        OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+        QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+
+        int binarySize;
+        unsigned char *wkb = cc.asWkb( binarySize );
+
+        OGRGeometryH geom;
+        if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+        {
+          LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+        }
+
+        OGR_F_SetGeometryDirectly( f, geom );
+        if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+        {
+          LOG( QObject::tr( "Could not add linestring [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+        }
+
+        cc.clear();
+      }
+    }
+
+    if ( staWidth == endWidth )
+    {
+      if ( s.size() == 0 )
+      {
+        s << p0;
+        hadBulge = hasBulge;
+        width = staWidth;
+      }
+
+      if ( hasBulge )
+      {
+        double a = 2.0 * atan( data.vertlist[i]->bulge );
+        double dx = p1.x() - p0.x();
+        double dy = p1.y() - p0.y();
+        double dz = p1.z() - p0.z();
+        double c = sqrt( dx * dx + dy * dy );
+        double r = c / 2.0 / sin( a );
+        double h = r * ( 1 - cos( a ) );
+
+        s << QgsPointV2( QgsWKBTypes::PointZ,
+                         p0.x() + 0.5 * dx + h * dy / c,
+                         p0.y() + 0.5 * dy - h * dx / c,
+                         p0.z() + 0.5 * dz );
+      }
+
+      s << p1;
+    }
+    else
+    {
+      OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
+      Q_ASSERT( layer );
+      OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+      Q_ASSERT( dfn );
+      OGRFeatureH f = OGR_F_Create( dfn );
+      Q_ASSERT( f );
+
+      addEntity( dfn, f, data );
+
+      OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+      QVector<double> ext( 3 );
+      ext[0] = data.extPoint.x;
+      ext[1] = data.extPoint.y;
+      ext[2] = data.extPoint.z;
+      OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+      QgsPoint ps( p0.x(), p0.y() );
+      QgsPoint pe( p1.x(), p1.y() );
+      QgsVector v(( pe - ps ).perpVector().normalized() );
+      QgsVector vs( v * 0.5 * staWidth );
+      QgsVector ve( v * 0.5 * endWidth );
+
+      QgsPolygonV2 poly;
+      QgsLineStringV2 *ls = new QgsLineStringV2();
+      QgsPointSequenceV2 s;
+      s << QgsPointV2( ps + vs );
+      s.last().addZValue( p0.z() );
+      s << QgsPointV2( pe + ve );
+      s.last().addZValue( p1.z() );
+      s << QgsPointV2( pe - ve );
+      s.last().addZValue( p1.z() );
+      s << QgsPointV2( ps - vs );
+      s.last().addZValue( p0.z() );
+      s << QgsPointV2( ps + vs );
+      s.last().addZValue( p0.z() );
+      ls->setPoints( s );
+      poly.setExteriorRing( ls );
+      QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
+
+      int binarySize;
+      unsigned char *wkb = poly.asWkb( binarySize );
+      OGRGeometryH geom;
+      if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+      {
+        LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      }
+
+      OGR_F_SetGeometryDirectly( f, geom );
+
+      if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+      {
+        LOG( QObject::tr( "Could not add polygon [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      }
+    }
   }
 
-#if 0
-  QgsCompoundCurveV2 c;
-
-  QgsCircularStringV2 c;
-  c.setPoints( QgsPointSequenceV2()
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + data.mRadius, data.basePoint.y, data.basePoint.z )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
-             );
-
-  int binarySize;
-  unsigned char *wkb = c.asWkb( binarySize );
-  OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( s.size() > 0 )
   {
-    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
-
+    if ( hadBulge )
+    {
+      QgsCircularStringV2 *c = new QgsCircularStringV2();
+      c->setPoints( s );
+      QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+      cc.addCurve( c );
+    }
+    else
+    {
+      QgsLineStringV2 *c = new QgsLineStringV2();
+      c->setPoints( s );
+      QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+      cc.addCurve( c );
+    }
   }
 
-  OGR_F_SetGeometryDirectly( f, geom );
-
-  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  if ( cc.nCurves() > 0 )
   {
-    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    // write out entity
+    OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
+    Q_ASSERT( layer );
+    OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+    Q_ASSERT( dfn );
+    OGRFeatureH f = OGR_F_Create( dfn );
+    Q_ASSERT( f );
+
+    addEntity( dfn, f, data );
+
+    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+
+    QVector<double> ext( 3 );
+    ext[0] = data.extPoint.x;
+    ext[1] = data.extPoint.y;
+    ext[2] = data.extPoint.z;
+    OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+    QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+
+    int binarySize;
+    unsigned char *wkb = cc.asWkb( binarySize );
+
+    OGRGeometryH geom;
+    if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+    {
+      LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    }
+
+    OGR_F_SetGeometryDirectly( f, geom );
+    if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+    {
+      LOG( QObject::tr( "Could not add linestring [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    }
   }
-#endif
 }
 
 void QgsDwgImporter::addSpline( const DRW_Spline *data )
@@ -1308,9 +1668,56 @@ void QgsDwgImporter::add3dFace( const DRW_3Dface &data )
 
 void QgsDwgImporter::addSolid( const DRW_Solid &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "SOLID entities" ) );
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+  QVector<double> ext( 3 );
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
+  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "hpattern" ), "SOLID" );
+
+  QgsPolygonV2 poly;
+
+  // pt1 pt2
+  // pt3 pt4
+  QgsPointSequenceV2 s;
+  s << QgsPointV2( QgsWKBTypes::PointZ,   data.basePoint.x,   data.basePoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWKBTypes::PointZ,    data.secPoint.x,    data.secPoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWKBTypes::PointZ, data.fourthPoint.x, data.fourthPoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWKBTypes::PointZ,  data.thirdPoint.x,  data.thirdPoint.y, data.basePoint.z );
+  s << s[0];
+
+  QgsLineStringV2 *ls = new QgsLineStringV2();
+  ls->setPoints( s );
+  poly.setExteriorRing( ls );
+
+  int binarySize;
+  unsigned char *wkb = poly.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add polygon [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
 }
 
 void QgsDwgImporter::addMText( const DRW_MText &data )
@@ -1522,7 +1929,7 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add polygon [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 }
 
