@@ -111,6 +111,9 @@ class QgsDwgImporter : public DRW_Interface
     /** Called for every Text entity. */
     void addText( const DRW_Text& data ) override;
 
+    /** Called for every dimension entity. */
+    void addDim( const DRW_Dimension *data );
+
     /** Called for every aligned dimension entity. */
     void addDimAlign( const DRW_DimAligned *data ) override;
 

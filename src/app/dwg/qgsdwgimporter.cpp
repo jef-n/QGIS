@@ -413,6 +413,7 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "textgen", OFTInteger )
                                   << field( "alignh", OFTInteger )
                                   << field( "alignv", OFTInteger )
+                                  << field( "interlin", OFTReal )
                                 )
                         << table( "hatches", QObject::tr( "HATCH entities" ), wkbCurvePolygon, QList<field>()
                                   ENTITY_ATTRIBUTES
@@ -427,6 +428,20 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "angle", OFTReal )
                                   << field( "scale", OFTReal )
                                   << field( "deflines", OFTInteger )
+                                )
+                        << table( "inserts", QObject::tr( "INSERT entities" ), wkbPoint25D, QList<field>()
+                                  ENTITY_ATTRIBUTES
+                                  << field( "thickness", OFTReal )
+                                  << field( "ext", OFTRealList )
+                                  << field( "name", OFTString )
+                                  << field( "xscale", OFTReal )
+                                  << field( "yscale", OFTReal )
+                                  << field( "zscale", OFTReal )
+                                  << field( "angle", OFTReal )
+                                  << field( "colcount", OFTReal )
+                                  << field( "rowcount", OFTReal )
+                                  << field( "colspace", OFTReal )
+                                  << field( "rowspace", OFTReal )
                                 )
                         ;
 
@@ -1647,9 +1662,59 @@ void QgsDwgImporter::addKnot( const DRW_Entity &data )
 
 void QgsDwgImporter::addInsert( const DRW_Insert &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "INSERT entities" ) );
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "inserts" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+
+  QVector<double> ext( 3 );
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
+  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
+#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
+#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
+
+  SETSTRING( name );
+  SETDOUBLE( xscale );
+  SETDOUBLE( yscale );
+  SETDOUBLE( zscale );
+  SETDOUBLE( angle );
+  SETINTEGER( colcount );
+  SETINTEGER( rowcount );
+  SETDOUBLE( colspace );
+  SETDOUBLE( rowspace );
+
+#undef SETSTRING
+#undef SETDOUBLE
+#undef SETINTEGER
+
+  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  int binarySize;
+  unsigned char *wkb = p.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add point [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
 }
 
 void QgsDwgImporter::addTrace( const DRW_Trace &data )
@@ -1722,9 +1787,60 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
 void QgsDwgImporter::addMText( const DRW_MText &data )
 {
-  Q_UNUSED( data );
   QgsDebugCall;
-  NYI( QObject::tr( "MTEXT entities" ) );
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "texts" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
+#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
+#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
+
+  SETDOUBLE( height );
+  SETSTRING( text );
+  SETDOUBLE( angle );
+  SETDOUBLE( widthscale );
+  SETDOUBLE( oblique );
+  SETSTRING( style );
+  SETINTEGER( textgen );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignh" ), data.alignH );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignv" ), data.alignV );
+  SETDOUBLE( thickness );
+  SETDOUBLE( interlin );
+
+#undef SETSTRING
+#undef SETDOUBLE
+#undef SETINTEGER
+
+  QVector<double> ext( 3 );
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
+  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+
+  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+
+  int binarySize;
+  unsigned char *wkb = p.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add line [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
 }
 
 void QgsDwgImporter::addText( const DRW_Text &data )
@@ -1754,6 +1870,7 @@ void QgsDwgImporter::addText( const DRW_Text &data )
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignh" ), data.alignH );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignv" ), data.alignV );
   SETDOUBLE( thickness );
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "interlin" ), -1.0 );
 
 #undef SETSTRING
 #undef SETDOUBLE
