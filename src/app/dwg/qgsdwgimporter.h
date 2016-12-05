@@ -171,6 +171,7 @@ class QgsDwgImporter : public DRW_Interface
     OGRLayerH query( QString sql );
 
     void addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data );
+    QString colorString( int color, int color24, int transparancy = 0 );
 
     QgsPointSequenceV2 getStrokePoints( const QgsPointSequenceV2 &cps, bool closed ) const;
     void strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const;
