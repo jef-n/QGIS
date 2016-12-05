@@ -263,9 +263,7 @@ bool QgsDwgImporter::import( const QString &drawing )
   << field( "space", OFTInteger ) \
   << field( "layer", OFTString ) \
   << field( "linetype", OFTString ) \
-  << field( "color", OFTInteger ) \
-  << field( "color24", OFTInteger ) \
-  << field( "transparency", OFTInteger ) \
+  << field( "color", OFTString ) \
   << field( "lweight", OFTInteger ) \
   << field( "ltscale", OFTReal ) \
   << field( "visible", OFTInteger )
@@ -289,8 +287,7 @@ bool QgsDwgImporter::import( const QString &drawing )
                         << table( "layers", QObject::tr( "Layer list" ), wkbNone, QList<field>()
                                   << field( "name", OFTString )
                                   << field( "linetype", OFTString )
-                                  << field( "color", OFTInteger )
-                                  << field( "color24", OFTInteger )
+                                  << field( "color", OFTString )
                                   << field( "lweight", OFTInteger )
                                 )
                         << table( "dimstyles", QObject::tr( "Dimension styles" ), wkbNone, QList<field>()
@@ -694,6 +691,26 @@ void QgsDwgImporter::addLType( const DRW_LType &data )
   OGR_F_Destroy( f );
 }
 
+QString QgsDwgImporter::colorString( int color, int color24, int transparency )
+{
+  if ( color24 == -1 )
+  {
+    return QString( "%1,%2,%3,%4" )
+           .arg( DRW::dxfColors[ color ][0] )
+           .arg( DRW::dxfColors[ color ][1] )
+           .arg( DRW::dxfColors[ color ][2] )
+           .arg( 255 - ( transparency & 0xff ) );
+  }
+  else
+  {
+    return QString( "%1,%2,%3,%4" )
+           .arg(( color24 & 0xff0000 ) >> 16 )
+           .arg(( color24 & 0x00ff00 ) >> 8 )
+           .arg(( color24 & 0x0000ff ) )
+           .arg( 255 - ( transparency & 0xff ) );
+  }
+}
+
 void QgsDwgImporter::addLayer( const DRW_Layer &data )
 {
   QgsDebugCall;
@@ -707,8 +724,7 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
 
   OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "name" ), QString::fromStdString( data.name ).toUtf8().constData() );
   OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "linetype" ), QString::fromStdString( data.lineType ).toUtf8().constData() );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "color" ), data.color );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "color24" ), data.color24 );
+  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, 0 ).toUtf8().constData() );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ),  DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
@@ -897,9 +913,7 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
   SETINTEGER( space );
   SETSTRING( layer );
   SETSTRING( lineType );
-  SETINTEGER( color );
-  SETINTEGER( color24 );
-  SETINTEGER( transparency );
+  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, data.transparency ).toUtf8().constData() );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), data.lWeight );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ltscale" ), data.ltypeScale );
   SETINTEGER( visible );
