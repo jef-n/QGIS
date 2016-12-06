@@ -47,6 +47,9 @@
 #define LOG( x ) { QgsDebugMsg( x ); QgsMessageLog::logMessage( x, QObject::tr( "DWG/DXF import" ) ); }
 #define ONCE( x ) { static bool show=true; if( show ) LOG( x ); show=false; }
 #define NYI( x ) { static bool show=true; if( show ) LOG( QObject::tr("Not yet implemented %1").arg( x ) ); show=false; }
+#define SETSTRING(a)  setString(dfn, f, #a, data.a)
+#define SETDOUBLE(a)  setDouble(dfn, f, #a, data.a)
+#define SETINTEGER(a) setInteger(dfn, f, #a, data.a)
 
 
 QgsDwgImporter::QgsDwgImporter( const QString &database )
@@ -265,6 +268,7 @@ bool QgsDwgImporter::import( const QString &drawing )
   << field( "linetype", OFTString ) \
   << field( "color", OFTString ) \
   << field( "lweight", OFTInteger ) \
+  << field( "linewidth", OFTReal ) \
   << field( "ltscale", OFTReal ) \
   << field( "visible", OFTInteger )
 
@@ -289,6 +293,7 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "linetype", OFTString )
                                   << field( "color", OFTString )
                                   << field( "lweight", OFTInteger )
+                                  << field( "linewidth", OFTReal )
                                 )
                         << table( "dimstyles", QObject::tr( "Dimension styles" ), wkbNone, QList<field>()
                                   << field( "name", OFTString )
@@ -677,8 +682,8 @@ void QgsDwgImporter::addLType( const DRW_LType &data )
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
 
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "name" ), QString::fromStdString( data.name ).toUtf8().constData() );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "desc" ), QString::fromStdString( data.desc ).toUtf8().constData() );
+  SETSTRING( name );
+  SETSTRING( desc );
 
   QVector<double> path( QVector<double>::fromStdVector( data.path ) );
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "path" ), path.size(), path.data() );
@@ -691,15 +696,32 @@ void QgsDwgImporter::addLType( const DRW_LType &data )
   OGR_F_Destroy( f );
 }
 
-QString QgsDwgImporter::colorString( int color, int color24, int transparency )
+QString QgsDwgImporter::colorString( int color, int color24, int transparency, const std::string &layer ) const
 {
+  QgsDebugMsg( QString( "colorString(color=%1, color24=0x%2, transparency=0x%3 layer=%4" )
+               .arg( color )
+               .arg( color24, 0, 16 )
+               .arg( transparency, 0, 16 )
+               .arg( QString::fromStdString( layer ) ) );
   if ( color24 == -1 )
   {
-    return QString( "%1,%2,%3,%4" )
-           .arg( DRW::dxfColors[ color ][0] )
-           .arg( DRW::dxfColors[ color ][1] )
-           .arg( DRW::dxfColors[ color ][2] )
-           .arg( 255 - ( transparency & 0xff ) );
+    if ( color == 0 )
+    {
+      NYI( QObject::tr( "color by block" ) );
+      return "0,0,0,255";
+    }
+    else if ( color == 256 )
+    {
+      return mLayerColor.value( QString::fromStdString( layer ), "0,0,0,255" );
+    }
+    else
+    {
+      return QString( "%1,%2,%3,%4" )
+             .arg( DRW::dxfColors[ color ][0] )
+             .arg( DRW::dxfColors[ color ][1] )
+             .arg( DRW::dxfColors[ color ][2] )
+             .arg( 255 - ( transparency & 0xff ) );
+    }
   }
   else
   {
@@ -722,10 +744,18 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
 
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "name" ), QString::fromStdString( data.name ).toUtf8().constData() );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "linetype" ), QString::fromStdString( data.lineType ).toUtf8().constData() );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, 0 ).toUtf8().constData() );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ),  DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
+  SETSTRING( name );
+  SETSTRING( lineType );
+
+  QString color = colorString( data.color, data.color24, 0, "" ).toUtf8().constData();  // TODO layer transparency?
+  mLayerColor.insert( QString::fromStdString( data.name ), color );
+
+  double linewidth = lineWidth( data.lWeight, "" );
+  mLayerLinewidth.insert( QString::fromStdString( data.name ), linewidth );
+
+  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), color.toUtf8().constData() );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lwidth" ), linewidth );
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
@@ -733,6 +763,91 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
   }
 
   OGR_F_Destroy( f );
+}
+
+void QgsDwgImporter::setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const std::string &value ) const
+{
+  int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
+  Q_ASSERT( idx >= 0 );
+  OGR_F_SetFieldString( f, idx, QString::fromStdString( value ).toUtf8().constData() );
+}
+
+void QgsDwgImporter::setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const
+{
+  int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
+  Q_ASSERT( idx >= 0 );
+  OGR_F_SetFieldDouble( f, idx, value );
+}
+
+void QgsDwgImporter::setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const
+{
+  int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
+  Q_ASSERT( idx >= 0 );
+  OGR_F_SetFieldInteger( f, idx, value );
+}
+
+double QgsDwgImporter::lineWidth( int lWeight, const std::string &layer ) const
+{
+  switch ( lWeight )
+  {
+    case 0:
+      return 0.00;
+    case 1:
+      return 0.05;
+    case 2:
+      return 0.09;
+    case 3:
+      return 0.13;
+    case 4:
+      return 0.15;
+    case 5:
+      return 0.18;
+    case 6:
+      return 0.20;
+    case 7:
+      return 0.25;
+    case 8:
+      return 0.30;
+    case 9:
+      return 0.35;
+    case 10:
+      return 0.40;
+    case 11:
+      return 0.50;
+    case 12:
+      return 0.53;
+    case 13:
+      return 0.60;
+    case 14:
+      return 0.70;
+    case 15:
+      return 0.80;
+    case 16:
+      return 0.90;
+    case 17:
+      return 1.00;
+    case 18:
+      return 1.06;
+    case 19:
+      return 1.20;
+    case 20:
+      return 1.40;
+    case 21:
+      return 1.58;
+    case 22:
+      return 2.00;
+    case 23:
+      return 2.11;
+    case 29:
+      return mLayerLinewidth.value( QString::fromStdString( layer ), 0.0 );
+    case 30:
+      NYI( QObject::tr( "Line width by block" ) );
+      return 0.0;
+    case 31:
+    default:
+      NYI( QObject::tr( "Line width default" ) );
+      return 0.0;
+  }
 }
 
 void QgsDwgImporter::addDimStyle( const DRW_Dimstyle &data )
@@ -745,10 +860,6 @@ void QgsDwgImporter::addDimStyle( const DRW_Dimstyle &data )
   Q_ASSERT( dfn );
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
-
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
 
   SETSTRING( name );
   SETSTRING( dimpost );
@@ -820,10 +931,6 @@ void QgsDwgImporter::addDimStyle( const DRW_Dimstyle &data )
   SETINTEGER( dimlwd );
   SETINTEGER( dimlwe );
 
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
-
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not add add layer %1 [%2]" ).arg( QString::fromStdString( data.name ), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
@@ -849,10 +956,6 @@ void QgsDwgImporter::addTextStyle( const DRW_Textstyle &data )
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
 
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-
   SETSTRING( name );
   SETDOUBLE( height );
   SETDOUBLE( width );
@@ -862,11 +965,6 @@ void QgsDwgImporter::addTextStyle( const DRW_Textstyle &data )
   SETSTRING( font );
   SETSTRING( bigFont );
   SETINTEGER( fontFamily );
-
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
-
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
@@ -903,24 +1001,17 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
 {
   QgsDebugCall;
 
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-
   QgsDebugMsg( QString( "handle:0x%1" ).arg( data.handle, 0, 16 ) );
   SETINTEGER( handle );
-  SETINTEGER( eType );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "etype" ), data.eType );
   SETINTEGER( space );
   SETSTRING( layer );
   SETSTRING( lineType );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, data.transparency ).toUtf8().constData() );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), data.lWeight );
+  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, data.transparency, data.layer ).toUtf8().constData() );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
+  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "linewidth" ), lineWidth( data.lWeight, data.layer ) );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ltscale" ), data.ltypeScale );
   SETINTEGER( visible );
-
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
 }
 
 void QgsDwgImporter::addPoint( const DRW_Point &data )
@@ -936,7 +1027,7 @@ void QgsDwgImporter::addPoint( const DRW_Point &data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -989,7 +1080,7 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -1038,7 +1129,7 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -1212,8 +1303,8 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
         addEntity( dfn, f, data );
 
-        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
-        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+        SETDOUBLE( thickness );
+        SETDOUBLE( width );
 
         QVector<double> ext( 3 );
         ext[0] = data.extPoint.x;
@@ -1279,7 +1370,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
       addEntity( dfn, f, data );
 
-      OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+      SETDOUBLE( thickness );
 
       QVector<double> ext( 3 );
       ext[0] = data.extPoint.x;
@@ -1353,8 +1444,8 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
     addEntity( dfn, f, data );
 
-    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
-    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+    SETDOUBLE( thickness );
+    SETDOUBLE( width );
 
     QVector<double> ext( 3 );
     ext[0] = data.extPoint.x;
@@ -1448,7 +1539,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
         addEntity( dfn, f, data );
 
-        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+        SETDOUBLE( thickness );
         OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
 
         QVector<double> ext( 3 );
@@ -1516,7 +1607,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
       addEntity( dfn, f, data );
 
-      OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+      SETDOUBLE( thickness );
 
       QVector<double> ext( 3 );
       ext[0] = data.extPoint.x;
@@ -1594,7 +1685,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
     addEntity( dfn, f, data );
 
-    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+    SETDOUBLE( thickness );
     OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
 
     QVector<double> ext( 3 );
@@ -1687,17 +1778,13 @@ void QgsDwgImporter::addInsert( const DRW_Insert &data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
   ext[1] = data.extPoint.y;
   ext[2] = data.extPoint.z;
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
-
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
 
   SETSTRING( name );
   SETDOUBLE( xscale );
@@ -1708,10 +1795,6 @@ void QgsDwgImporter::addInsert( const DRW_Insert &data )
   SETINTEGER( rowcount );
   SETDOUBLE( colspace );
   SETDOUBLE( rowspace );
-
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
 
   QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
   int binarySize;
@@ -1758,7 +1841,7 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -1812,10 +1895,6 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
 
   addEntity( dfn, f, data );
 
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-
   SETDOUBLE( height );
   SETSTRING( text );
   SETDOUBLE( angle );
@@ -1823,14 +1902,10 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
   SETDOUBLE( oblique );
   SETSTRING( style );
   SETINTEGER( textgen );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignh" ), data.alignH );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignv" ), data.alignV );
+  SETINTEGER( alignH );
+  SETINTEGER( alignV );
   SETDOUBLE( thickness );
   SETDOUBLE( interlin );
-
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -1870,9 +1945,6 @@ void QgsDwgImporter::addText( const DRW_Text &data )
 
   addEntity( dfn, f, data );
 
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data.a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data.a )
 
   SETDOUBLE( height );
   SETSTRING( text );
@@ -1881,14 +1953,10 @@ void QgsDwgImporter::addText( const DRW_Text &data )
   SETDOUBLE( oblique );
   SETSTRING( style );
   SETINTEGER( textgen );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignh" ), data.alignH );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "alignv" ), data.alignV );
+  SETINTEGER( alignH );
+  SETINTEGER( alignV );
   SETDOUBLE( thickness );
   OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "interlin" ), -1.0 );
-
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
@@ -1970,9 +2038,10 @@ void QgsDwgImporter::addLeader( const DRW_Leader *data )
   NYI( QObject::tr( "LEADER entities" ) );
 }
 
-void QgsDwgImporter::addHatch( const DRW_Hatch *data )
+void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 {
-  Q_ASSERT( data != nullptr );
+  Q_ASSERT( pdata != nullptr );
+  const DRW_Hatch &data = *pdata;
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
@@ -1982,19 +2051,15 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *data )
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
 
-  addEntity( dfn, f, *data );
+  addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data->thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
-  ext[0] = data->extPoint.x;
-  ext[1] = data->extPoint.y;
-  ext[2] = data->extPoint.z;
+  ext[0] = data.extPoint.x;
+  ext[1] = data.extPoint.y;
+  ext[2] = data.extPoint.z;
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
-
-#define SETSTRING(a)  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, #a ), QString::fromStdString( data->a ).toUtf8().constData() )
-#define SETDOUBLE(a)  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, #a ), data->a )
-#define SETINTEGER(a) OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, #a ), data->a )
 
   SETSTRING( name );
   SETINTEGER( solid );
@@ -2006,17 +2071,13 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *data )
   SETDOUBLE( scale );
   SETINTEGER( deflines );
 
-#undef SETSTRING
-#undef SETDOUBLE
-#undef SETINTEGER
-
   QgsCurvePolygonV2 p;
 
-  Q_ASSERT( data->looplist.size() == data->loopsnum );
+  Q_ASSERT( data.looplist.size() == data.loopsnum );
 
-  for ( std::vector<DRW_HatchLoop *>::size_type i = 0; i < data->loopsnum; i++ )
+  for ( std::vector<DRW_HatchLoop *>::size_type i = 0; i < data.loopsnum; i++ )
   {
-    const DRW_HatchLoop &hatchLoop = *data->looplist[i];
+    const DRW_HatchLoop &hatchLoop = *data.looplist[i];
 
     // TODO when do we get more than one hatch loop?
     Q_ASSERT( hatchLoop.objlist.size() == 1 );
@@ -2077,7 +2138,7 @@ void QgsDwgImporter::addLine( const DRW_Line& data )
 
   addEntity( dfn, f, data );
 
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "thickness" ), data.thickness );
+  SETDOUBLE( thickness );
 
   QVector<double> ext( 3 );
   ext[0] = data.extPoint.x;
