@@ -55,7 +55,7 @@
 QgsDwgImporter::QgsDwgImporter( const QString &database )
     : mDs( nullptr )
     , mDatabase( database )
-    , mInTransaction( true )
+    , mInTransaction( false )
     , mSplineSegs( 8 )
 {
   QgsDebugCall;
@@ -223,12 +223,14 @@ bool QgsDwgImporter::import( const QString &drawing )
 
     QDateTime lastModified( QDate( year, month, day ), QTime( hour, minute, second ) );
 
+#if 0
     if ( path == fi.canonicalPath() && fi.lastModified() <= lastModified )
     {
       LOG( QObject::tr( "Drawing already uptodate in database." ) );
       OGR_F_Destroy( f );
       return true;
     }
+#endif
 
     OGR_DS_Destroy( mDs );
     mDs = nullptr;
@@ -394,6 +396,7 @@ bool QgsDwgImporter::import( const QString &drawing )
                                 )
                         << table( "lines", QObject::tr( "LINE entities" ), wkbLineString25D, QList<field>()
                                   ENTITY_ATTRIBUTES
+                                  << field( "thickness", OFTReal )
                                   << field( "ext", OFTRealList )
                                 )
                         << table( "polylines", QObject::tr( "POLYLINE entities" ), wkbCompoundCurveZ, QList<field>()
@@ -564,10 +567,6 @@ bool QgsDwgImporter::import( const QString &drawing )
 
   LOG( QObject::tr( "Updating database from %1 [%2]." ).arg( drawing ).arg( fi.lastModified().toString() ) );
 
-#ifdef QGISDEBUG
-  DRW_DBGSL( DRW_dbg::DEBUG );
-#endif
-
   if ( fi.suffix().toLower() == "dxf" )
   {
     //loads dxf
@@ -578,6 +577,9 @@ bool QgsDwgImporter::import( const QString &drawing )
   {
     //loads dwg
     QSharedPointer<dwgR> dwg( new dwgR( drawing.toUtf8() ) );
+#ifdef QGISDEBUG
+    DRW_DBGSL( DRW_dbg::DEBUG );
+#endif
     return dwg->read( this, false );
   }
   else
@@ -747,7 +749,7 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
   SETSTRING( name );
   SETSTRING( lineType );
 
-  QString color = colorString( data.color, data.color24, 0, "" ).toUtf8().constData();  // TODO layer transparency?
+  QString color = colorString( data.color, data.color24, data.transparency, "" ).toUtf8().constData();
   mLayerColor.insert( QString::fromStdString( data.name ), color );
 
   double linewidth = lineWidth( data.lWeight, "" );
@@ -768,21 +770,33 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
 void QgsDwgImporter::setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const std::string &value ) const
 {
   int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
-  Q_ASSERT( idx >= 0 );
+  if ( idx < 0 )
+  {
+    LOG( QObject::tr( "Field %1 not found" ).arg( field ) );
+    return;
+  }
   OGR_F_SetFieldString( f, idx, QString::fromStdString( value ).toUtf8().constData() );
 }
 
 void QgsDwgImporter::setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const
 {
   int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
-  Q_ASSERT( idx >= 0 );
+  if ( idx < 0 )
+  {
+    LOG( QObject::tr( "Field %1 not found" ).arg( field ) );
+    return;
+  }
   OGR_F_SetFieldDouble( f, idx, value );
 }
 
 void QgsDwgImporter::setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const
 {
   int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
-  Q_ASSERT( idx >= 0 );
+  if ( idx < 0 )
+  {
+    LOG( QObject::tr( "Field %1 not found" ).arg( field ) );
+    return;
+  }
   OGR_F_SetFieldInteger( f, idx, value );
 }
 
@@ -1945,7 +1959,6 @@ void QgsDwgImporter::addText( const DRW_Text &data )
 
   addEntity( dfn, f, data );
 
-
   SETDOUBLE( height );
   SETSTRING( text );
   SETDOUBLE( angle );
@@ -1964,7 +1977,7 @@ void QgsDwgImporter::addText( const DRW_Text &data )
   ext[2] = data.extPoint.z;
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  QgsPointV2 p( QgsWKBTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z );
 
   int binarySize;
   unsigned char *wkb = p.asWkb( binarySize );
@@ -2079,32 +2092,43 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
   {
     const DRW_HatchLoop &hatchLoop = *data.looplist[i];
 
-    // TODO when do we get more than one hatch loop?
-    Q_ASSERT( hatchLoop.objlist.size() == 1 );
+    QgsCompoundCurveV2 *cc = new QgsCompoundCurveV2();
+
     for ( std::vector<DRW_Entity *>::size_type j = 0;  j < hatchLoop.objlist.size(); j++ )
     {
       Q_ASSERT( hatchLoop.objlist[j] );
       const DRW_Entity *entity = hatchLoop.objlist[j];
 
       const DRW_LWPolyline *lwp = dynamic_cast<const DRW_LWPolyline *>( entity );
+      const DRW_Line *l = dynamic_cast<const DRW_Line *>( entity );
       if ( lwp )
       {
-        QgsCompoundCurveV2 *cc = new QgsCompoundCurveV2();
-
-        if ( curveFromLWPolyline( *lwp, *cc ) )
-        {
-          if ( i == 0 && j == 0 )
-            p.setExteriorRing( cc );
-          else
-            p.addInteriorRing( cc );
-        }
+        curveFromLWPolyline( *lwp, *cc );
+      }
+      else if ( l )
+      {
+        QgsLineStringV2 *ls = new QgsLineStringV2();
+        ls->setPoints( QgsPointSequenceV2()
+                       << QgsPointV2( QgsWKBTypes::PointZ, l->basePoint.x, l->basePoint.y, l->basePoint.z )
+                       << QgsPointV2( QgsWKBTypes::PointZ, l->secPoint.x, l->secPoint.y, l->secPoint.z ) );
+        QgsDebugMsg( QString( "add linestring:%1" ).arg( ls->asWkt() ) );
+        cc->addCurve( ls );
       }
       else
       {
         QgsDebugMsg( QString( "unknown obj %1.%2: %3" ).arg( i ).arg( j ).arg( typeid( *entity ).name() ) );
       }
+    }
 
-      // entities
+    if ( i == 0 )
+    {
+      QgsDebugMsg( QString( "set exterior ring:%1" ).arg( cc->asWkt() ) );
+      p.setExteriorRing( cc );
+    }
+    else
+    {
+      QgsDebugMsg( QString( "set interior ring:%1" ).arg( cc->asWkt() ) );
+      p.addInteriorRing( cc );
     }
   }
 
