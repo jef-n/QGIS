@@ -171,7 +171,11 @@ class QgsDwgImporter : public DRW_Interface
     OGRLayerH query( QString sql );
 
     void addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data );
-    QString colorString( int color, int color24, int transparancy = 0 );
+    QString colorString( int color, int color24, int transparency, const std::string &layer ) const;
+    double lineWidth( int lWeight, const std::string &layer ) const;
+    void setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const std::string &value ) const;
+    void setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const;
+    void setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const;
 
     QgsPointSequenceV2 getStrokePoints( const QgsPointSequenceV2 &cps, bool closed ) const;
     void strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const;
@@ -183,4 +187,7 @@ class QgsDwgImporter : public DRW_Interface
     QString mDatabase;
     bool mInTransaction;
     int mSplineSegs;
+
+    QHash<QString, QString> mLayerColor;
+    QHash<QString, double> mLayerLinewidth;
 };
