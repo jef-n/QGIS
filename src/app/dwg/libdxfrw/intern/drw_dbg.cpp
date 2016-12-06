@@ -10,14 +10,17 @@
 **  along with this program.  If not, see <http://www.gnu.org/licenses/>.    **
 ******************************************************************************/
 
-#include <iostream>
-#include <iomanip>
 #include "drw_dbg.h"
-#include <QDebug>
+
+#include "../../../../core/qgslogger.h"
+
+
+#include <QTextStream>
+#include <QStringList>
 
 DRW_dbg *DRW_dbg::instance = nullptr;
 
-/*********private clases*************/
+/*********private classes*************/
 class print_none
 {
   public:
@@ -45,7 +48,11 @@ class print_debug : public print_none
     virtual void printHL( int c, int s, int h );
     virtual void printPT( double x, double y, double z );
     print_debug();
-    virtual ~print_debug() {}
+    virtual ~print_debug() { QgsDebugMsgLevel( mBuf, 4 ); }
+  private:
+    QString mBuf;
+    QTextStream mTS;
+    void flush();
 };
 
 /********* debug class *************/
@@ -137,46 +144,64 @@ void DRW_dbg::printPT( double x, double y, double z )
   prClass->printPT( x, y, z );
 }
 
-print_debug::print_debug()
+print_debug::print_debug() : mTS( &mBuf )
 {
+}
+
+void print_debug::flush()
+{
+  QStringList lines = mBuf.split( '\n' );
+  for ( int i = 0; i < lines.size() - 1; i++ )
+  {
+    QgsDebugMsgLevel( lines[i], 4 );
+  }
+  mBuf = lines.last();
 }
 
 void print_debug::printS( std::string s )
 {
-  qDebug() << QString::fromStdString( s );
+  mTS << QString::fromStdString( s );
+  flush();
 }
 
 void print_debug::printI( long long int i )
 {
-  qDebug() << i;
+  mTS << i;
+  flush();
 }
 
 void print_debug::printUI( long long unsigned int i )
 {
-  qDebug() << i;
+  mTS << i;
+  flush();
 }
 
 void print_debug::printD( double d )
 {
-  qDebug() << QString( "%1 " ).arg( d, 0, 'g' );
+  mTS << QString( "%1 " ).arg( d, 0, 'g' );
+  flush();
 }
 
 void print_debug::printH( long long  i )
 {
-  qDebug() << QString( "0x%1" ).arg( i, 0, 16 );
+  mTS << QString( "0x%1" ).arg( i, 0, 16 );
+  flush();
 }
 
 void print_debug::printB( int i )
 {
-  qDebug() << QString( "0%1" ).arg( i, 0, 8 );
+  mTS << QString( "0%1" ).arg( i, 0, 8 );
+  flush();
 }
 
 void print_debug::printHL( int c, int s, int h )
 {
-  qDebug() << QString( "%1.%2 0x%3" ).arg( c ).arg( s ).arg( h, 0, 16 );
+  mTS << QString( "%1.%2 0x%3" ).arg( c ).arg( s ).arg( h, 0, 16 );
+  flush();
 }
 
 void print_debug::printPT( double x, double y, double z )
 {
-  qDebug() << QString( "x:%1 y:%2 z:%3" ).arg( x, 0, 'g' ).arg( y, 0, 'g' ).arg( z, 0, 'g' );
+  mTS << QString( "x:%1 y:%2 z:%3" ).arg( x, 0, 'g' ).arg( y, 0, 'g' ).arg( z, 0, 'g' );
+  flush();
 }

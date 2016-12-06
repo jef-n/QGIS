@@ -30,13 +30,13 @@ namespace DRW
   enum ETYPE
   {
     E3DFACE,
-//  E3DSOLID, // encrypted proprietary data
-//  ACAD_PROXY_ENTITY,
+    E3DSOLID, // encrypted proprietary data
+    ACAD_PROXY_ENTITY,
     ARC,
-//  ATTDEF,
-//  ATTRIB,
+    ATTDEF,
+    ATTRIB,
     BLOCK, // and ENDBLK
-//  BODY, // encrypted proprietary data
+    BODY, // encrypted proprietary data
     CIRCLE,
     DIMENSION,
     DIMALIGNED,
@@ -48,39 +48,39 @@ namespace DRW
     DIMORDINATE,
     ELLIPSE,
     HATCH,
-//  HELIX,
+    HELIX,
     IMAGE,
     INSERT,
     LEADER,
-//  LIGHT,
+    LIGHT,
     LINE,
     LWPOLYLINE,
-//  MESH,
-//  MLINE,
-//  MLEADERSTYLE,
-//  MLEADER,
+    MESH,
+    MLINE,
+    MLEADERSTYLE,
+    MLEADER,
     MTEXT,
-//  OLEFRAME,
-//  OLE2FRAME,
+    OLEFRAME,
+    OLE2FRAME,
     POINT,
     POLYLINE,
     RAY,
-//  REGION, // encrypted proprietary data
-//  SECTION,
-//  SEQEND, // not needed?? used in polyline and insert/attrib and dwg
-//  SHAPE,
+    REGION, // encrypted proprietary data
+    SECTION,
+    SEQEND, // not needed?? used in polyline and insert/attrib and dwg
+    SHAPE,
     SOLID,
     SPLINE,
-//  SUN,
-//  SURFACE, // encrypted proprietary data can be four types
-//  TABLE,
+    SUN,
+    SURFACE, // encrypted proprietary data can be four types
+    TABLE,
     TEXT,
-//  TOLERANCE,
+    TOLERANCE,
     TRACE,
     UNDERLAY,
     VERTEX,
     VIEWPORT,
-//  WIPEOUT, // WIPEOUTVARIABLE
+    WIPEOUT, // WIPEOUTVARIABLE
     XLINE,
     UNKNOWN
   };
