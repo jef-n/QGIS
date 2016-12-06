@@ -904,45 +904,47 @@ duint32 dwgBuffer::getCmColor( DRW::Version v )
 * For R2004+, can be CMC or ENC
 * RGB value, first 4bits 0xC0 => ByLayer, 0xC1 => ByBlock, 0xC2 => RGB,  0xC3 => last 4 are ACIS
 */
-duint32 dwgBuffer::getEnColor( DRW::Version v )
+duint32 dwgBuffer::getEnColor( DRW::Version v, int &rgb, int &transparency )
 {
   if ( v < DRW::AC1018 ) //2000-
     return getSBitShort();
-  duint32 rgb = 0;
+
+  rgb = -1;
+  transparency = 0;
+
   duint32 cb = 0;
   duint16 idx = getBitShort();
   DRW_DBG( "idx reads COLOR: " );
   DRW_DBGH( idx );
   duint16 flags = idx >> 8;
+
   idx = idx & 0x1FF; //RLZ: warning this is correct?
+
   DRW_DBG( "\nflag COLOR: " );
   DRW_DBGH( flags );
   DRW_DBG( ", index COLOR: " );
   DRW_DBGH( idx );
-//    if (flags & 0x80) {
-//        rgb = getBitLong();
-//        DRW_DBG("\nRGB COLOR: "); DRW_DBGH(rgb);
-//    }
-  if ( flags & 0x20 )
+
+  if ( flags & 0x80 )
   {
-    cb = getBitLong();
-    DRW_DBG( "\nTransparency COLOR: " );
-    DRW_DBGH( cb );
-  }
-  if ( flags & 0x40 )
-    DRW_DBG( "\nacdbColor COLOR are present" );
-  else
-  {
+    // complex color (rgb)
+    rgb = getBitLong() & 0xffffff;
+
+    DRW_DBG( "\nRGB COLOR: " );
+    DRW_DBGH( rgb );
+
     if ( flags & 0x80 )
     {
-      rgb = getBitLong();
-      DRW_DBG( "\nRGB COLOR: " );
-      DRW_DBGH( rgb );
+      DRW_DBG( "\nacdbColor COLOR are present" );
     }
   }
 
-  /*    if (flags & 0x80)
-          return getBitLong();*/
+  if ( flags & 0x20 )
+  {
+    transparency = getBitLong();
+    DRW_DBG( "\nTransparency COLOR: " );
+    DRW_DBGH( transparency );
+  }
 
   return idx; //default return ByLayer
 }

@@ -105,6 +105,9 @@ bool DRW_Entity::parseCode( int code, dxfReader *reader )
     case 430:
       colorName = reader->getString();
       break;
+    case 440:
+      transparency = reader->getInt32();
+      break;
     case 67:
       space = static_cast<DRW::Space>( reader->getInt32() );
       break;
@@ -279,7 +282,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
   {
     /* RLZ: TODO */
     dwgHandle ah = buf->getHandle();
-    DRW_DBG( "App Handle: " );
+    DRW_DBG( "\n App Handle: " );
     DRW_DBGHL( ah.code, ah.size, ah.ref );
     duint8 *tmpExtData = new duint8[extDataSize];
     buf->getBytes( tmpExtData, extDataSize );
@@ -316,7 +319,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
     DRW_DBG( extDataSize );
   } //end parsing extData (EED)
   duint8 graphFlag = buf->getBit(); //B
-  DRW_DBG( " graphFlag: " );
+  DRW_DBG( "\n graphFlag: " );
   DRW_DBG( graphFlag );
   DRW_DBG( "\n" );
   if ( graphFlag )
@@ -396,7 +399,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
     DRW_DBG( "\n" );
   }
 //ENC color
-  color = buf->getEnColor( version ); //BS or CMC //ok for R14 or negate
+  color = buf->getEnColor( version, color24, transparency ); //BS or CMC //ok for R14 or negate
   ltypeScale = buf->getBitDouble(); //BD
   DRW_DBG( " entity color: " );
   DRW_DBG( color );
@@ -421,7 +424,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
       {
         ltFlags = plotFlags;
         lineType = plotStyleName; //RLZ: howto solve? if needed plotStyleName;
-        DRW_DBG( "ltFlags: " );
+        DRW_DBG( " ltFlags: " );
         DRW_DBG( ltFlags );
         DRW_DBG( " lineType: " );
         DRW_DBG( lineType.c_str() );
@@ -436,21 +439,21 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
   if ( version > DRW::AC1018 )  //2007+
   {
     materialFlag = buf->get2Bits(); //BB
-    DRW_DBG( "materialFlag: " );
+    DRW_DBG( " materialFlag: " );
     DRW_DBG( materialFlag );
     shadowFlag = buf->getRawChar8(); //RC
-    DRW_DBG( "shadowFlag: " );
+    DRW_DBG( " shadowFlag: " );
     DRW_DBG( shadowFlag );
     DRW_DBG( "\n" );
   }
   if ( version > DRW::AC1021 )  //2010+
   {
     duint8 visualFlags = buf->get2Bits(); //full & face visual style
-    DRW_DBG( "shadowFlag 2: " );
+    DRW_DBG( " shadowFlag 2: " );
     DRW_DBG( visualFlags );
     DRW_DBG( "\n" );
     duint8 unk = buf->getBit(); //edge visual style
-    DRW_DBG( "unknown bit: " );
+    DRW_DBG( " unknown bit: " );
     DRW_DBG( unk );
     DRW_DBG( "\n" );
   }
@@ -1910,7 +1913,7 @@ bool DRW_MText::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   if ( version > DRW::AC1014 )  //2000+
   {
     buf->getBitShort();/* Linespacing Style BS 73 */
-    buf->getBitDouble();/* Linespacing Factor BD 44 */
+    interlin = buf->getBitDouble();/* Linespacing Factor BD 44 */
     buf->getBit();/* Unknown bit B */
   }
   if ( version > DRW::AC1015 )  //2004+
@@ -3842,7 +3845,7 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     DRW_DBG( "\n" );
 //        DRW_DBG("Ambient Cmc or Enc: "); DRW_DBG(buf->getCmColor(version)); DRW_DBG("\n");
     DRW_DBG( "Ambient (Cmc or Enc?), Enc: " );
-    DRW_DBG( buf->getEnColor( version ) );
+    DRW_DBG( buf->getEnColor( version, color24, transparency ) );
     DRW_DBG( "\n" );
   }
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -3920,5 +3923,6 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
   if ( !ret )
     return ret;
+
   return buf->isGood();
 }

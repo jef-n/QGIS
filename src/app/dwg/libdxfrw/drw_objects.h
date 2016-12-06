@@ -303,6 +303,7 @@ class DRW_Layer : public DRW_TableEntry
     UTF8STRING lineType;                 /*!< line type, code 6 */
     int color;                           /*!< layer color, code 62 */
     int color24;                         /*!< 24-bit color, code 420 */
+    int transparency;                    /*!< Transparency, code 440 */
     bool plotF;                          /*!< Plot flag, code 290 */
     enum DRW_LW_Conv::lineWidth lWeight; /*!< layer lineweight, code 370 */
     std::string handlePlotS;             /*!< Hard-pointer ID/handle of plotstyle, code 390 */

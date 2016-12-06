@@ -733,6 +733,9 @@ void DRW_Layer::parseCode( int code, dxfReader *reader )
     case 420:
       color24 = reader->getInt32();
       break;
+    case 440:
+      transparency = reader->getInt32();
+      break;
     default:
       DRW_TableEntry::parseCode( code, reader );
       break;
