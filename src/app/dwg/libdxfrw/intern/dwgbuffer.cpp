@@ -16,6 +16,8 @@
 #include "drw_textcodec.h"
 #include "drw_dbg.h"
 
+#include <QDebug>
+
 #if 0
 //#include <bitset>
 #include <fstream>
@@ -912,7 +914,6 @@ duint32 dwgBuffer::getEnColor( DRW::Version v, int &rgb, int &transparency )
   rgb = -1;
   transparency = 0;
 
-  duint32 cb = 0;
   duint16 idx = getBitShort();
   DRW_DBG( "idx reads COLOR: " );
   DRW_DBGH( idx );
@@ -964,9 +965,18 @@ duint16 dwgBuffer::getBERawShort16()
 bool dwgBuffer::getBytes( unsigned char *buf, int size )
 {
   duint8 tmp;
+  int pos = filestr->getPos();
   filestr->read( buf, size );
   if ( !filestr->good() )
+  {
+    DRW_DBG( "\nshort read: wanted " );
+    DRW_DBG( size );
+    DRW_DBG( "; got " );
+    DRW_DBG( filestr->getPos() - pos );
+    DRW_DBG( "\n" );
+    qDebug( "Backtrace 5" );
     return false;
+  }
 
   if ( bitPos != 0 )
   {

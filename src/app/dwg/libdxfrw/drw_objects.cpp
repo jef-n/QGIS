@@ -132,7 +132,7 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
         strDataSize = (( strDataSize & 0x7fff ) | ( hiSize << 15 ) );
       }
       strBuf->moveBitPos( -strDataSize - 16 ); //-14
-      DRW_DBG( "strBuf start strDataSize pos 2007: " );
+      DRW_DBG( " strBuf start strDataSize pos 2007: " );
       DRW_DBG( strBuf->getPosition() );
       DRW_DBG( " strBuf bpos 2007: " );
       DRW_DBG( strBuf->getBitPos() );
@@ -140,7 +140,7 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
     }
     else
       DRW_DBG( "\nDRW_TableEntry::parseDwg string bit is 0" );
-    DRW_DBG( "strBuf start pos 2007: " );
+    DRW_DBG( " strBuf start pos 2007: " );
     DRW_DBG( strBuf->getPosition() );
     DRW_DBG( " strBuf bpos 2007: " );
     DRW_DBG( strBuf->getBitPos() );

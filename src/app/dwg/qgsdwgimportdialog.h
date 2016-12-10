@@ -20,6 +20,9 @@
 
 #include "ui_qgsdwgimportbase.h"
 
+class QgsVectorLayer;
+class QgsLayerTreeGroup;
+
 class QgsDwgImportDialog : public QDialog, private Ui::QgsDwgImportBase
 {
     Q_OBJECT
@@ -32,10 +35,13 @@ class QgsDwgImportDialog : public QDialog, private Ui::QgsDwgImportBase
     void on_pbBrowseDatabase_clicked();
     void on_pbBrowseDrawing_clicked();
     void on_pbImportDrawing_clicked();
+    void on_pbLoadDatabase_clicked();
     void on_leDrawing_textChanged( const QString &text );
     void on_leDatabase_textChanged( const QString &text );
+    void on_leLayerGroup_textChanged( const QString &text );
 
   private:
+    QgsVectorLayer *layer( QgsLayerTreeGroup *layerGroup, QString layer, QString table );
     void updateUI();
 };
 

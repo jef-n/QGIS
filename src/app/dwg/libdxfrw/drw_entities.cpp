@@ -256,7 +256,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
         strDataSize = (( strDataSize & 0x7fff ) | ( hiSize << 15 ) );
       }
       strBuf->moveBitPos( -strDataSize - 16 ); //-14
-      DRW_DBG( "strBuf start strDataSize pos 2007: " );
+      DRW_DBG( " strBuf start strDataSize pos 2007: " );
       DRW_DBG( strBuf->getPosition() );
       DRW_DBG( " strBuf bpos 2007: " );
       DRW_DBG( strBuf->getBitPos() );
@@ -264,7 +264,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
     }
     else
       DRW_DBG( "\nDRW_TableEntry::parseDwg string bit is 0" );
-    DRW_DBG( "strBuf start pos 2007: " );
+    DRW_DBG( " strBuf start pos 2007: " );
     DRW_DBG( strBuf->getPosition() );
     DRW_DBG( " strBuf bpos 2007: " );
     DRW_DBG( strBuf->getBitPos() );
@@ -491,7 +491,7 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
   if ( ownerHandle ) //entity are in block or in a polyline
   {
     dwgHandle ownerH = buf->getOffsetHandle( handle );
-    DRW_DBG( "owner (parent) Handle: " );
+    DRW_DBG( "\nowner (parent) Handle: " );
     DRW_DBGHL( ownerH.code, ownerH.size, ownerH.ref );
     DRW_DBG( "\n" );
     DRW_DBG( "   Remaining bytes: " );
@@ -503,7 +503,7 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
     DRW_DBG( "\n" );
   }
   else
-    DRW_DBG( "NO Block (parent) Handle\n" );
+    DRW_DBG( "\nNO Block (parent) Handle\n" );
 
   DRW_DBG( "\n Remaining bytes: " );
   DRW_DBG( buf->numRemainingBytes() );

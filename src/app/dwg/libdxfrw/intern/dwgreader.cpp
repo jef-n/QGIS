@@ -249,7 +249,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x38 )
     {
       DRW_DBG( "\nWARNING: Not LineType control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x38\n" );
       ret = false;
     }
@@ -326,7 +326,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x32 )
     {
       DRW_DBG( "\nWARNING: Not Layer control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x32\n" );
       ret = false;
     }
@@ -413,7 +413,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x34 )
     {
       DRW_DBG( "\nWARNING: Not Text Style control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x34\n" );
       ret = false;
     }
@@ -488,7 +488,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x44 )
     {
       DRW_DBG( "\nWARNING: Not Dim Style control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x44\n" );
       ret = false;
     }
@@ -563,7 +563,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x40 )
     {
       DRW_DBG( "\nWARNING: Not VPorts control object, found oType: " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x40\n" );
       ret = false;
     }
@@ -638,7 +638,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x30 )
     {
       DRW_DBG( "\nWARNING: Not Block Record control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x30\n" );
       ret = false;
     }
@@ -718,7 +718,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
     if ( oType != 0x42 )
     {
       DRW_DBG( "\nWARNING: Not AppId control object, found oType " );
-      DRW_DBG( oType );
+      DRW_DBGH( oType );
       DRW_DBG( " instead 0x42\n" );
       ret = false;
     }
@@ -800,7 +800,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
       if ( oType != 0x3C )
       {
         DRW_DBG( "\nWARNING: Not View control object, found oType " );
-        DRW_DBG( oType );
+        DRW_DBGH( oType );
         DRW_DBG( " instead 0x3C\n" );
         ret = false;
       }
@@ -845,7 +845,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
       if ( oType != 0x3E )
       {
         DRW_DBG( "\nWARNING: Not Ucs control object, found oType " );
-        DRW_DBG( oType );
+        DRW_DBGH( oType );
         DRW_DBG( " instead 0x3E\n" );
         ret = false;
       }
@@ -892,7 +892,7 @@ bool dwgReader::readDwgTables( DRW_Header& hdr, dwgBuffer *dbuf )
         if ( oType != 0x46 )
         {
           DRW_DBG( "\nWARNING: Not vpEntHeader control object, found oType " );
-          DRW_DBG( oType );
+          DRW_DBGH( oType );
           DRW_DBG( " instead 0x46\n" );
           ret = false;
         }
@@ -1238,8 +1238,10 @@ bool dwgReader::readDwgEntity( dwgBuffer *dbuf, objHandle& obj, DRW_Interface& i
   //verify if getBytes is ok:
   if ( !dbuf->isGood() )
   {
-    DRW_DBG( " Warning: readDwgEntity, bad size\n" );
-    delete[]tmpByteStr;
+    DRW_DBG( " Warning: readDwgEntity, bad size (tried " );
+    DRW_DBG( size );
+    DRW_DBG( " bytes)\n" );
+    delete[] tmpByteStr;
     return false;
   }
   dwgBuffer buff( tmpByteStr, size, &decoder );
@@ -1253,7 +1255,7 @@ bool dwgReader::readDwgEntity( dwgBuffer *dbuf, objHandle& obj, DRW_Interface& i
     {
       DRW_DBG( "Class " );
       DRW_DBG( oType );
-      DRW_DBG( "not found, handle: " );
+      DRW_DBG( " not found, handle: " );
       DRW_DBG( obj.handle );
       DRW_DBG( "\n" );
       delete[]tmpByteStr;
