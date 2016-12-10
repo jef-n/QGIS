@@ -187,6 +187,7 @@ class QgsDwgImporter : public DRW_Interface
     QString mDatabase;
     bool mInTransaction;
     int mSplineSegs;
+    int mBlockHandle;
 
     QHash<QString, QString> mLayerColor;
     QHash<QString, double> mLayerLinewidth;

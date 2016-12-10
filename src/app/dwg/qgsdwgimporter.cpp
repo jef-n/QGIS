@@ -57,6 +57,7 @@ QgsDwgImporter::QgsDwgImporter( const QString &database )
     , mDatabase( database )
     , mInTransaction( false )
     , mSplineSegs( 8 )
+    , mBlockHandle( -1 )
 {
   QgsDebugCall;
 }
@@ -267,8 +268,12 @@ bool QgsDwgImporter::import( const QString &drawing )
   << field( "etype", OFTInteger ) \
   << field( "space", OFTInteger ) \
   << field( "layer", OFTString ) \
+  << field( "olinetype", OFTString ) \
   << field( "linetype", OFTString ) \
   << field( "color", OFTString ) \
+  << field( "ocolor", OFTInteger) \
+  << field( "color24", OFTInteger) \
+  << field( "transparency", OFTInteger) \
   << field( "lweight", OFTInteger ) \
   << field( "linewidth", OFTReal ) \
   << field( "ltscale", OFTReal ) \
@@ -294,8 +299,12 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "name", OFTString )
                                   << field( "linetype", OFTString )
                                   << field( "color", OFTString )
+                                  << field( "ocolor", OFTInteger )
+                                  << field( "color24", OFTInteger )
+                                  << field( "transparency", OFTInteger )
                                   << field( "lweight", OFTInteger )
                                   << field( "linewidth", OFTReal )
+                                  << field( "flags", OFTInteger )
                                 )
                         << table( "dimstyles", QObject::tr( "Dimension styles" ), wkbNone, QList<field>()
                                   << field( "name", OFTString )
@@ -389,15 +398,11 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "thickness", OFTReal )
                                   << field( "ext", OFTRealList )
                                 )
-                        << table( "circles", QObject::tr( "CIRCLE entities" ), wkbCircularString, QList<field>()
+                        << table( "lines", QObject::tr( "LINE entities" ), wkbCompoundCurveZ, QList<field>()
                                   ENTITY_ATTRIBUTES
                                   << field( "thickness", OFTReal )
                                   << field( "ext", OFTRealList )
-                                )
-                        << table( "lines", QObject::tr( "LINE entities" ), wkbLineString25D, QList<field>()
-                                  ENTITY_ATTRIBUTES
-                                  << field( "thickness", OFTReal )
-                                  << field( "ext", OFTRealList )
+                                  << field( "width", OFTReal )
                                 )
                         << table( "polylines", QObject::tr( "POLYLINE entities" ), wkbCompoundCurveZ, QList<field>()
                                   ENTITY_ATTRIBUTES
@@ -605,7 +610,7 @@ void QgsDwgImporter::addHeader( const DRW_Header *data )
     OGRFeatureH f = OGR_L_GetNextFeature( layer );
     Q_ASSERT( f );
 
-    OGR_F_SetFieldString( f, importdatIdx, QString::fromStdString( data->getComments() ).toUtf8().constData() );
+    OGR_F_SetFieldString( f, importdatIdx, data->getComments().c_str() );
 
     if ( OGR_L_SetFeature( layer, f ) != OGRERR_NONE )
     {
@@ -629,13 +634,13 @@ void QgsDwgImporter::addHeader( const DRW_Header *data )
   {
     OGRFeatureH f = OGR_F_Create( dfn );
 
-    QString k = QString::fromStdString( it->first );
+    QString k = it->first.c_str();
 
     QString v;
     switch ( it->second->type() )
     {
       case DRW_Variant::STRING:
-        v = QString::fromStdString( *it->second->content.s );
+        v = *it->second->content.s->c_str();
         break;
 
       case DRW_Variant::INTEGER:
@@ -692,7 +697,7 @@ void QgsDwgImporter::addLType( const DRW_LType &data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add add line type %1 [%2]" ).arg( QString::fromStdString( data.name ), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add add line type %1 [%2]" ).arg( data.name.c_str() ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 
   OGR_F_Destroy( f );
@@ -704,7 +709,7 @@ QString QgsDwgImporter::colorString( int color, int color24, int transparency, c
                .arg( color )
                .arg( color24, 0, 16 )
                .arg( transparency, 0, 16 )
-               .arg( QString::fromStdString( layer ) ) );
+               .arg( layer.c_str() ) );
   if ( color24 == -1 )
   {
     if ( color == 0 )
@@ -714,10 +719,13 @@ QString QgsDwgImporter::colorString( int color, int color24, int transparency, c
     }
     else if ( color == 256 )
     {
-      return mLayerColor.value( QString::fromStdString( layer ), "0,0,0,255" );
+      return mLayerColor.value( layer.c_str(), "0,0,0,255" );
     }
     else
     {
+      if ( color < 0 )
+        color = -color;
+
       return QString( "%1,%2,%3,%4" )
              .arg( DRW::dxfColors[ color ][0] )
              .arg( DRW::dxfColors[ color ][1] )
@@ -748,20 +756,24 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
 
   SETSTRING( name );
   SETSTRING( lineType );
+  SETINTEGER( flags );
 
-  QString color = colorString( data.color, data.color24, data.transparency, "" ).toUtf8().constData();
-  mLayerColor.insert( QString::fromStdString( data.name ), color );
+  QString color = colorString( data.color, data.color24, data.transparency, "" );
+  mLayerColor.insert( data.name.c_str(), color );
 
   double linewidth = lineWidth( data.lWeight, "" );
-  mLayerLinewidth.insert( QString::fromStdString( data.name ), linewidth );
+  mLayerLinewidth.insert( data.name.c_str(), linewidth );
 
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ocolor" ), data.color );
+  SETINTEGER( color24 );
+  SETINTEGER( transparency );
   OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), color.toUtf8().constData() );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lwidth" ), linewidth );
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add add layer %1 [%2]" ).arg( QString::fromStdString( data.name ), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add add layer %1 [%2]" ).arg( data.name.c_str(), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 
   OGR_F_Destroy( f );
@@ -775,7 +787,7 @@ void QgsDwgImporter::setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString fiel
     LOG( QObject::tr( "Field %1 not found" ).arg( field ) );
     return;
   }
-  OGR_F_SetFieldString( f, idx, QString::fromStdString( value ).toUtf8().constData() );
+  OGR_F_SetFieldString( f, idx, value.c_str() );
 }
 
 void QgsDwgImporter::setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const
@@ -853,7 +865,7 @@ double QgsDwgImporter::lineWidth( int lWeight, const std::string &layer ) const
     case 23:
       return 2.11;
     case 29:
-      return mLayerLinewidth.value( QString::fromStdString( layer ), 0.0 );
+      return mLayerLinewidth.value( layer.c_str(), 0.0 );
     case 30:
       NYI( QObject::tr( "Line width by block" ) );
       return 0.0;
@@ -947,7 +959,7 @@ void QgsDwgImporter::addDimStyle( const DRW_Dimstyle &data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add add layer %1 [%2]" ).arg( QString::fromStdString( data.name ), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add add layer %1 [%2]" ).arg( data.name.c_str() ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 
   OGR_F_Destroy( f );
@@ -982,7 +994,7 @@ void QgsDwgImporter::addTextStyle( const DRW_Textstyle &data )
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
-    LOG( QObject::tr( "Could not add add text style %1 [%2]" ).arg( QString::fromStdString( data.name ), QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+    LOG( QObject::tr( "Could not add add text style %1 [%2]" ).arg( data.name.c_str() ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
 
   OGR_F_Destroy( f );
@@ -996,8 +1008,9 @@ void QgsDwgImporter::addAppId( const DRW_AppId &data )
 
 void QgsDwgImporter::addBlock( const DRW_Block &data )
 {
-  Q_UNUSED( data );
-  QgsDebugCall;
+  Q_ASSERT( mBlockHandle < 0 );
+  mBlockHandle = data.handle;
+  QgsDebugMsg( QString( "block 0x%1 starts" ).arg( mBlockHandle, 0, 16 ) );
 }
 
 void QgsDwgImporter::setBlock( const int handle )
@@ -1009,6 +1022,8 @@ void QgsDwgImporter::setBlock( const int handle )
 void QgsDwgImporter::endBlock()
 {
   QgsDebugCall;
+  QgsDebugMsg( QString( "block 0x%1 ended" ).arg( mBlockHandle, 0, 16 ) );
+  mBlockHandle = -1;
 }
 
 void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data )
@@ -1021,6 +1036,9 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
   SETINTEGER( space );
   SETSTRING( layer );
   SETSTRING( lineType );
+  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ocolor" ), data.color );
+  SETINTEGER( color24 );
+  SETINTEGER( transparency );
   OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, data.transparency, data.layer ).toUtf8().constData() );
   OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
   OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "linewidth" ), lineWidth( data.lWeight, data.layer ) );
@@ -1030,6 +1048,12 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
 
 void QgsDwgImporter::addPoint( const DRW_Point &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "points" );
@@ -1083,9 +1107,15 @@ void QgsDwgImporter::addXline( const DRW_Xline &data )
 
 void QgsDwgImporter::addArc( const DRW_Arc &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
-  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "circles" );
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
   Q_ASSERT( layer );
   OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
   Q_ASSERT( dfn );
@@ -1103,14 +1133,21 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
   OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
 
   double half = ( data.staangle + data.endangle ) / 2.0;
-  if ( data.isccw )
+  if ( data.staangle > data.endangle )
     half += M_PI;
+
+  double a0 = data.isccw ? data.staangle : -data.staangle;
+  double a1 = data.isccw ? half : -half;
+  double a2 = data.isccw ? data.endangle : -data.endangle;
+
+  QgsDebugMsg( QString( "arc handle=0x%1 radius=%2 staangle=%3 endangle=%4 isccw=%5 half=%6" )
+               .arg( data.handle, 0, 16 ).arg( data.mRadius ).arg( data.staangle ).arg( data.endangle ).arg( data.isccw ).arg( half ) );
 
   QgsCircularStringV2 c;
   c.setPoints( QgsPointSequenceV2()
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( data.staangle ) * data.mRadius, data.basePoint.y + cos( data.staangle ) * data.mRadius )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( half ) * data.mRadius, data.basePoint.y + cos( half ) * data.mRadius )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + sin( data.endangle ) * data.mRadius, data.basePoint.y + cos( data.endangle ) * data.mRadius )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a0 ) * data.mRadius, data.basePoint.y + sin( a0 ) * data.mRadius )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a1 ) * data.mRadius, data.basePoint.y + sin( a1 ) * data.mRadius )
+               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a2 ) * data.mRadius, data.basePoint.y + sin( a2 ) * data.mRadius )
              );
 
   int binarySize;
@@ -1132,9 +1169,15 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
 
 void QgsDwgImporter::addCircle( const DRW_Circle &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
-  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "circles" );
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
   Q_ASSERT( layer );
   OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
   Q_ASSERT( dfn );
@@ -1177,6 +1220,12 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
 void QgsDwgImporter::addEllipse( const DRW_Ellipse &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   DRW_Polyline pol;
@@ -1252,6 +1301,12 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
 
 void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   int vertexnum = data.vertlist.size();
@@ -1488,6 +1543,12 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
 void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   int vertexnum = data.vertlist.size();
@@ -1729,10 +1790,29 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
 void QgsDwgImporter::addSpline( const DRW_Spline *data )
 {
-  QgsDebugCall;
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
 
+  QgsDebugCall;
   Q_ASSERT( data );
-  Q_ASSERT( data->ncontrol == ( int ) data->controllist.size() );
+
+  if ( data->degree < 1 || data->degree > 3 )
+  {
+    QgsDebugMsg( QString( "%1: unknown spline degree %2" )
+                 .arg( data->handle, 0, 16 )
+                 .arg( data->degree ) );
+    return;
+  }
+
+  QgsDebugMsg( QString( "degree: %1 ncontrol:%2 knotslist.size():%3 controllist.size():%4 fitlist.size():%5" )
+               .arg( data->degree )
+               .arg( data->ncontrol )
+               .arg( data->knotslist.size() )
+               .arg( data->controllist.size() )
+               .arg( data->fitlist.size() ) );
 
   QgsPointSequenceV2 in;
   for ( std::vector<DRW_Coord *>::size_type i = 0; i < data->controllist.size(); i++ )
@@ -1741,7 +1821,20 @@ void QgsDwgImporter::addSpline( const DRW_Spline *data )
     in << QgsPointV2( QgsWKBTypes::PointZ, p.x, p.y, p.z );
   }
 
+#if 0
+  if ( data->ncontrol == 0 && data->degree != 2 )
+  {
+    for ( std::vector<DRW_Coord *>::size_type i = 0; i < data->fitlist.size(); i++ )
+    {
+      const DRW_Coord &p = *data->fitlist[i];
+      in << QgsPointV2( QgsWKBTypes::PointZ, p.x, p.y, p.z );
+    }
+  }
+
   QgsPointSequenceV2 out = getStrokePoints( in, data->flags );
+
+  QgsDebugMsg( QString( "in.size():%1 out.size():%2" ).arg( in.size() ).arg( out.size() ) );
+#endif
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
   Q_ASSERT( layer );
@@ -1753,7 +1846,10 @@ void QgsDwgImporter::addSpline( const DRW_Spline *data )
   addEntity( dfn, f, *data );
 
   QgsLineStringV2 l;
+  l.setPoints( in );
+#if 0
   l.setPoints( out );
+#endif
 
   int binarySize;
   unsigned char *wkb = l.asWkb( binarySize );
@@ -1781,6 +1877,12 @@ void QgsDwgImporter::addKnot( const DRW_Entity &data )
 
 void QgsDwgImporter::addInsert( const DRW_Insert &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "inserts" );
@@ -1844,6 +1946,12 @@ void QgsDwgImporter::add3dFace( const DRW_3Dface &data )
 
 void QgsDwgImporter::addSolid( const DRW_Solid &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
@@ -1898,6 +2006,12 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
 void QgsDwgImporter::addMText( const DRW_MText &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "texts" );
@@ -1948,6 +2062,12 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
 
 void QgsDwgImporter::addText( const DRW_Text &data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "texts" );
@@ -2053,9 +2173,15 @@ void QgsDwgImporter::addLeader( const DRW_Leader *data )
 
 void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
+  QgsDebugCall;
   Q_ASSERT( pdata != nullptr );
   const DRW_Hatch &data = *pdata;
-  QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
   Q_ASSERT( layer );
@@ -2151,6 +2277,12 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 
 void QgsDwgImporter::addLine( const DRW_Line& data )
 {
+  if ( mBlockHandle >= 0 )
+  {
+    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
+    return;
+  }
+
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
