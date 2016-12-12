@@ -40,10 +40,6 @@
 #include <cpl_string.h>
 #include <gdal.h>
 
-#ifdef QGISDEBUG
-#include "intern/drw_dbg.h"
-#endif
-
 #define LOG( x ) { QgsDebugMsg( x ); QgsMessageLog::logMessage( x, QObject::tr( "DWG/DXF import" ) ); }
 #define ONCE( x ) { static bool show=true; if( show ) LOG( x ); show=false; }
 #define NYI( x ) { static bool show=true; if( show ) LOG( QObject::tr("Not yet implemented %1").arg( x ) ); show=false; }
@@ -265,6 +261,7 @@ bool QgsDwgImporter::import( const QString &drawing )
 
 #define ENTITY_ATTRIBUTES \
   << field( "handle", OFTInteger ) \
+  << field( "block", OFTInteger ) \
   << field( "etype", OFTInteger ) \
   << field( "space", OFTInteger ) \
   << field( "layer", OFTString ) \
@@ -392,6 +389,13 @@ bool QgsDwgImporter::import( const QString &drawing )
                                   << field( "handle", OFTInteger )
                                   << field( "i", OFTInteger )
                                   << field( "value", OFTString )
+                                )
+                        << table( "blocks", QObject::tr( "BLOCK entities" ), wkbPoint25D, QList<field>()
+                                  ENTITY_ATTRIBUTES
+                                  << field( "thickness", OFTReal )
+                                  << field( "ext", OFTRealList )
+                                  << field( "name", OFTString )
+                                  << field( "flags", OFTInteger )
                                 )
                         << table( "points", QObject::tr( "POINT entities" ), wkbPoint25D, QList<field>()
                                   ENTITY_ATTRIBUTES
@@ -582,9 +586,6 @@ bool QgsDwgImporter::import( const QString &drawing )
   {
     //loads dwg
     QSharedPointer<dwgR> dwg( new dwgR( drawing.toUtf8() ) );
-#ifdef QGISDEBUG
-    DRW_DBGSL( DRW_dbg::DEBUG );
-#endif
     return dwg->read( this, false );
   }
   else
@@ -764,12 +765,12 @@ void QgsDwgImporter::addLayer( const DRW_Layer &data )
   double linewidth = lineWidth( data.lWeight, "" );
   mLayerLinewidth.insert( data.name.c_str(), linewidth );
 
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ocolor" ), data.color );
+  setInteger( dfn, f, "ocolor", data.color );
   SETINTEGER( color24 );
   SETINTEGER( transparency );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), color.toUtf8().constData() );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lwidth" ), linewidth );
+  setString( dfn, f, "color", color.toUtf8().constData() );
+  setInteger( dfn, f, "lweight", DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
+  setInteger( dfn, f, "linewidth", linewidth );
 
   if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
   {
@@ -810,6 +811,23 @@ void QgsDwgImporter::setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString fie
     return;
   }
   OGR_F_SetFieldInteger( f, idx, value );
+}
+
+void QgsDwgImporter::setPoint( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const DRW_Coord &p ) const
+{
+  QVector<double> ext( 3 );
+  ext[0] = p.x;
+  ext[1] = p.y;
+  ext[2] = p.z;
+
+  int idx = OGR_FD_GetFieldIndex( dfn, field.toLower().toUtf8().constData() );
+  if ( idx < 0 )
+  {
+    LOG( QObject::tr( "Field %1 not found" ).arg( field ) );
+    return;
+  }
+
+  OGR_F_SetFieldDoubleList( f, idx, 3, ext.data() );
 }
 
 double QgsDwgImporter::lineWidth( int lWeight, const std::string &layer ) const
@@ -1008,9 +1026,40 @@ void QgsDwgImporter::addAppId( const DRW_AppId &data )
 
 void QgsDwgImporter::addBlock( const DRW_Block &data )
 {
+  QgsDebugCall;
+
   Q_ASSERT( mBlockHandle < 0 );
   mBlockHandle = data.handle;
-  QgsDebugMsg( QString( "block 0x%1 starts" ).arg( mBlockHandle, 0, 16 ) );
+  QgsDebugMsg( QString( "block %1/0x%2 starts" ).arg( data.name.c_str() ).arg( mBlockHandle, 0, 16 ) );
+
+  OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "blocks" );
+  Q_ASSERT( layer );
+  OGRFeatureDefnH dfn = OGR_L_GetLayerDefn( layer );
+  Q_ASSERT( dfn );
+  OGRFeatureH f = OGR_F_Create( dfn );
+  Q_ASSERT( f );
+
+  addEntity( dfn, f, data );
+
+  SETSTRING( name );
+  SETINTEGER( flags );
+
+  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  int binarySize;
+  unsigned char *wkb = p.asWkb( binarySize );
+  OGRGeometryH geom;
+  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+
+  }
+
+  OGR_F_SetGeometryDirectly( f, geom );
+
+  if ( OGR_L_CreateFeature( layer, f ) != OGRERR_NONE )
+  {
+    LOG( QObject::tr( "Could not add block [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+  }
 }
 
 void QgsDwgImporter::setBlock( const int handle )
@@ -1030,30 +1079,25 @@ void QgsDwgImporter::addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_En
 {
   QgsDebugCall;
 
-  QgsDebugMsg( QString( "handle:0x%1" ).arg( data.handle, 0, 16 ) );
+  QgsDebugMsg( QString( "handle:0x%1 block:0x%2" ).arg( data.handle, 0, 16 ).arg( mBlockHandle, 0, 16 ) );
   SETINTEGER( handle );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "etype" ), data.eType );
+  setInteger( dfn, f, "block", mBlockHandle );
+  SETINTEGER( eType );
   SETINTEGER( space );
   SETSTRING( layer );
   SETSTRING( lineType );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ocolor" ), data.color );
+  setInteger( dfn, f, "ocolor", data.color );
   SETINTEGER( color24 );
   SETINTEGER( transparency );
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "color" ), colorString( data.color, data.color24, data.transparency, data.layer ).toUtf8().constData() );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "lweight" ), DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "linewidth" ), lineWidth( data.lWeight, data.layer ) );
-  OGR_F_SetFieldInteger( f, OGR_FD_GetFieldIndex( dfn, "ltscale" ), data.ltypeScale );
+  setString( dfn, f, "color", colorString( data.color, data.color24, data.transparency, data.layer ).toUtf8().constData() );
+  setInteger( dfn, f, "lweight", DRW_LW_Conv::lineWidth2dxfInt( data.lWeight ) );
+  setDouble( dfn, f, "linewidth", lineWidth( data.lWeight, data.layer ) );
+  setInteger( dfn, f, "ltscale", data.ltypeScale );
   SETINTEGER( visible );
 }
 
 void QgsDwgImporter::addPoint( const DRW_Point &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "points" );
@@ -1067,11 +1111,7 @@ void QgsDwgImporter::addPoint( const DRW_Point &data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
   int binarySize;
@@ -1107,12 +1147,6 @@ void QgsDwgImporter::addXline( const DRW_Xline &data )
 
 void QgsDwgImporter::addArc( const DRW_Arc &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
@@ -1126,11 +1160,7 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   double half = ( data.staangle + data.endangle ) / 2.0;
   if ( data.staangle > data.endangle )
@@ -1169,12 +1199,6 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
 
 void QgsDwgImporter::addCircle( const DRW_Circle &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
@@ -1188,11 +1212,7 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   QgsCircularStringV2 c;
   c.setPoints( QgsPointSequenceV2()
@@ -1220,12 +1240,6 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
 void QgsDwgImporter::addEllipse( const DRW_Ellipse &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   DRW_Polyline pol;
@@ -1301,12 +1315,6 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
 
 void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   int vertexnum = data.vertlist.size();
@@ -1333,6 +1341,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
     double endWidth = data.vertlist[i0]->endwidth == 0.0 ? data.width : data.vertlist[i0]->endwidth;
     bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
 
+#if 0
     QgsDebugMsg( QString( "i:%1,%2/%3 width=%4 staWidth=%5 endWidth=%6 hadBulge=%7 hasBulge=%8 l=%9 <=> %10" )
                  .arg( i0 ).arg( i1 ).arg( n )
                  .arg( width ).arg( staWidth ).arg( endWidth )
@@ -1340,6 +1349,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
                  .arg( p0.asWkt() )
                  .arg( p1.asWkt() )
                );
+#endif
 
     if ( s.size() > 0 && ( width != staWidth || width != endWidth || hadBulge != hasBulge ) )
     {
@@ -1347,14 +1357,14 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
       {
         QgsCircularStringV2 *c = new QgsCircularStringV2();
         c->setPoints( s );
-        QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+        // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
       else
       {
         QgsLineStringV2 *c = new QgsLineStringV2();
         c->setPoints( s );
-        QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+        // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
 
@@ -1375,13 +1385,9 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
         SETDOUBLE( thickness );
         SETDOUBLE( width );
 
-        QVector<double> ext( 3 );
-        ext[0] = data.extPoint.x;
-        ext[1] = data.extPoint.y;
-        ext[2] = data.extPoint.z;
-        OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+        setPoint( dfn, f, "ext", data.extPoint );
 
-        QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+        // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
         int binarySize;
         unsigned char *wkb = cc.asWkb( binarySize );
@@ -1441,11 +1447,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
       SETDOUBLE( thickness );
 
-      QVector<double> ext( 3 );
-      ext[0] = data.extPoint.x;
-      ext[1] = data.extPoint.y;
-      ext[2] = data.extPoint.z;
-      OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+      setPoint( dfn, f, "ext", data.extPoint );
 
       QgsPoint ps( p0.x(), p0.y() );
       QgsPoint pe( p1.x(), p1.y() );
@@ -1464,7 +1466,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
                    );
       ls->addZValue( data.elevation );
       poly.setExteriorRing( ls );
-      QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
+      // QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
 
       int binarySize;
       unsigned char *wkb = poly.asWkb( binarySize );
@@ -1516,11 +1518,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
     SETDOUBLE( thickness );
     SETDOUBLE( width );
 
-    QVector<double> ext( 3 );
-    ext[0] = data.extPoint.x;
-    ext[1] = data.extPoint.y;
-    ext[2] = data.extPoint.z;
-    OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+    setPoint( dfn, f, "ext", data.extPoint );
 
     QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
@@ -1543,12 +1541,6 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
 void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   int vertexnum = data.vertlist.size();
@@ -1575,6 +1567,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     double endWidth = data.vertlist[i0]->stawidth == 0.0 ? data.defstawidth : data.vertlist[i0]->endwidth;
     bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
 
+#if 0
     QgsDebugMsg( QString( "i:%1,%2/%3 width=%4 staWidth=%5 endWidth=%6 hadBulge=%7 hasBulge=%8 l=%9 <=> %10" )
                  .arg( i0 ).arg( i1 ).arg( n )
                  .arg( width ).arg( staWidth ).arg( endWidth )
@@ -1582,6 +1575,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
                  .arg( p0.asWkt() )
                  .arg( p1.asWkt() )
                );
+#endif
 
     if ( s.size() > 0 && ( width != staWidth || width != endWidth || hadBulge != hasBulge ) )
     {
@@ -1589,14 +1583,14 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
       {
         QgsCircularStringV2 *c = new QgsCircularStringV2();
         c->setPoints( s );
-        QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+        // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
       else
       {
         QgsLineStringV2 *c = new QgsLineStringV2();
         c->setPoints( s );
-        QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+        // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
 
@@ -1615,13 +1609,9 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
         addEntity( dfn, f, data );
 
         SETDOUBLE( thickness );
-        OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+        setDouble( dfn, f, "width", width );
 
-        QVector<double> ext( 3 );
-        ext[0] = data.extPoint.x;
-        ext[1] = data.extPoint.y;
-        ext[2] = data.extPoint.z;
-        OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+        setPoint( dfn, f, "ext", data.extPoint );
 
         QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
@@ -1684,11 +1674,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
       SETDOUBLE( thickness );
 
-      QVector<double> ext( 3 );
-      ext[0] = data.extPoint.x;
-      ext[1] = data.extPoint.y;
-      ext[2] = data.extPoint.z;
-      OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+      setPoint( dfn, f, "ext", data.extPoint );
 
       QgsPoint ps( p0.x(), p0.y() );
       QgsPoint pe( p1.x(), p1.y() );
@@ -1711,7 +1697,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
       s.last().addZValue( p0.z() );
       ls->setPoints( s );
       poly.setExteriorRing( ls );
-      QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
+      // QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
 
       int binarySize;
       unsigned char *wkb = poly.asWkb( binarySize );
@@ -1736,14 +1722,14 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     {
       QgsCircularStringV2 *c = new QgsCircularStringV2();
       c->setPoints( s );
-      QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
+      // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
     }
     else
     {
       QgsLineStringV2 *c = new QgsLineStringV2();
       c->setPoints( s );
-      QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
+      // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
     }
   }
@@ -1761,15 +1747,11 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     addEntity( dfn, f, data );
 
     SETDOUBLE( thickness );
-    OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "width" ), width );
+    setDouble( dfn, f, "width", width );
 
-    QVector<double> ext( 3 );
-    ext[0] = data.extPoint.x;
-    ext[1] = data.extPoint.y;
-    ext[2] = data.extPoint.z;
-    OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+    setPoint( dfn, f, "ext", data.extPoint );
 
-    QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
+    // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
     int binarySize;
     unsigned char *wkb = cc.asWkb( binarySize );
@@ -1790,12 +1772,6 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
 void QgsDwgImporter::addSpline( const DRW_Spline *data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
   Q_ASSERT( data );
 
@@ -1877,12 +1853,6 @@ void QgsDwgImporter::addKnot( const DRW_Entity &data )
 
 void QgsDwgImporter::addInsert( const DRW_Insert &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "inserts" );
@@ -1896,11 +1866,7 @@ void QgsDwgImporter::addInsert( const DRW_Insert &data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   SETSTRING( name );
   SETDOUBLE( xscale );
@@ -1946,12 +1912,6 @@ void QgsDwgImporter::add3dFace( const DRW_3Dface &data )
 
 void QgsDwgImporter::addSolid( const DRW_Solid &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "hatches" );
@@ -1965,13 +1925,8 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
-
-  OGR_F_SetFieldString( f, OGR_FD_GetFieldIndex( dfn, "hpattern" ), "SOLID" );
+  setPoint( dfn, f, "ext", data.extPoint );
+  setString( dfn, f, "hpattern", "SOLID" );
 
   QgsPolygonV2 poly;
 
@@ -2006,12 +1961,6 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
 void QgsDwgImporter::addMText( const DRW_MText &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "texts" );
@@ -2035,11 +1984,7 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
   SETDOUBLE( thickness );
   SETDOUBLE( interlin );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
 
@@ -2062,12 +2007,6 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
 
 void QgsDwgImporter::addText( const DRW_Text &data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "texts" );
@@ -2089,13 +2028,9 @@ void QgsDwgImporter::addText( const DRW_Text &data )
   SETINTEGER( alignH );
   SETINTEGER( alignV );
   SETDOUBLE( thickness );
-  OGR_F_SetFieldDouble( f, OGR_FD_GetFieldIndex( dfn, "interlin" ), -1.0 );
+  setDouble( dfn, f, "interlin", -1.0 );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   QgsPointV2 p( QgsWKBTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z );
 
@@ -2173,12 +2108,6 @@ void QgsDwgImporter::addLeader( const DRW_Leader *data )
 
 void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
   Q_ASSERT( pdata != nullptr );
   const DRW_Hatch &data = *pdata;
@@ -2194,11 +2123,7 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   SETSTRING( name );
   SETINTEGER( solid );
@@ -2237,7 +2162,7 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
         ls->setPoints( QgsPointSequenceV2()
                        << QgsPointV2( QgsWKBTypes::PointZ, l->basePoint.x, l->basePoint.y, l->basePoint.z )
                        << QgsPointV2( QgsWKBTypes::PointZ, l->secPoint.x, l->secPoint.y, l->secPoint.z ) );
-        QgsDebugMsg( QString( "add linestring:%1" ).arg( ls->asWkt() ) );
+        // QgsDebugMsg( QString( "add linestring:%1" ).arg( ls->asWkt() ) );
         cc->addCurve( ls );
       }
       else
@@ -2248,12 +2173,12 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 
     if ( i == 0 )
     {
-      QgsDebugMsg( QString( "set exterior ring:%1" ).arg( cc->asWkt() ) );
+      // QgsDebugMsg( QString( "set exterior ring:%1" ).arg( cc->asWkt() ) );
       p.setExteriorRing( cc );
     }
     else
     {
-      QgsDebugMsg( QString( "set interior ring:%1" ).arg( cc->asWkt() ) );
+      // QgsDebugMsg( QString( "set interior ring:%1" ).arg( cc->asWkt() ) );
       p.addInteriorRing( cc );
     }
   }
@@ -2277,12 +2202,6 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
 
 void QgsDwgImporter::addLine( const DRW_Line& data )
 {
-  if ( mBlockHandle >= 0 )
-  {
-    QgsDebugMsg( QString( "skipping entity block 0x%1" ).arg( mBlockHandle, 0, 16 ) );
-    return;
-  }
-
   QgsDebugCall;
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "lines" );
@@ -2296,11 +2215,7 @@ void QgsDwgImporter::addLine( const DRW_Line& data )
 
   SETDOUBLE( thickness );
 
-  QVector<double> ext( 3 );
-  ext[0] = data.extPoint.x;
-  ext[1] = data.extPoint.y;
-  ext[2] = data.extPoint.z;
-  OGR_F_SetFieldDoubleList( f, OGR_FD_GetFieldIndex( dfn, "ext" ), 3, ext.data() );
+  setPoint( dfn, f, "ext", data.extPoint );
 
   QgsLineStringV2 l;
 

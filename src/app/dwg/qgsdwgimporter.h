@@ -176,6 +176,7 @@ class QgsDwgImporter : public DRW_Interface
     void setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const std::string &value ) const;
     void setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const;
     void setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const;
+    void setPoint( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const DRW_Coord &value ) const;
 
     QgsPointSequenceV2 getStrokePoints( const QgsPointSequenceV2 &cps, bool closed ) const;
     void strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const;

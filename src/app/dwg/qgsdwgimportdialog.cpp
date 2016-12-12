@@ -25,6 +25,7 @@
 #include "qgisapp.h"
 #include "qgsdwgimporter.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectordataprovider.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsfeatureiterator.h"
 #include "qgslayertreeview.h"
@@ -50,6 +51,23 @@ struct CursorOverride
   {
     QApplication::restoreOverrideCursor();
   }
+};
+
+
+struct SkipCrsValidation
+{
+  SkipCrsValidation() : savedValidation( QgsCoordinateReferenceSystem::customSrsValidation() )
+  {
+    QgsCoordinateReferenceSystem::setCustomSrsValidation( nullptr );
+  }
+
+  ~SkipCrsValidation()
+  {
+    QgsCoordinateReferenceSystem::setCustomSrsValidation( savedValidation );
+  }
+
+private:
+  CUSTOM_CRS_VALIDATION savedValidation;
 };
 
 
@@ -138,15 +156,10 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   if ( !QFileInfo( leDatabase->text() ).exists() )
     return;
 
-  CursorOverride cursor;
-
-  CUSTOM_CRS_VALIDATION savedValidation( QgsCoordinateReferenceSystem::customSrsValidation() );
-  QgsCoordinateReferenceSystem::setCustomSrsValidation( nullptr );
+  CursorOverride waitCursor;
+  SkipCrsValidation skipCrsValidation;
 
   QScopedPointer<QgsVectorLayer> l( new QgsVectorLayer( QString( "%1|layername=layers" ).arg( leDatabase->text() ), "layers", "ogr" ) );
-
-  QgsCoordinateReferenceSystem::setCustomSrsValidation( savedValidation );
-
   if ( l && l->isValid() )
   {
     int idxName = l->fieldNameIndex( "name" );
@@ -189,6 +202,159 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   }
 }
 
+void QgsDwgImportDialog::expandInserts()
+{
+  SkipCrsValidation skipCrsValidation;
+
+  QScopedPointer<QgsVectorLayer> blocks( new QgsVectorLayer( QString( "%1|layername=blocks" ).arg( leDatabase->text() ), "blocks", "ogr" ) );
+  if ( !blocks || !blocks->isValid() )
+  {
+    QgsDebugMsg( "could not open layer 'blocks'" );
+    return;
+  }
+
+  int nameIdx = blocks->fieldNameIndex( "name" );
+  int handleIdx = blocks->fieldNameIndex( "handle" );
+  if ( nameIdx < 0 || handleIdx < 0 )
+  {
+    QgsDebugMsg( QString( "not all fields found (nameIdx=%1 handleIdx=%2)" ).arg( nameIdx ).arg( handleIdx ) );
+    return;
+  }
+
+  QHash<QString, int> blockhandle;
+
+  QgsFeatureIterator bfit = blocks->getFeatures();
+  QgsFeature block;
+  while ( bfit.nextFeature( block ) )
+  {
+    blockhandle.insert( block.attribute( nameIdx ).toString(), block.attribute( handleIdx ).toInt() );
+  }
+
+  blocks.reset();
+
+  QScopedPointer<QgsVectorLayer> inserts( new QgsVectorLayer( QString( "%1|layername=inserts" ).arg( leDatabase->text() ), "inserts", "ogr" ) );
+  if ( !inserts || !inserts->isValid() )
+  {
+    QgsDebugMsg( "could not open layer 'inserts'" );
+    return;
+  }
+
+  nameIdx = inserts->fieldNameIndex( "name" );
+  int xscaleIdx = inserts->fieldNameIndex( "xscale" );
+  int yscaleIdx = inserts->fieldNameIndex( "yscale" );
+  int zscaleIdx = inserts->fieldNameIndex( "zscale" );
+  int angleIdx = inserts->fieldNameIndex( "angle" );
+  if ( xscaleIdx < 0 || yscaleIdx < 0 || zscaleIdx < 0 || angleIdx < 0 || nameIdx < 0 )
+  {
+    QgsDebugMsg( QString( "not all fields found (nameIdx=%1 xscaleIdx=%2 yscaleIdx=%3 zscaleIdx=%4 angleIdx=%5)" )
+                 .arg( nameIdx )
+                 .arg( xscaleIdx ).arg( yscaleIdx ).arg( zscaleIdx )
+                 .arg( angleIdx ) );
+    return;
+  }
+
+  QHash<QString, QgsVectorLayer *> layers;
+  Q_FOREACH ( QString name, QStringList() << "hatches" << "lines" << "polylines" << "texts" << "points" )
+  {
+    QgsVectorLayer *layer = new QgsVectorLayer( QString( "%1|layername=%2" ).arg( leDatabase->text(), name ), name, "ogr" );
+    if ( layer && layer->isValid() )
+      layers.insert( name, layer );
+  }
+
+  QgsFeatureIterator ifit = inserts->getFeatures();
+
+  QgsFeature insert;
+  int i = 0;
+  while ( ifit.nextFeature( insert ) )
+  {
+    if ( !insert.constGeometry() )
+    {
+      QgsDebugMsg( QString( "%1: insert without geometry" ).arg( insert.id() ) );
+      continue;
+    }
+
+    QgsPoint p( insert.constGeometry()->asPoint() );
+    QString name = insert.attribute( nameIdx ).toString();
+    double xscale = insert.attribute( xscaleIdx ).toDouble();
+    double yscale = insert.attribute( yscaleIdx ).toDouble();
+    double angle = insert.attribute( angleIdx ).toDouble();
+
+    int handle = blockhandle.value( name, -1 );
+    if ( handle < 0 )
+    {
+      QgsDebugMsg( QString( "block '%1' not found" ).arg( name ) );
+      continue;
+    }
+
+    QgsDebugMsg( QString( "Resolving %1/%2: p=%3,%4 scale=%5,%6 angle=%7" )
+                 .arg( name ).arg( handle, 0, 16 )
+                 .arg( p.x() ).arg( p.y() )
+                 .arg( xscale ).arg( yscale ).arg( angle ) );
+
+    QTransform t;
+    t.translate( p.x(), p.y() ).scale( xscale, yscale ).rotateRadians( angle );
+
+    for ( QHash<QString, QgsVectorLayer *>::iterator layer = layers.begin(); layer != layers.end(); ++layer )
+    {
+      QgsVectorLayer *src = layer.value();
+      src->setSubsetString( QString( "block=%1" ).arg( handle ) );
+
+      int fidIdx = src->fieldNameIndex( "fid" );
+      int blockIdx = src->fieldNameIndex( "block" );
+      if ( fidIdx < 0 || blockIdx < 0 )
+      {
+        QgsDebugMsg( QString( "%1: fields not found (fidIdx=%2; blockIdx=%3)" ).arg( layer.key() ).arg( fidIdx ).arg( blockIdx ) );
+        continue;
+      }
+
+      int angleIdx = src->fieldNameIndex( "angle" );
+
+      QgsFeatureIterator fit = src->getFeatures();
+
+      QgsFeature f;
+      int j = 0;
+      while ( fit.nextFeature( f ) )
+      {
+        if ( f.geometry()->transform( t ) != 0 )
+        {
+          QgsDebugMsg( QString( "%1/%2: could not transform geometry" ).arg( layer.key() ).arg( f.id() ) );
+          continue;
+        }
+
+        f.setFeatureId( -1 );
+        f.setAttribute( fidIdx, QVariant( QVariant::Int ) );
+        f.setAttribute( blockIdx, -1 );
+
+        if ( angleIdx >= 0 )
+          f.setAttribute( angleIdx, f.attribute( angleIdx ).toDouble() + angle );
+
+        // TODO: resolve BYBLOCK
+
+        if ( !src->dataProvider()->addFeatures( QgsFeatureList() << f ) )
+        {
+          QgsDebugMsg( QString( "%1/%2: could not add feature" ).arg( layer.key() ).arg( f.id() ) );
+          continue;
+        }
+
+        j++;
+      }
+
+      QgsDebugMsg( QString( "%1: %2 features copied" ).arg( layer.key() ).arg( j ) );
+    }
+
+    i++;
+  }
+
+  for ( QHash<QString, QgsVectorLayer *>::iterator layer = layers.begin(); layer != layers.end(); ++layer )
+  {
+    delete layer.value();
+  }
+
+  layers.clear();
+
+  QgsDebugMsg( QString( "%1 inserts resolved" ).arg( i ) );
+}
+
 void QgsDwgImportDialog::on_pbImportDrawing_clicked()
 {
   CursorOverride waitCursor;
@@ -204,136 +370,169 @@ void QgsDwgImportDialog::on_pbImportDrawing_clicked()
     QgisApp::instance()->messageBar()->pushMessage( tr( "Drawing import failed" ), QgsMessageBar::CRITICAL, 4 );
   }
 
+  if ( cbExpandInserts->isChecked() )
+    expandInserts();
+
   on_pbLoadDatabase_clicked();
 }
 
-QgsVectorLayer *QgsDwgImportDialog::layer( QgsLayerTreeGroup *layerGroup, QString layer, QString table )
+QgsVectorLayer *QgsDwgImportDialog::layer( QgsLayerTreeGroup *layerGroup, QString layerFilter, QString table )
 {
   QgsVectorLayer *l = new QgsVectorLayer( QString( "%1|layername=%2" ).arg( leDatabase->text() ).arg( table ), table, "ogr", false );
   l->setCrs( QgsCoordinateReferenceSystem() );
-  l->setSubsetString( QString( "layer='%1' AND space=0" ).arg( layer ) );
+  l->setSubsetString( QString( "%1space=0 AND block=-1" ).arg( layerFilter ) );
   QgsMapLayerRegistry::instance()->addMapLayer( l, false );
   layerGroup->addLayer( l );
   return l;
 }
 
+void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QStringList layers, bool visible )
+{
+  QgsLayerTreeGroup *layerGroup = group->addGroup( name );
+  QgsDebugMsg( QString( " %1" ).arg( name ) ) ;
+  Q_ASSERT( layerGroup );
+
+  QString layerFilter;
+  if ( !layers.isEmpty() )
+  {
+    QStringList exprlist;
+    Q_FOREACH ( QString layer, layers )
+    {
+      exprlist.append( QString( "'%1'" ).arg( layer.replace( "'", "''" ) ) );
+    }
+    layerFilter = QString( "layer IN (%1) AND " ).arg( exprlist.join( "," ) );
+  }
+
+  QgsVectorLayer *l;
+  QgsSymbolV2 *sym;
+
+  l = layer( layerGroup, layerFilter, "hatches" );
+  QgsSimpleFillSymbolLayerV2 *sfl = new QgsSimpleFillSymbolLayerV2();
+  sfl->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
+  sfl->setBorderStyle( Qt::NoPen );
+  sym = new QgsFillSymbolV2();
+  sym->changeSymbolLayer( 0, sfl );
+  l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+
+  l = layer( layerGroup, layerFilter, "lines" );
+  QgsSimpleLineSymbolLayerV2 *sll = new QgsSimpleLineSymbolLayerV2();
+  sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
+  sll->setPenJoinStyle( Qt::MiterJoin );
+  sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "linewidth" ) );
+  sym = new QgsLineSymbolV2();
+  sym->changeSymbolLayer( 0, sll );
+  sym->setOutputUnit( QgsSymbolV2::MM );
+  l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+
+  l = layer( layerGroup, layerFilter, "polylines" );
+  sll = new QgsSimpleLineSymbolLayerV2();
+  sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
+  sll->setPenJoinStyle( Qt::MiterJoin );
+  sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "width" ) );
+  sym = new QgsLineSymbolV2();
+  sym->changeSymbolLayer( 0, sll );
+  sym->setOutputUnit( QgsSymbolV2::MapUnit );
+  l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+
+  l = layer( layerGroup, layerFilter, "texts" );
+  l->setRendererV2( new QgsNullSymbolRenderer() );
+
+  QgsPalLayerSettings pls;
+  pls.readFromLayer( l );
+
+  pls.enabled = true;
+  pls.drawLabels = true;
+  pls.fieldName = "text";
+  pls.fontSizeInMapUnits = true;
+  pls.wrapChar = "\\P";
+  pls.setDataDefinedProperty( QgsPalLayerSettings::Size, true, false, "", "height" );
+  pls.setDataDefinedProperty( QgsPalLayerSettings::Color, true, false, "", "color" );
+  pls.setDataDefinedProperty( QgsPalLayerSettings::MultiLineHeight, true, true, "CASE WHEN interlin<0 THEN 1 ELSE interlin*1.5 END", "" );
+  pls.placement = QgsPalLayerSettings::OrderedPositionsAroundPoint;
+  pls.setDataDefinedProperty( QgsPalLayerSettings::PositionX, true, true, "$x", "" );
+  pls.setDataDefinedProperty( QgsPalLayerSettings::PositionY, true, true, "$y", "" );
+  pls.setDataDefinedProperty( QgsPalLayerSettings::Hali, true, true, QString(
+                                "CASE"
+                                " WHEN etype=%1 THEN"
+                                " CASE"
+                                " WHEN alignv IN (1,4,7) THEN 'Left'"
+                                " WHEN alignv IN (2,5,6) THEN 'Center'"
+                                " ELSE 'Right'"
+                                " END"
+                                " ELSE"
+                                "  CASE"
+                                " WHEN alignh=0 THEN 'Left'"
+                                " WHEN alignh=1 THEN 'Center'"
+                                " WHEN alignh=2 THEN 'Right'"
+                                " WHEN alignh=3 THEN 'Left'"
+                                " WHEN alignh=4 THEN 'Left'"
+                                " END "
+                                " END" ).arg( DRW::MTEXT ), "" );
+
+  pls.setDataDefinedProperty( QgsPalLayerSettings::Vali, true, true, QString(
+                                "CASE"
+                                " WHEN etype=%1 THEN"
+                                " CASE"
+                                " WHEN alignv < 4 THEN 'Top'"
+                                " WHEN alignv < 7 THEN 'Half'"
+                                " ELSE 'Bottom'"
+                                " END"
+                                " ELSE"
+                                " CASE"
+                                " WHEN alignv=0 THEN 'Base'"
+                                " WHEN alignv=1 THEN 'Bottom'"
+                                " WHEN alignv=2 THEN 'Half'"
+                                " WHEN alignv=3 THEN 'Top'"
+                                " END"
+                                " END" ).arg( DRW::MTEXT ), "" );
+
+  pls.setDataDefinedProperty( QgsPalLayerSettings::Rotation, true, true, "angle*180.0/pi()", "" );
+
+  pls.writeToLayer( l );
+
+  l = layer( layerGroup, layerFilter, "inserts" );
+  l = layer( layerGroup, layerFilter, "points" );
+
+  layerGroup->setExpanded( false );
+  layerGroup->setVisible( visible ? Qt::Checked : Qt::Unchecked );
+}
+
 void QgsDwgImportDialog::on_buttonBox_accepted()
 {
   CursorOverride waitCursor;
+  SkipCrsValidation skipCrsValidation;
 
-  CUSTOM_CRS_VALIDATION savedValidation( QgsCoordinateReferenceSystem::customSrsValidation() );
-  QgsCoordinateReferenceSystem::setCustomSrsValidation( nullptr );
-
-  QgsLayerTreeGroup *dwgGroup = QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup()->addGroup( leLayerGroup->text() );
-  Q_ASSERT( dwgGroup );
-
+  QMap<QString, bool> layers;
+  bool allLayers = true;
   for ( int i = 0; i < mLayers->rowCount(); i++ )
   {
     QTableWidgetItem *item = mLayers->item( i, 0 );
     if ( item->checkState() == Qt::Unchecked )
+    {
+      allLayers = false;
       continue;
+    }
 
-    QString layerName( item->text() );
-
-    QgsDebugMsg( QString( " %1" ).arg( layerName ) ) ;
-    QgsLayerTreeGroup *layerGroup = dwgGroup->addGroup( layerName );
-    Q_ASSERT( layerGroup );
-
-    QgsVectorLayer *l;
-    QgsSymbolV2 *sym;
-
-    l = layer( layerGroup, layerName, "hatches" );
-    QgsSimpleFillSymbolLayerV2 *sfl = new QgsSimpleFillSymbolLayerV2();
-    sfl->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
-    sfl->setBorderStyle( Qt::NoPen );
-    sym = new QgsFillSymbolV2();
-    sym->changeSymbolLayer( 0, sfl );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
-
-    l = layer( layerGroup, layerName, "lines" );
-    QgsSimpleLineSymbolLayerV2 *sll = new QgsSimpleLineSymbolLayerV2();
-    sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
-    sll->setPenJoinStyle( Qt::MiterJoin );
-    sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "linewidth" ) );
-    sym = new QgsLineSymbolV2();
-    sym->changeSymbolLayer( 0, sll );
-    sym->setOutputUnit( QgsSymbolV2::MM );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
-
-    l = layer( layerGroup, layerName, "polylines" );
-    sll = new QgsSimpleLineSymbolLayerV2();
-    sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
-    sll->setPenJoinStyle( Qt::MiterJoin );
-    sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "width" ) );
-    sym = new QgsLineSymbolV2();
-    sym->changeSymbolLayer( 0, sll );
-    sym->setOutputUnit( QgsSymbolV2::MapUnit );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
-
-    l = layer( layerGroup, layerName, "texts" );
-    l->setRendererV2( new QgsNullSymbolRenderer() );
-
-    QgsPalLayerSettings pls;
-    pls.readFromLayer( l );
-
-    pls.enabled = true;
-    pls.drawLabels = true;
-    pls.fieldName = "text";
-    pls.fontSizeInMapUnits = true;
-    pls.wrapChar = "\\P";
-    pls.setDataDefinedProperty( QgsPalLayerSettings::Size, true, false, "", "height" );
-    pls.setDataDefinedProperty( QgsPalLayerSettings::Color, true, false, "", "color" );
-    pls.setDataDefinedProperty( QgsPalLayerSettings::MultiLineHeight, true, true, "CASE WHEN interlin<0 THEN 1 ELSE interlin*1.5 END", "" );
-    pls.placement = QgsPalLayerSettings::OrderedPositionsAroundPoint;
-    pls.setDataDefinedProperty( QgsPalLayerSettings::PositionX, true, true, "$x", "" );
-    pls.setDataDefinedProperty( QgsPalLayerSettings::PositionY, true, true, "$y", "" );
-    pls.setDataDefinedProperty( QgsPalLayerSettings::Hali, true, true, QString(
-                                  "CASE"
-                                  " WHEN etype=%1 THEN"
-                                  " CASE"
-                                  " WHEN alignv IN (1,4,7) THEN 'Left'"
-                                  " WHEN alignv IN (2,5,6) THEN 'Center'"
-                                  " ELSE 'Right'"
-                                  " END"
-                                  " ELSE"
-                                  "  CASE"
-                                  " WHEN alignh=0 THEN 'Left'"
-                                  " WHEN alignh=1 THEN 'Center'"
-                                  " WHEN alignh=2 THEN 'Right'"
-                                  " WHEN alignh=3 THEN 'Left'"
-                                  " WHEN alignh=4 THEN 'Left'"
-                                  " END "
-                                  " END" ).arg( DRW::MTEXT ), "" );
-
-    pls.setDataDefinedProperty( QgsPalLayerSettings::Vali, true, true, QString(
-                                  "CASE"
-                                  " WHEN etype=%1 THEN"
-                                  " CASE"
-                                  " WHEN alignv < 4 THEN 'Top'"
-                                  " WHEN alignv < 7 THEN 'Half'"
-                                  " ELSE 'Bottom'"
-                                  " END"
-                                  " ELSE"
-                                  " CASE"
-                                  " WHEN alignv=0 THEN 'Base'"
-                                  " WHEN alignv=1 THEN 'Bottom'"
-                                  " WHEN alignv=2 THEN 'Half'"
-                                  " WHEN alignv=3 THEN 'Top'"
-                                  " END"
-                                  " END" ).arg( DRW::MTEXT ), "" );
-
-    pls.setDataDefinedProperty( QgsPalLayerSettings::Rotation, true, true, "angle*180.0/pi()", "" );
-
-    pls.writeToLayer( l );
-
-    l = layer( layerGroup, layerName, "inserts" );
-    l = layer( layerGroup, layerName, "points" );
-
-    layerGroup->setExpanded( false );
-    layerGroup->setVisible( mLayers->item( i, 1 )->checkState() );
+    layers.insert( item->text(), mLayers->item( i, 1 )->checkState() == Qt::Checked );
   }
 
-  dwgGroup->setExpanded( false );
+  if ( cbMergeLayers->isChecked() )
+  {
+    if ( allLayers )
+      layers.clear();
 
-  QgsCoordinateReferenceSystem::setCustomSrsValidation( savedValidation );
+    createGroup( QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), leLayerGroup->text(), layers.keys(), true );
+  }
+  else
+  {
+    QgsLayerTreeGroup *dwgGroup = QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup()->addGroup( leLayerGroup->text() );
+    Q_ASSERT( dwgGroup );
+
+    Q_FOREACH ( QString layer, layers.keys() )
+    {
+      createGroup( dwgGroup, layer, QStringList( layer ), layers[layer] );
+    }
+
+    dwgGroup->setExpanded( false );
+  }
 }

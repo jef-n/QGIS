@@ -42,7 +42,9 @@ class QgsDwgImportDialog : public QDialog, private Ui::QgsDwgImportBase
 
   private:
     QgsVectorLayer *layer( QgsLayerTreeGroup *layerGroup, QString layer, QString table );
+    void createGroup( QgsLayerTreeGroup *group, QString name, QStringList layers, bool visible );
     void updateUI();
+    void expandInserts();
 };
 
 #endif // QGSDWGIMPORTDIALOG_H
