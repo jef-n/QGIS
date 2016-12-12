@@ -12,10 +12,14 @@
 
 
 #include "libdwgr.h"
+
 #include <fstream>
 #include <algorithm>
 #include <sstream>
 #include "intern/drw_dbg.h"
+
+#include "qgslogger.h"
+
 #include "intern/drw_textcodec.h"
 #include "intern/dwgreader.h"
 #include "intern/dwgreader15.h"
@@ -111,68 +115,48 @@ bool dwgR::testReader()
   fileBuf.getBytes( tmpStrData, fileBuf.size() );
   dwgBuffer dataBuf( tmpStrData, fileBuf.size() );
   fileBuf.setPosition( 0 );
-  DRW_DBG( "\ndwgR::testReader filebuf size: " );
-  DRW_DBG( fileBuf.size() );
-  DRW_DBG( "\ndwgR::testReader dataBuf size: " );
-  DRW_DBG( dataBuf.size() );
-  DRW_DBG( "\n filebuf pos: " );
-  DRW_DBG( fileBuf.getPosition() );
-  DRW_DBG( "\n dataBuf pos: " );
-  DRW_DBG( dataBuf.getPosition() );
-  DRW_DBG( "\n filebuf bitpos: " );
-  DRW_DBG( fileBuf.getBitPos() );
-  DRW_DBG( "\n dataBuf bitpos: " );
-  DRW_DBG( dataBuf.getBitPos() );
-  DRW_DBG( "\n filebuf first byte : " );
-  DRW_DBGH( fileBuf.getRawChar8() );
-  DRW_DBG( "\n dataBuf  first byte : " );
-  DRW_DBGH( dataBuf.getRawChar8() );
+
+  QgsDebugMsg( QString( "filebuf size:%1, dataBuf size:%2, filebuf pos:%3, dataBuf pos:%4, filebuf bitpos:%5, dataBuf bitpos:%6, filebuf first byte:0x%7, databuf first byte:0x%8" )
+               .arg( fileBuf.size() ).arg( dataBuf.size() )
+               .arg( fileBuf.getPosition() ).arg( dataBuf.getPosition() )
+               .arg( fileBuf.getBitPos() ).arg( dataBuf.getBitPos() )
+               .arg( fileBuf.getRawChar8(), 0, 16 )
+               .arg( dataBuf.getRawChar8(), 0, 16 )
+             );
+
   fileBuf.setBitPos( 4 );
   dataBuf.setBitPos( 4 );
-  DRW_DBG( "\n filebuf first byte : " );
-  DRW_DBGH( fileBuf.getRawChar8() );
-  DRW_DBG( "\n dataBuf  first byte : " );
-  DRW_DBGH( dataBuf.getRawChar8() );
-  DRW_DBG( "\n filebuf pos: " );
-  DRW_DBG( fileBuf.getPosition() );
-  DRW_DBG( "\n dataBuf pos: " );
-  DRW_DBG( dataBuf.getPosition() );
-  DRW_DBG( "\n filebuf bitpos: " );
-  DRW_DBG( fileBuf.getBitPos() );
-  DRW_DBG( "\n dataBuf bitpos: " );
-  DRW_DBG( dataBuf.getBitPos() );
+
+  QgsDebugMsg( QString( "filebuf first byte:0x%1, databuf first byte:0x%2, filebuf pos:%3, databuf pos:%4, filebuf bitpos:%5, databuf bitpos:%6" )
+               .arg( fileBuf.getRawChar8(), 0, 16 )
+               .arg( dataBuf.getRawChar8(), 0, 16 )
+               .arg( fileBuf.getPosition() ).arg( dataBuf.getPosition() )
+               .arg( fileBuf.getBitPos() ).arg( dataBuf.getBitPos() )
+             );
+
   fileBuf.setBitPos( 6 );
   dataBuf.setBitPos( 6 );
-  DRW_DBG( "\n filebuf pos: " );
-  DRW_DBG( fileBuf.getPosition() );
-  DRW_DBG( "\n dataBuf pos: " );
-  DRW_DBG( dataBuf.getPosition() );
-  DRW_DBG( "\n filebuf bitpos: " );
-  DRW_DBG( fileBuf.getBitPos() );
-  DRW_DBG( "\n dataBuf bitpos: " );
-  DRW_DBG( dataBuf.getBitPos() );
-  DRW_DBG( "\n filebuf first byte : " );
-  DRW_DBGH( fileBuf.getRawChar8() );
-  DRW_DBG( "\n dataBuf  first byte : " );
-  DRW_DBGH( dataBuf.getRawChar8() );
+
+  QgsDebugMsg( QString( "filebuf pos:%1, databuf pos:%1, filebuf bitpos:%3, databuf bitpos:%4, filebuf first byte:%5, databuf first byte:%6" )
+               .arg( fileBuf.getPosition() ).arg( dataBuf.getPosition() )
+               .arg( fileBuf.getBitPos() ).arg( dataBuf.getBitPos() )
+               .arg( fileBuf.getRawChar8(), 0, 16 )
+               .arg( dataBuf.getRawChar8(), 0, 16 )
+             );
+
   fileBuf.setBitPos( 0 );
   dataBuf.setBitPos( 0 );
-  DRW_DBG( "\n filebuf first byte : " );
-  DRW_DBGH( fileBuf.getRawChar8() );
-  DRW_DBG( "\n dataBuf  first byte : " );
-  DRW_DBGH( dataBuf.getRawChar8() );
-  DRW_DBG( "\n filebuf pos: " );
-  DRW_DBG( fileBuf.getPosition() );
-  DRW_DBG( "\n dataBuf pos: " );
-  DRW_DBG( dataBuf.getPosition() );
-  DRW_DBG( "\n filebuf bitpos: " );
-  DRW_DBG( fileBuf.getBitPos() );
-  DRW_DBG( "\n dataBuf bitpos: " );
-  DRW_DBG( dataBuf.getBitPos() );
+
+  QgsDebugMsg( QString( "filebuf first byte:0x%1, databuf first byte:0x%2, filebuf pos:%3, databuf pos:%4, filebuf bitpos:%5, databuf bitpos:%6" )
+               .arg( fileBuf.getRawChar8(), 0, 16 )
+               .arg( dataBuf.getRawChar8(), 0, 16 )
+               .arg( fileBuf.getPosition() ).arg( dataBuf.getPosition() )
+               .arg( fileBuf.getBitPos() ).arg( dataBuf.getBitPos() )
+             );
 
   delete [] tmpStrData;
   filestr.close();
-  DRW_DBG( "\n\n" );
+
   return isOk;
 }
 
@@ -222,8 +206,10 @@ bool dwgR::read( DRW_Interface *interface_, bool ext )
 */
 bool dwgR::openFile( std::ifstream *filestr )
 {
+  QgsDebugMsg( "Entering." );
+
   bool isOk = false;
-  DRW_DBG( "dwgR::read 1\n" );
+
   filestr->open( fileName.c_str(), std::ios_base::in | std::ios::binary );
   if ( !filestr->is_open() || !filestr->good() )
   {
@@ -234,10 +220,8 @@ bool dwgR::openFile( std::ifstream *filestr )
   char line[7];
   filestr->read( line, 6 );
   line[6] = '\0';
-  DRW_DBG( "dwgR::read 2\n" );
-  DRW_DBG( "dwgR::read line version: " );
-  DRW_DBG( line );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "line version:%1" ).arg( line ) );
 
   if ( strcmp( line, "AC1006" ) == 0 )
     version = DRW::AC1006;
@@ -299,7 +283,8 @@ bool dwgR::openFile( std::ifstream *filestr )
 
 bool dwgR::processDwg()
 {
-  DRW_DBG( "dwgR::processDwg() start processing dwg\n" );
+  QgsDebugMsg( "Entering." );
+
   bool ret;
   bool ret2;
   DRW_Header hdr;

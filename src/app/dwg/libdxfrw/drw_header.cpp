@@ -16,6 +16,8 @@
 #include "intern/drw_dbg.h"
 #include "intern/dwgbuffer.h"
 
+#include "qgslogger.h"
+
 #include <assert.h>
 
 DRW_Header::DRW_Header()
@@ -1830,14 +1832,11 @@ void DRW_Header::write( dxfWriter *writer, DRW::Version ver )
       writer->writeDouble( 40, 0.0 );
   }
 
-#ifdef DRW_DBG
   std::map<std::string, DRW_Variant *>::const_iterator it;
   for ( it = vars.begin() ; it != vars.end(); ++it )
   {
-    DRW_DBG(( *it ).first );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "%1" ).arg(( *it ).first.c_str() ) );
   }
-#endif
 }
 
 void DRW_Header::addDouble( std::string key, double value, int code )
@@ -1942,14 +1941,14 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   duint32 size = buf->getRawLong32();
   duint32 bitSize = 0;
   duint32 endBitPos = 160; //start bit: 16 sentinel + 4 size
-  DRW_DBG( "\nbyte size of data: " );
-  DRW_DBG( size );
+
+  QgsDebugMsg( QString( "byte size of data: %1" ).arg( size ) );
+
   if ( version > DRW::AC1021 && mv > 3 ) //2010+
   {
     duint32 hSize = buf->getRawLong32();
     endBitPos += 32; //start bit: + 4 hight size
-    DRW_DBG( "\n2010+ & MV> 3, higth 32b: " );
-    DRW_DBG( hSize );
+    QgsDebugMsg( QString( "\n2010+ & MV> 3, higth 32b:%1" ).arg( hSize ) );
   }
 //RLZ TODO add $ACADVER var & $DWGCODEPAGE & $MEASUREMENT
 //RLZ TODO EN 2000 falta $CELWEIGHT, $ENDCAPS, $EXTNAMES $JOINSTYLE $LWDISPLAY $PSTYLEMODE $TDUCREATE  $TDUUPDATE $XEDIT
@@ -1960,8 +1959,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   if ( version > DRW::AC1018 )  //2007+
   {
     bitSize = buf->getRawLong32();
-    DRW_DBG( "\nsize in bits: " );
-    DRW_DBG( bitSize );
+    QgsDebugMsg( QString( "size in bits: %1" ).arg( bitSize ) );
     endBitPos += bitSize;
     hBbuf->setPosition( endBitPos >> 3 );
     hBbuf->setBitPos( endBitPos&7 );
@@ -1970,42 +1968,42 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   if ( version > DRW::AC1024 )  //2013+
   {
     duint64 requiredVersions = buf->getBitLongLong();
-    DRW_DBG( "\nREQUIREDVERSIONS var: " );
-    DRW_DBG( requiredVersions );
+    QgsDebugMsg( QString( "REQUIREDVERSIONS var: %1" ).arg( requiredVersions ) );
   }
-  DRW_DBG( "\nUnknown1: " );
-  DRW_DBG( buf->getBitDouble() );
-  DRW_DBG( "\nUnknown2: " );
-  DRW_DBG( buf->getBitDouble() );
-  DRW_DBG( "\nUnknown3: " );
-  DRW_DBG( buf->getBitDouble() );
-  DRW_DBG( "\nUnknown4: " );
-  DRW_DBG( buf->getBitDouble() );
+  double unk0 = buf->getBitDouble();
+  double unk1 = buf->getBitDouble();
+  double unk2 = buf->getBitDouble();
+  double unk3 = buf->getBitDouble();
+  QgsDebugMsg( QString( "unk0:%1 unk1:%2 unk2:%3 unk3:%4" ).arg( unk0 ).arg( unk1 ).arg( unk2 ).arg( unk3 ) );
+
   if ( version < DRW::AC1021 )  //2007-
   {
-    DRW_DBG( "\nUnknown text1: " );
-    DRW_DBG( buf->getCP8Text() );
-    DRW_DBG( "\nUnknown text2: " );
-    DRW_DBG( buf->getCP8Text() );
-    DRW_DBG( "\nUnknown text3: " );
-    DRW_DBG( buf->getCP8Text() );
-    DRW_DBG( "\nUnknown text4: " );
-    DRW_DBG( buf->getCP8Text() );
+    std::string t;
+    t = buf->getCP8Text();
+    QgsDebugMsg( QString( "unknown0: %1" ).arg( t.c_str() ) );
+    t = buf->getCP8Text();
+    QgsDebugMsg( QString( "unknown1: %1" ).arg( t.c_str() ) );
+    t = buf->getCP8Text();
+    QgsDebugMsg( QString( "unknown2: %1" ).arg( t.c_str() ) );
+    t = buf->getCP8Text();
+    QgsDebugMsg( QString( "unknown3: %1" ).arg( t.c_str() ) );
   }
-  DRW_DBG( "\nUnknown long1 (24L): " );
-  DRW_DBG( buf->getBitLong() );
-  DRW_DBG( "\nUnknown long2 (0L): " );
-  DRW_DBG( buf->getBitLong() );
+
+  int t = buf->getBitLong();
+  QgsDebugMsg( QString( "Unknown long1 (24L): %1" ).arg( t ) );
+  t = buf->getBitLong();
+  QgsDebugMsg( QString( "Unknown long2 (0L): %1" ).arg( t ) );
+
   if ( version < DRW::AC1015 )  //pre 2000
   {
-    DRW_DBG( "\nUnknown short (0): " );
-    DRW_DBG( buf->getBitShort() );
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "Unknown short (0): %1" ).arg( t ) );;
   }
+
   if ( version < DRW::AC1018 )  //pre 2004
   {
     dwgHandle hcv = hBbuf->getHandle();
-    DRW_DBG( "\nhandle of current view: " );
-    DRW_DBGHL( hcv.code, hcv.size, hcv.ref );
+    QgsDebugMsg( QString( "handle of current view:%1.%2 0x%3" ).arg( hcv.code ).arg( hcv.size ).arg( hcv.ref, 0, 16 ) );
   }
   vars["DIMASO"] = new DRW_Variant( 70, buf->getBit() );
   vars["DIMSHO"] = new DRW_Variant( 70, buf->getBit() );
@@ -2026,8 +2024,8 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   }
   if ( version > DRW::AC1015 )  //2004+
   {
-    DRW_DBG( "\nUndocumented: " );
-    DRW_DBG( buf->getBit() );
+    int b = buf->getBit();
+    QgsDebugMsg( QString( "Undocumented: %1" ).arg( b ) );
   }
   vars["USRTIMER"] = new DRW_Variant( 70, buf->getBit() );
   vars["SKPOLY"] = new DRW_Variant( 70, buf->getBit() );
@@ -2079,12 +2077,13 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   }
   if ( version > DRW::AC1015 )  //2004+
   {
-    DRW_DBG( "\nUnknown long 1: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown long 2: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown long 3: " );
-    DRW_DBG( buf->getBitLong() );
+    int t;
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 1: %1" ).arg( t ) );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 2: %1" ).arg( t ) );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 3: %1" ).arg( t ) );
   }
   vars["USERI1"] = new DRW_Variant( 70, buf->getBitShort() );
   vars["USERI2"] = new DRW_Variant( 70, buf->getBitShort() );
@@ -2147,12 +2146,13 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
 //    vars["TDUPDATE"]=new DRW_Variant(40, buf->getBitLong());
   if ( version > DRW::AC1015 )  //2004+
   {
-    DRW_DBG( "\nUnknown long 4: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown long 5: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown long 6: " );
-    DRW_DBG( buf->getBitLong() );
+    int t;
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 4: %1" ).arg( t ) );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 5: %1" ).arg( t ) );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown long 6: %1" ).arg( t ) );
   }
   day = buf->getBitLong();
   msec = buf->getBitLong();
@@ -2170,29 +2170,23 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
 //    vars["TDUSRTIMER"]=new DRW_Variant(40, buf->getBitLong());//RLZ: TODO convert to day.msec
   vars["CECOLOR"] = new DRW_Variant( 62, buf->getCmColor( version ) );//RLZ: TODO read CMC or EMC color
   dwgHandle HANDSEED = buf->getHandle();//allways present in data stream
-  DRW_DBG( "\nHANDSEED: " );
-  DRW_DBGHL( HANDSEED.code, HANDSEED.size, HANDSEED.ref );
+  QgsDebugMsg( QString( "HANDSEED: %1.%2 0x%3" ).arg( HANDSEED.code ).arg( HANDSEED.size ).arg( HANDSEED.ref, 0, 16 ) );
   dwgHandle CLAYER = hBbuf->getHandle();
-  DRW_DBG( "\nCLAYER: " );
-  DRW_DBGHL( CLAYER.code, CLAYER.size, CLAYER.ref );
+  QgsDebugMsg( QString( "CLAYER: %1.%2 0x%3" ).arg( CLAYER.code ).arg( CLAYER.size ).arg( CLAYER.ref, 0, 16 ) );
   dwgHandle TEXTSTYLE = hBbuf->getHandle();
-  DRW_DBG( "\nTEXTSTYLE: " );
-  DRW_DBGHL( TEXTSTYLE.code, TEXTSTYLE.size, TEXTSTYLE.ref );
+  QgsDebugMsg( QString( "TEXTSTYLE: %1.%2 0x%3" ).arg( TEXTSTYLE.code ).arg( TEXTSTYLE.size ).arg( TEXTSTYLE.ref, 0, 16 ) );
   dwgHandle CELTYPE = hBbuf->getHandle();
-  DRW_DBG( "\nCELTYPE: " );
-  DRW_DBGHL( CELTYPE.code, CELTYPE.size, CELTYPE.ref );
+  QgsDebugMsg( QString( "CELTYPE: %1.%2 0x%3" ).arg( CELTYPE.code ).arg( CELTYPE.size ).arg( CELTYPE.ref, 0, 16 ) );
+
   if ( version > DRW::AC1018 )  //2007+
   {
     dwgHandle CMATERIAL = hBbuf->getHandle();
-    DRW_DBG( "\nCMATERIAL: " );
-    DRW_DBGHL( CMATERIAL.code, CMATERIAL.size, CMATERIAL.ref );
+    QgsDebugMsg( QString( "CMATERIAL: %1.%2 0x%3" ).arg( CMATERIAL.code ).arg( CMATERIAL.size ).arg( CMATERIAL.ref, 0, 16 ) );
   }
   dwgHandle DIMSTYLE = hBbuf->getHandle();
-  DRW_DBG( "\nDIMSTYLE: " );
-  DRW_DBGHL( DIMSTYLE.code, DIMSTYLE.size, DIMSTYLE.ref );
+  QgsDebugMsg( QString( "DIMSTYLE: %1.%2 0x%3" ).arg( DIMSTYLE.code ).arg( DIMSTYLE.size ).arg( DIMSTYLE.ref, 0, 16 ) );
   dwgHandle CMLSTYLE = hBbuf->getHandle();
-  DRW_DBG( "\nCMLSTYLE: " );
-  DRW_DBGHL( CMLSTYLE.code, CMLSTYLE.size, CMLSTYLE.ref );
+  QgsDebugMsg( QString( "CMLSTYLE: %1.%2 0x%3" ).arg( CMLSTYLE.code ).arg( CMLSTYLE.size ).arg( CMLSTYLE.ref, 0, 16 ) );
   if ( version > DRW::AC1014 )  //2000+
   {
     vars["PSVPSCALE"] = new DRW_Variant( 40, buf->getBitDouble() );
@@ -2207,17 +2201,14 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   vars["PUCSXDIR"] = new DRW_Variant( 10, buf->get3BitDouble() );
   vars["PUCSYDIR"] = new DRW_Variant( 10, buf->get3BitDouble() );
   dwgHandle PUCSNAME = hBbuf->getHandle();
-  DRW_DBG( "\nPUCSNAME: " );
-  DRW_DBGHL( PUCSNAME.code, PUCSNAME.size, PUCSNAME.ref );
+  QgsDebugMsg( QString( "PUCSNAME: %1.%2 0x%3" ).arg( PUCSNAME.code ).arg( PUCSNAME.size ).arg( PUCSNAME.ref, 0, 16 ) );
   if ( version > DRW::AC1014 )  //2000+
   {
     dwgHandle PUCSORTHOREF = hBbuf->getHandle();
-    DRW_DBG( "\nPUCSORTHOREF: " );
-    DRW_DBGHL( PUCSORTHOREF.code, PUCSORTHOREF.size, PUCSORTHOREF.ref );
+    QgsDebugMsg( QString( "PUCSORTHOREF: %1.%2 0x%3" ).arg( PUCSORTHOREF.code ).arg( PUCSORTHOREF.size ).arg( PUCSORTHOREF.ref, 0, 16 ) );
     vars["PUCSORTHOVIEW"] = new DRW_Variant( 70, buf->getBitShort() );
     dwgHandle PUCSBASE = hBbuf->getHandle();
-    DRW_DBG( "\nPUCSBASE: " );
-    DRW_DBGHL( PUCSBASE.code, PUCSBASE.size, PUCSBASE.ref );
+    QgsDebugMsg( QString( "PUCSBASE: %1.%2 0x%3" ).arg( PUCSBASE.code ).arg( PUCSBASE.size ).arg( PUCSBASE.ref, 0, 16 ) );
     vars["PUCSORGTOP"] = new DRW_Variant( 10, buf->get3BitDouble() );
     vars["PUCSORGBOTTOM"] = new DRW_Variant( 10, buf->get3BitDouble() );
     vars["PUCSORGLEFT"] = new DRW_Variant( 10, buf->get3BitDouble() );
@@ -2235,17 +2226,14 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   vars["UCSXDIR"] = new DRW_Variant( 10, buf->get3BitDouble() );
   vars["UCSYDIR"] = new DRW_Variant( 10, buf->get3BitDouble() );
   dwgHandle UCSNAME = hBbuf->getHandle();
-  DRW_DBG( "\nUCSNAME: " );
-  DRW_DBGHL( UCSNAME.code, UCSNAME.size, UCSNAME.ref );
+  QgsDebugMsg( QString( "UCSNAME: %1.%2 0x%3" ).arg( UCSNAME.code ).arg( UCSNAME.size ).arg( UCSNAME.ref, 0, 16 ) );
   if ( version > DRW::AC1014 )  //2000+
   {
     dwgHandle UCSORTHOREF = hBbuf->getHandle();
-    DRW_DBG( "\nUCSORTHOREF: " );
-    DRW_DBGHL( UCSORTHOREF.code, UCSORTHOREF.size, UCSORTHOREF.ref );
+    QgsDebugMsg( QString( "UCSORTHOREF: %1.%2 0x%3" ).arg( UCSORTHOREF.code ).arg( UCSORTHOREF.size ).arg( UCSORTHOREF.ref, 0, 16 ) );
     vars["UCSORTHOVIEW"] = new DRW_Variant( 70, buf->getBitShort() );
     dwgHandle UCSBASE = hBbuf->getHandle();
-    DRW_DBG( "\nUCSBASE: " );
-    DRW_DBGHL( UCSBASE.code, UCSBASE.size, UCSBASE.ref );
+    QgsDebugMsg( QString( "UCSBASE: %1.%2 0x%3" ).arg( UCSBASE.code ).arg( UCSBASE.size ).arg( UCSBASE.ref, 0, 16 ) );
     vars["UCSORGTOP"] = new DRW_Variant( 10, buf->get3BitDouble() );
     vars["UCSORGBOTTOM"] = new DRW_Variant( 10, buf->get3BitDouble() );
     vars["UCSORGLEFT"] = new DRW_Variant( 10, buf->get3BitDouble() );
@@ -2290,8 +2278,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     vars["DIMALTU"] = new DRW_Variant( 70, buf->getBitShort() );
     vars["DIMALTTD"] = new DRW_Variant( 70, buf->getBitShort() );
     dwgHandle DIMTXSTY = hBbuf->getHandle();
-    DRW_DBG( "\nDIMTXSTY: " );
-    DRW_DBGHL( DIMTXSTY.code, DIMTXSTY.size, DIMTXSTY.ref );
+    QgsDebugMsg( QString( "DIMTXSTY: %1.%2 0x%3" ).arg( DIMTXSTY.code ).arg( DIMTXSTY.size ).arg( DIMTXSTY.ref, 0, 16 ) );
   }
   vars["DIMSCALE"] = new DRW_Variant( 40, buf->getBitDouble() );
   vars["DIMASZ"] = new DRW_Variant( 40, buf->getBitDouble() );
@@ -2389,32 +2376,24 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   if ( version > DRW::AC1014 )  //2000+
   {
     dwgHandle DIMTXSTY = hBbuf->getHandle();
-    DRW_DBG( "\nDIMTXSTY: " );
-    DRW_DBGHL( DIMTXSTY.code, DIMTXSTY.size, DIMTXSTY.ref );
+    QgsDebugMsg( QString( "DIMTXSTY: %1.%2 0x%3" ).arg( DIMTXSTY.code ).arg( DIMTXSTY.size ).arg( DIMTXSTY.ref, 0, 16 ) );
     dwgHandle DIMLDRBLK = hBbuf->getHandle();
-    DRW_DBG( "\nDIMLDRBLK: " );
-    DRW_DBGHL( DIMLDRBLK.code, DIMLDRBLK.size, DIMLDRBLK.ref );
+    QgsDebugMsg( QString( "DIMLDRBLK: %1.%2 0x%3" ).arg( DIMLDRBLK.code ).arg( DIMLDRBLK.size ).arg( DIMLDRBLK.ref, 0, 16 ) );
     dwgHandle DIMBLK = hBbuf->getHandle();
-    DRW_DBG( "\nDIMBLK: " );
-    DRW_DBGHL( DIMBLK.code, DIMBLK.size, DIMBLK.ref );
+    QgsDebugMsg( QString( "DIMBLK: %1.%2 0x%3" ).arg( DIMBLK.code ).arg( DIMBLK.size ).arg( DIMBLK.ref, 0, 16 ) );
     dwgHandle DIMBLK1 = hBbuf->getHandle();
-    DRW_DBG( "\nDIMBLK1: " );
-    DRW_DBGHL( DIMBLK1.code, DIMBLK1.size, DIMBLK1.ref );
+    QgsDebugMsg( QString( "DIMBLK1: %1.%2 0x%3" ).arg( DIMBLK1.code ).arg( DIMBLK1.size ).arg( DIMBLK1.ref, 0, 16 ) );
     dwgHandle DIMBLK2 = hBbuf->getHandle();
-    DRW_DBG( "\nDIMBLK2: " );
-    DRW_DBGHL( DIMBLK2.code, DIMBLK2.size, DIMBLK2.ref );
+    QgsDebugMsg( QString( "DIMBLK2: %1.%2 0x%3" ).arg( DIMBLK2.code ).arg( DIMBLK2.size ).arg( DIMBLK2.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     dwgHandle DIMLTYPE = hBbuf->getHandle();
-    DRW_DBG( "\nDIMLTYPE: " );
-    DRW_DBGHL( DIMLTYPE.code, DIMLTYPE.size, DIMLTYPE.ref );
+    QgsDebugMsg( QString( "DIMLTYPE: %1.%2 0x%3" ).arg( DIMLTYPE.code ).arg( DIMLTYPE.size ).arg( DIMLTYPE.ref, 0, 16 ) );
     dwgHandle DIMLTEX1 = hBbuf->getHandle();
-    DRW_DBG( "\nDIMLTEX1: " );
-    DRW_DBGHL( DIMLTEX1.code, DIMLTEX1.size, DIMLTEX1.ref );
+    QgsDebugMsg( QString( "DIMLTEX1: %1.%2 0x%3" ).arg( DIMLTEX1.code ).arg( DIMLTEX1.size ).arg( DIMLTEX1.ref, 0, 16 ) );
     dwgHandle DIMLTEX2 = hBbuf->getHandle();
-    DRW_DBG( "\nDIMLTEX2: " );
-    DRW_DBGHL( DIMLTEX2.code, DIMLTEX2.size, DIMLTEX2.ref );
+    QgsDebugMsg( QString( "DIMLTEX2: %1.%2 0x%3" ).arg( DIMLTEX2.code ).arg( DIMLTEX2.size ).arg( DIMLTEX2.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1014 )  //2000+
   {
@@ -2422,57 +2401,53 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     vars["DIMLWE"] = new DRW_Variant( 70, buf->getBitShort() );
   }
   dwgHandle CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nBLOCK CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "BLOCK CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   blockCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nLAYER CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "LAYER CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   layerCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nSTYLE CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "STYLE CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   styleCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nLINETYPE CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "LINETYPE CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   linetypeCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nVIEW CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "VIEW CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   viewCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nUCS CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "UCS CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   ucsCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nVPORT CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "VPORT CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   vportCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nAPPID CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "APPID CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   appidCtrl = CONTROL.ref;
+
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nDIMSTYLE CONTROL: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "DIMSTYLE CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   dimstyleCtrl = CONTROL.ref;
+
   if ( version < DRW::AC1018 )  //r2000-
   {
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nVIEWPORT ENTITY HEADER CONTROL: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "VIEWPORT ENTITY HEADER CONTROL: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     vpEntHeaderCtrl = CONTROL.ref; //RLZ: only in R13-R15 ????
   }
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nDICT ACAD_GROUP: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "DICT ACAD_GROUP: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nDICT ACAD_MLINESTYLE: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "DICT ACAD_MLINESTYLE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nDICT NAMED OBJS: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "DICT NAMED OBJS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
 
   if ( version > DRW::AC1014 )  //2000+
   {
@@ -2484,48 +2459,40 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
       vars["STYLESHEET"] = new DRW_Variant( 1, buf->getCP8Text() );
     }
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT LAYOUTS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT LAYOUTS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT PLOTSETTINGS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT PLOTSETTINGS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT PLOTSTYLES: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT PLOTSTYLES: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1015 )  //2004+
   {
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT MATERIALS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT MATERIALS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT COLORS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT COLORS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDICT VISUALSTYLE: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DICT VISUALSTYLE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1024 )  //2013+
   {
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nUNKNOWN HANDLE: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "UNKNOWN HANDLE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1014 )  //2000+
   {
-    DRW_DBG( "\nFlags: " );
-    DRW_DBGH( buf->getBitLong() );//RLZ TODO change to 8 vars
+    int t = buf->getBitLong();
+    QgsDebugMsg( QString( "Flags:%1" ).arg( t, 0, 15 ) );
     vars["INSUNITS"] = new DRW_Variant( 70, buf->getBitShort() );
     duint16 cepsntype = buf->getBitShort();
     vars["CEPSNTYPE"] = new DRW_Variant( 70, cepsntype );
     if ( cepsntype == 3 )
     {
       CONTROL = hBbuf->getHandle();
-      DRW_DBG( "\nCPSNID HANDLE: " );
-      DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+      QgsDebugMsg( QString( "CPSNID HANDLE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     }
     if ( version < DRW::AC1021 )  //2004-
     {
@@ -2551,29 +2518,27 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     }
   }
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nBLOCK PAPER_SPACE: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "BLOCK PAPER_SPACE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nBLOCK MODEL_SPACE: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "BLOCK MODEL_SPACE: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nLTYPE BYLAYER: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "LTYPE BYLAYER: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nLTYPE BYBLOCK: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "LTYPE BYBLOCK: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   CONTROL = hBbuf->getHandle();
-  DRW_DBG( "\nLTYPE CONTINUOUS: " );
-  DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+  QgsDebugMsg( QString( "LTYPE CONTINUOUS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
   if ( version > DRW::AC1018 )  //2007+
   {
+    int t;
     vars["CAMERADISPLAY"] = new DRW_Variant( 70, buf->getBit() );
-    DRW_DBG( "\nUnknown 2007+ long1: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown 2007+ long2: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\nUnknown 2007+ double2: " );
-    DRW_DBG( buf->getBitDouble() );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown 2007+ long1: %1" ).arg( t ) );
+    t = buf->getBitLong();
+    QgsDebugMsg( QString( "Unknown 2007+ long2: %1" ).arg( t ) );
+
+    double d = buf->getBitDouble();
+    QgsDebugMsg( QString( "Unknown 2007+ double1: %1" ).arg( d ) );
+
     vars["STEPSPERSEC"] = new DRW_Variant( 40, buf->getBitDouble() );
     vars["STEPSIZE"] = new DRW_Variant( 40, buf->getBitDouble() );
     vars["3DDWFPREC"] = new DRW_Variant( 40, buf->getBitDouble() );
@@ -2597,39 +2562,36 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     vars["TILEMODELIGHTSYNCH"] = new DRW_Variant( 70, buf->getRawChar8() );
     vars["DWFFRAME"] = new DRW_Variant( 70, buf->getRawChar8() );
     vars["DGNFRAME"] = new DRW_Variant( 70, buf->getRawChar8() );
-    DRW_DBG( "\nUnknown 2007+ BIT: " );
-    DRW_DBG( buf->getBit() );
+    t = buf->getBit();
+    QgsDebugMsg( QString( "Unknown 2007+ BIT: %1" ).arg( t ) );
     vars["INTERFERECOLOR"] = new DRW_Variant( 70, buf->getCmColor( version ) );
+
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nINTERFEREOBJVS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "INTERFEREOBJVS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
+
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nINTERFEREVPVS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "INTERFEREVPVS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
+
     CONTROL = hBbuf->getHandle();
-    DRW_DBG( "\nDRAGVS: " );
-    DRW_DBGHL( CONTROL.code, CONTROL.size, CONTROL.ref );
+    QgsDebugMsg( QString( "DRAGVS: %1.%2 0x%3" ).arg( CONTROL.code ).arg( CONTROL.size ).arg( CONTROL.ref, 0, 16 ) );
     vars["CSHADOW"] = new DRW_Variant( 70, buf->getRawChar8() );
-    DRW_DBG( "\nUnknown 2007+ double2: " );
-    DRW_DBG( buf->getBitDouble() );
+    d = buf->getBitDouble();
+    QgsDebugMsg( QString( "Unknown 2007+ double2: %1" ).arg( d ) );
   }
   if ( version > DRW::AC1012 )  //R14+
   {
-    DRW_DBG( "\nUnknown R14+ short1: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\nUnknown R14+ short2: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\nUnknown R14+ short3: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\nUnknown R14+ short4: " );
-    DRW_DBG( buf->getBitShort() );
+    int t;
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "Unknown R14+ short1: %1" ).arg( t ) );
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "Unknown R14+ short2: %1" ).arg( t ) );
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "Unknown R14+ short3: %1" ).arg( t ) );
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "Unknown R14+ short4: %1" ).arg( t ) );
   }
 
-  DRW_DBG( "\nbuf position: " );
-  DRW_DBG( buf->getPosition() );
-  DRW_DBG( "  buf bit position: " );
-  DRW_DBG( buf->getBitPos() );
-
+  QgsDebugMsg( QString( "buf position:%1, buf bit position:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
 
   /**** RLZ: disabled, pending to read all data ***/
   //Start reading string stream for 2007 and further
@@ -2657,19 +2619,18 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
       buf->setPosition( strStartPos >> 3 );
       buf->setBitPos( strStartPos & 7 );
 
-      DRW_DBG( "\nstring buf position: " );
-      DRW_DBG( buf->getPosition() );
-      DRW_DBG( "\nstring buf bit position: " );
-      DRW_DBG( buf->getBitPos() );
+      QgsDebugMsg( QString( "string buf position:%1, string buf bit position:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
     }
-    DRW_DBG( "\nUnknown text1: " );
-    DRW_DBG( buf->getUCSText( false ) );
-    DRW_DBG( "\nUnknown text2: " );
-    DRW_DBG( buf->getUCSText( false ) );
-    DRW_DBG( "\nUnknown text3: " );
-    DRW_DBG( buf->getUCSText( false ) );
-    DRW_DBG( "\nUnknown text4: " );
-    DRW_DBG( buf->getUCSText( false ) );
+
+    std::string t;
+    t = buf->getUCSText( false );
+    QgsDebugMsg( QString( "Unknown text1:%1" ).arg( t.c_str() ) );
+    t = buf->getUCSText( false );
+    QgsDebugMsg( QString( "Unknown text2:%1" ).arg( t.c_str() ) );
+    t = buf->getUCSText( false );
+    QgsDebugMsg( QString( "Unknown text3:%1" ).arg( t.c_str() ) );
+    t = buf->getUCSText( false );
+    QgsDebugMsg( QString( "Unknown text4:%1" ).arg( t.c_str() ) );
     vars["MENU"] = new DRW_Variant( 1, buf->getUCSText( false ) );
     vars["DIMPOST"] = new DRW_Variant( 1, buf->getUCSText( false ) );
     vars["DIMAPOST"] = new DRW_Variant( 1, buf->getUCSText( false ) );
@@ -2681,73 +2642,56 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     vars["HYPERLINKBASE"] = new DRW_Variant( 1, buf->getUCSText( false ) );
     vars["STYLESHEET"] = new DRW_Variant( 1, buf->getUCSText( false ) );
     vars["FINGERPRINTGUID"] = new DRW_Variant( 1, buf->getUCSText( false ) );
-    DRW_DBG( "\nstring buf position: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "  string buf bit position: " );
-    DRW_DBG( buf->getBitPos() );
+
+    QgsDebugMsg( QString( "string buf position:%1, string buf bit position:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
+
     vars["VERSIONGUID"] = new DRW_Variant( 1, buf->getUCSText( false ) );
-    DRW_DBG( "\nstring buf position: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "  string buf bit position: " );
-    DRW_DBG( buf->getBitPos() );
+
+    QgsDebugMsg( QString( "string buf position:%1, string buf bit position:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
+
     vars["PROJECTNAME"] = new DRW_Variant( 1, buf->getUCSText( false ) );
   }
   /***    ****/
-  DRW_DBG( "\nstring buf position: " );
-  DRW_DBG( buf->getPosition() );
-  DRW_DBG( "  string buf bit position: " );
-  DRW_DBG( buf->getBitPos() );
+  QgsDebugMsg( QString( "string buf position:%1, string buf bit position:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
 
-  if ( DRW_DBGGL == DRW_dbg::DEBUG )
+#ifdef QGISDEBUG
+  for ( std::map<std::string, DRW_Variant*>::iterator it = vars.begin(); it != vars.end(); ++it )
   {
-    for ( std::map<std::string, DRW_Variant*>::iterator it = vars.begin(); it != vars.end(); ++it )
+    switch ( it->second->type() )
     {
-      DRW_DBG( "\n" );
-      DRW_DBG( it->first );
-      DRW_DBG( ": " );
-      switch ( it->second->type() )
-      {
-        case DRW_Variant::INTEGER:
-          DRW_DBG( it->second->content.i );
-          break;
-        case DRW_Variant::DOUBLE:
-          DRW_DBG( it->second->content.d );
-          break;
-        case DRW_Variant::STRING:
-          DRW_DBG( it->second->content.s->c_str() );
-          break;
-        case DRW_Variant::COORD:
-          DRW_DBG( "x= " );
-          DRW_DBG( it->second->content.v->x );
-          DRW_DBG( ", y= " );
-          DRW_DBG( it->second->content.v->y );
-          DRW_DBG( ", z= " );
-          DRW_DBG( it->second->content.v->z );
-          break;
-        default:
-          break;
-      }
-      DRW_DBG( " code: " );
-      DRW_DBG( it->second->code() );
+      case DRW_Variant::INTEGER:
+        QgsDebugMsgLevel( QString( "%1: %2" ).arg( it->first.c_str() ).arg( it->second->content.i ), 5 );
+        break;
+      case DRW_Variant::DOUBLE:
+        QgsDebugMsgLevel( QString( "%1: %2" ).arg( it->first.c_str() ).arg( it->second->content.d ), 5 );
+        break;
+      case DRW_Variant::STRING:
+        QgsDebugMsgLevel( QString( "%1: %2" ).arg( it->first.c_str() ).arg( it->second->content.s->c_str() ), 5 );
+        break;
+      case DRW_Variant::COORD:
+        QgsDebugMsgLevel( QString( "%1: x=%2 y=%3 z=%4" ).arg( it->first.c_str() ).arg( it->second->content.v->x ).arg( it->second->content.v->y ).arg( it->second->content.v->z ), 5 );
+        break;
+      default:
+        break;
     }
+    QgsDebugMsgLevel( QString( " code:%1" ).arg( it->second->code() ), 5 );
   }
+#endif
 
   buf->setPosition( size + 16 + 4 ); //read size +16 start sentinel + 4 size
   if ( version > DRW::AC1021 && mv > 3 ) //2010+
   {
     buf->getRawLong32();//advance 4 bytes (hisize)
   }
-  DRW_DBG( "\nseting position to: " );
-  DRW_DBG( buf->getPosition() );
-  DRW_DBG( "\nHeader CRC: " );
-  DRW_DBGH( buf->getRawShort16() );
-  DRW_DBG( "\nbuf position: " );
-  DRW_DBG( buf->getPosition() );
-  DRW_DBG( "\ndwg header end sentinel= " );
+  QgsDebugMsg( QString( "setting position to: %1" ).arg( buf->getPosition() ) );
+  t = buf->getRawShort16();
+  QgsDebugMsg( QString( "Header CRC: 0x%1" ).arg( t, 0, 16 ) );
+  QgsDebugMsg( QString( "buf position: %1" ).arg( buf->getPosition() ) );
+  QgsDebugMsg( "dwg header end sentinel = " );
   for ( int i = 0; i < 16;i++ )
   {
-    DRW_DBGH( buf->getRawChar8() );
-    DRW_DBG( " " );
+    t = buf->getRawChar8();
+    QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
   }
 
   //temporary code to show header end sentinel
@@ -2756,13 +2700,14 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     sz = buf->size() - 16;
     buf->setPosition( sz );
-    DRW_DBG( "\nsetting position to: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "\ndwg header end sentinel= " );
-    for ( int i = 0; i < 16;i++ )
+
+    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
+
+    QgsDebugMsg( "dwg header end sentinel= " );
+    for ( int i = 0; i < 16; i++ )
     {
-      DRW_DBGH( buf->getRawChar8() );
-      DRW_DBG( " " );
+      t = buf->getRawChar8();
+      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
     }
   }
   else if ( version == DRW::AC1018 )  //2004
@@ -2770,26 +2715,26 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
 //        sz= buf->size()-132;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    DRW_DBG( "\nseting position to: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "\ndwg header end sentinel= " );
+    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
+
+    QgsDebugMsg( "dwg header end sentinel= " );
     for ( int i = 0; i < 16;i++ )
     {
-      DRW_DBGH( buf->getRawChar8() );
-      DRW_DBG( " " );
+      t = buf->getRawChar8();
+      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
     }
   }
   else if ( version == DRW::AC1021 )  //2007
   {
     sz = buf->size() - 16;
     buf->setPosition( sz );
-    DRW_DBG( "\nseting position to: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "\ndwg header end sentinel= " );
-    for ( int i = 0; i < 16;i++ )
+    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
+
+    QgsDebugMsg( "dwg header end sentinel= " );
+    for ( int i = 0; i < 16; i++ )
     {
-      DRW_DBGH( buf->getRawChar8() );
-      DRW_DBG( " " );
+      t = buf->getRawChar8();
+      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
     }
   }
   else if ( version == DRW::AC1024 )  //2010
@@ -2797,13 +2742,13 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
 //        sz= buf->size()-93;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    DRW_DBG( "\nseting position to: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "\ndwg header end sentinel= " );
-    for ( int i = 0; i < 16;i++ )
+    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
+
+    QgsDebugMsg( "dwg header end sentinel= " );
+    for ( int i = 0; i < 16; i++ )
     {
-      DRW_DBGH( buf->getRawChar8() );
-      DRW_DBG( " " );
+      t = buf->getRawChar8();
+      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
     }
   }
   else if ( version == DRW::AC1027 )  //2013
@@ -2811,16 +2756,15 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
 //        sz= buf->size()-76;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    DRW_DBG( "\nseting position to: " );
-    DRW_DBG( buf->getPosition() );
-    DRW_DBG( "\ndwg header end sentinel= " );
-    for ( int i = 0; i < 16;i++ )
+    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
+
+    QgsDebugMsg( "dwg header end sentinel= " );
+    for ( int i = 0; i < 16; i++ )
     {
-      DRW_DBGH( buf->getRawChar8() );
-      DRW_DBG( " " );
+      t = buf->getRawChar8();
+      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
     }
   }
 
   return result;
 }
-

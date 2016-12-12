@@ -16,7 +16,7 @@
 #include "drw_textcodec.h"
 #include "drw_dbg.h"
 
-#include <QDebug>
+#include "qgslogger.h"
 
 #if 0
 //#include <bitset>
@@ -860,26 +860,22 @@ duint32 dwgBuffer::getCmColor( DRW::Version v )
   duint32 rgb = getBitLong();
   duint8 cb = getRawChar8();
   duint8 type = rgb >> 24;
-  DRW_DBG( "\ntype COLOR: " );
-  DRW_DBGH( type );
-  DRW_DBG( "\nindex COLOR: " );
-  DRW_DBGH( idx );
-  DRW_DBG( "\nRGB COLOR: " );
-  DRW_DBGH( rgb );
-  DRW_DBG( "\nbyte COLOR: " );
-  DRW_DBGH( cb );
+
+  QgsDebugMsg( QString( "type COLOR:%1 index COLOR:%2 RGB COLOR:0x%3 byte COLOR:%4" )
+               .arg( type ).arg( idx ).arg( rgb, 0, 16 ).arg( cb )
+             );
+
   if ( cb&1 )
   {
     std::string colorName = getVariableText( v, false );
-    DRW_DBG( "\ncolorName: " );
-    DRW_DBG( colorName );
+    QgsDebugMsg( QString( "colorName:%1" ).arg( colorName.c_str() ) );
   }
   if ( cb&2 )
   {
     std::string bookName = getVariableText( v, false );
-    DRW_DBG( "\nbookName: " );
-    DRW_DBG( bookName );
+    QgsDebugMsg( QString( "bookName: %1" ).arg( bookName.c_str() ) );
   }
+
   switch ( type )
   {
     case 0xC0:
@@ -915,36 +911,31 @@ duint32 dwgBuffer::getEnColor( DRW::Version v, int &rgb, int &transparency )
   transparency = 0;
 
   duint16 idx = getBitShort();
-  DRW_DBG( "idx reads COLOR: " );
-  DRW_DBGH( idx );
+  QgsDebugMsg( QString( "idx reads COLOR: 0x%1" ).arg( idx, 0, 16 ) );
+
   duint16 flags = idx >> 8;
 
   idx = idx & 0x1FF; //RLZ: warning this is correct?
 
-  DRW_DBG( "\nflag COLOR: " );
-  DRW_DBGH( flags );
-  DRW_DBG( ", index COLOR: " );
-  DRW_DBGH( idx );
+  QgsDebugMsg( QString( "flag COLOR:0x%1, index COLOR:0x%2" ).arg( flags, 0, 16 ).arg( idx, 0, 16 ) );
 
   if ( flags & 0x80 )
   {
     // complex color (rgb)
     rgb = getBitLong() & 0xffffff;
 
-    DRW_DBG( "\nRGB COLOR: " );
-    DRW_DBGH( rgb );
+    QgsDebugMsg( QString( "RGB COLOR:0x%1" ).arg( rgb, 0, 16 ) );
 
     if ( flags & 0x80 )
     {
-      DRW_DBG( "\nacdbColor COLOR are present" );
+      QgsDebugMsg( "acdbColor COLOR are present" );
     }
   }
 
   if ( flags & 0x20 )
   {
     transparency = getBitLong();
-    DRW_DBG( "\nTransparency COLOR: " );
-    DRW_DBGH( transparency );
+    QgsDebugMsg( QString( "Transparency COLOR:0x%1" ).arg( transparency, 0, 16 ) );
   }
 
   return idx; //default return ByLayer
@@ -967,14 +958,9 @@ bool dwgBuffer::getBytes( unsigned char *buf, int size )
   duint8 tmp;
   int pos = filestr->getPos();
   filestr->read( buf, size );
-  if ( !filestr->good() )
+  if ( !filestr->good() && filestr->getPos() - pos != size )
   {
-    DRW_DBG( "\nshort read: wanted " );
-    DRW_DBG( size );
-    DRW_DBG( "; got " );
-    DRW_DBG( filestr->getPos() - pos );
-    DRW_DBG( "\n" );
-    qDebug( "Backtrace 5" );
+    QgsDebugMsg( QString( "short read: wanted %1; got %2 (at %3)" ).arg( size ).arg( filestr->getPos() - pos ).arg( filestr->getPos() ) );
     return false;
   }
 

@@ -16,6 +16,8 @@
 #include "rscodec.h"
 #include "../libdwgr.h"
 
+#include "qgslogger.h"
+
 /** Utility function
  * convert a int to string in hex
  **/
@@ -56,7 +58,7 @@ void dwgRSCodec::decode239I( unsigned char *in, unsigned char *out, duint32 blk 
     }
     int r = rsc.decode( data );
     if ( r < 0 )
-      DRW_DBG( "\nWARNING: dwgRSCodec::decode239I, can't correct all errors" );
+      QgsDebugMsg( "WARNING: dwgRSCodec::decode239I, can't correct all errors" );
     k = i * 239;
     for ( int j = 0; j < 239; j++ )
     {
@@ -86,7 +88,9 @@ void dwgRSCodec::decode251I( unsigned char *in, unsigned char *out, duint32 blk 
     }
     int r = rsc.decode( data );
     if ( r < 0 )
-      DRW_DBG( "\nWARNING: dwgRSCodec::decode251I, can't correct all errors" );
+    {
+      QgsDebugMsg( "WARNING: dwgRSCodec::decode251I, can't correct all errors" );
+    }
     k = i * 251;
     for ( int j = 0; j < 251; j++ )
     {
@@ -163,10 +167,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
   bufD = dbuf;
   sizeC = csize - 2;
   sizeD = dsize;
-  DRW_DBG( "dwgCompressor::decompress, last 2 bytes: " );
-  DRW_DBGH( bufC[sizeC] );
-  DRW_DBGH( bufC[sizeC+1] );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "last 2 bytes: 0x%1 0x%2" ).arg( bufC[sizeC], 0, 16 ).arg( bufC[sizeC+1], 0, 16 ) );
   sizeC = csize;
 
   duint32 compBytes;
@@ -228,20 +229,12 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
     }
     else if ( oc == 0x11 )
     {
-      DRW_DBG( "dwgCompressor::decompress, end of input stream, Cpos: " );
-      DRW_DBG( pos );
-      DRW_DBG( ", Dpos: " );
-      DRW_DBG( rpos );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "end of input stream, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ) );
       return; //end of input stream
     }
     else   //ll < 0x10
     {
-      DRW_DBG( "WARNING dwgCompressor::decompress, failed, illegal char, Cpos: " );
-      DRW_DBG( pos );
-      DRW_DBG( ", Dpos: " );
-      DRW_DBG( rpos );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "failed illegal char, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ) );
       return; //fails, not valid
     }
     //copy "compressed data", TODO Needed verify out of bounds
@@ -249,11 +242,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
     if ( remaining < compBytes )
     {
       compBytes = remaining;
-      DRW_DBG( "WARNING dwgCompressor::decompress, bad compBytes size, Cpos: " );
-      DRW_DBG( pos );
-      DRW_DBG( ", Dpos: " );
-      DRW_DBG( rpos );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "bad compBytes size, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ) );
     }
     for ( duint32 i = 0, j = rpos - compOffset - 1; i < compBytes; i++ )
     {
@@ -265,11 +254,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
       bufD[rpos++] = bufC[pos++];
     }
   }
-  DRW_DBG( "WARNING dwgCompressor::decompress, bad out, Cpos: " );
-  DRW_DBG( pos );
-  DRW_DBG( ", Dpos: " );
-  DRW_DBG( rpos );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "bad out, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ) );
 }
 
 
@@ -348,29 +333,17 @@ void dwgCompressor::decompress21( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
       //prevent crash with corrupted data
       if ( sourceOffset > dstIndex )
       {
-        DRW_DBG( "\nWARNING dwgCompressor::decompress21 => sourceOffset> dstIndex.\n" );
-        DRW_DBG( "csize = " );
-        DRW_DBG( csize );
-        DRW_DBG( "  srcIndex = " );
-        DRW_DBG( srcIndex );
-        DRW_DBG( "\ndsize = " );
-        DRW_DBG( dsize );
-        DRW_DBG( "  dstIndex = " );
-        DRW_DBG( dstIndex );
+        QgsDebugMsg( QString( "WARNING sourceOffset > dstIndex: csize=%1, srcIndex=%2 dsize=%3 dstIndex=%4" )
+                     .arg( csize ).arg( srcIndex ).arg( dsize ).arg( dstIndex )
+                   );
         sourceOffset = dstIndex;
       }
       //prevent crash with corrupted data
       if ( length > dsize - dstIndex )
       {
-        DRW_DBG( "\nWARNING dwgCompressor::decompress21 => length > dsize - dstIndex.\n" );
-        DRW_DBG( "csize = " );
-        DRW_DBG( csize );
-        DRW_DBG( "  srcIndex = " );
-        DRW_DBG( srcIndex );
-        DRW_DBG( "\ndsize = " );
-        DRW_DBG( dsize );
-        DRW_DBG( "  dstIndex = " );
-        DRW_DBG( dstIndex );
+        QgsDebugMsg( QString( "WARNING length > dsize - dstIndex: csize=%1, srcIndex=%2 dsize=%3 dstIndex=%4" )
+                     .arg( csize ).arg( srcIndex ).arg( dsize ).arg( dstIndex )
+                   );
         length = dsize - dstIndex;
         srcIndex = csize;//force exit
       }
@@ -395,15 +368,9 @@ void dwgCompressor::decompress21( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
       readInstructions21( cbuf, &srcIndex, &opCode, &sourceOffset, &length );
     }
   }
-  DRW_DBG( "\ncsize = " );
-  DRW_DBG( csize );
-  DRW_DBG( "  srcIndex = " );
-  DRW_DBG( srcIndex );
-  DRW_DBG( "\ndsize = " );
-  DRW_DBG( dsize );
-  DRW_DBG( "  dstIndex = " );
-  DRW_DBG( dstIndex );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "csize=%1, srcIndex=%2 dsize=%3 dstIndex=%4" )
+               .arg( csize ).arg( srcIndex ).arg( dsize ).arg( dstIndex )
+             );
 }
 
 void dwgCompressor::readInstructions21( duint8 *cbuf, duint32 *si, duint8 *oc, duint32 *so, duint32 *l )
@@ -740,7 +707,7 @@ void dwgCompressor::copyCompBytes21( duint8 *cbuf, duint8 *dbuf, duint32 l, duin
       dbuf[dix] = cbuf[six];
       break;
     default:
-      DRW_DBG( "WARNING dwgCompressor::copyCompBytes21, bad output.\n" );
+      QgsDebugMsg( "WARNING bad output." );
       break;
   }
 }

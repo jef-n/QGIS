@@ -16,10 +16,13 @@
 #include <algorithm>
 #include <sstream>
 #include <cassert>
+
 #include "intern/drw_textcodec.h"
 #include "intern/dxfreader.h"
 #include "intern/dxfwriter.h"
 #include "intern/drw_dbg.h"
+
+#include "qgslogger.h"
 
 #define FIRSTHANDLE 48
 
@@ -82,7 +85,7 @@ bool dxfRW::read( DRW_Interface *interface_, bool ext )
   std::ifstream filestr;
   if ( !interface_ )
     return isOk;
-  DRW_DBG( "dxfRW::read 1def\n" );
+
   filestr.open( fileName.c_str(), std::ios_base::in | std::ios::binary );
   if ( !filestr.is_open() )
     return isOk;
@@ -96,7 +99,7 @@ bool dxfRW::read( DRW_Interface *interface_, bool ext )
   filestr.read( line, 22 );
   filestr.close();
   iface = interface_;
-  DRW_DBG( "dxfRW::read 2\n" );
+
   if ( strcmp( line, line2 ) == 0 )
   {
     filestr.open( fileName.c_str(), std::ios_base::in | std::ios::binary );
@@ -104,7 +107,7 @@ bool dxfRW::read( DRW_Interface *interface_, bool ext )
     //skip sentinel
     filestr.seekg( 22, std::ios::beg );
     reader = new dxfReaderBinary( &filestr );
-    DRW_DBG( "dxfRW::read binary file\n" );
+    QgsDebugMsg( "binary file" );
   }
   else
   {
@@ -133,7 +136,7 @@ bool dxfRW::write( DRW_Interface *interface_, DRW::Version ver, bool bin )
     //write sentinel
     filestr << "AutoCAD Binary DXF\r\n" << ( char )26 << '\0';
     writer = new dxfWriterBinary( &filestr );
-    DRW_DBG( "dxfRW::read binary file\n" );
+    QgsDebugMsg( "binary file" );
   }
   else
   {
@@ -2125,15 +2128,15 @@ bool dxfRW::writeExtData( const std::vector<DRW_Variant*> &ed )
 
 bool dxfRW::processDxf()
 {
-  DRW_DBG( "dxfRW::processDxf() start processing dxf\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   bool more = true;
   std::string sectionstr;
 //    section = secUnknown;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( " processDxf\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
+
     if ( code == 999 )
     {
       header.addComment( reader->getString() );
@@ -2141,8 +2144,8 @@ bool dxfRW::processDxf()
     else if ( code == 0 )
     {
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( " processDxf\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
       if ( sectionstr == "EOF" )
       {
         return true;  //found EOF terminate
@@ -2150,15 +2153,15 @@ bool dxfRW::processDxf()
       if ( sectionstr == "SECTION" )
       {
         more = reader->readRec( &code );
-        DRW_DBG( code );
-        DRW_DBG( " processDxf\n" );
+        QgsDebugMsg( QString( "code=%1" ).arg( code ) );
+
         if ( !more )
           return false; //wrong dxf file
         if ( code == 2 )
         {
           sectionstr = reader->getString();
-          DRW_DBG( sectionstr );
-          DRW_DBG( "  processDxf\n" );
+          QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
           //found section, process it
           if ( sectionstr == "HEADER" )
           {
@@ -2199,18 +2202,18 @@ bool dxfRW::processDxf()
 
 bool dxfRW::processHeader()
 {
-  DRW_DBG( "dxfRW::processHeader\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( " processHeader\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
+
     if ( code == 0 )
     {
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( " processHeader\n\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
       if ( sectionstr == "ENDSEC" )
       {
         iface->addHeader( &header );
@@ -2226,31 +2229,30 @@ bool dxfRW::processHeader()
 
 bool dxfRW::processTables()
 {
-  DRW_DBG( "dxfRW::processTables\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool more = true;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
+
     if ( code == 0 )
     {
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( " processHeader\n\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
       if ( sectionstr == "TABLE" )
       {
         more = reader->readRec( &code );
-        DRW_DBG( code );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "code=%1" ).arg( code ) );
         if ( !more )
           return false; //wrong dxf file
         if ( code == 2 )
         {
           sectionstr = reader->getString();
-          DRW_DBG( sectionstr );
-          DRW_DBG( " processHeader\n\n" );
+          QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
           //found section, process it
           if ( sectionstr == "LTYPE" )
           {
@@ -2301,15 +2303,15 @@ bool dxfRW::processTables()
 
 bool dxfRW::processLType()
 {
-  DRW_DBG( "dxfRW::processLType\n" );
+  QgsDebugMsg( "Entering." );
+
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_LType ltype;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       if ( reading )
@@ -2318,8 +2320,8 @@ bool dxfRW::processLType()
         iface->addLType( ltype );
       }
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
+
       if ( sectionstr == "LTYPE" )
       {
         reading = true;
@@ -2338,22 +2340,21 @@ bool dxfRW::processLType()
 
 bool dxfRW::processLayer()
 {
-  DRW_DBG( "dxfRW::processLayer\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_Layer layer;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
+
     if ( code == 0 )
     {
       if ( reading )
         iface->addLayer( layer );
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "LAYER" )
       {
         reading = true;
@@ -2372,22 +2373,20 @@ bool dxfRW::processLayer()
 
 bool dxfRW::processDimStyle()
 {
-  DRW_DBG( "dxfRW::processDimStyle" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_Dimstyle dimSty;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       if ( reading )
         iface->addDimStyle( dimSty );
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "DIMSTYLE" )
       {
         reading = true;
@@ -2406,22 +2405,20 @@ bool dxfRW::processDimStyle()
 
 bool dxfRW::processTextStyle()
 {
-  DRW_DBG( "dxfRW::processTextStyle" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_Textstyle TxtSty;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       if ( reading )
         iface->addTextStyle( TxtSty );
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "STYLE" )
       {
         reading = true;
@@ -2440,22 +2437,20 @@ bool dxfRW::processTextStyle()
 
 bool dxfRW::processVports()
 {
-  DRW_DBG( "dxfRW::processVports" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_Vport vp;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       if ( reading )
         iface->addVport( vp );
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "VPORT" )
       {
         reading = true;
@@ -2474,22 +2469,20 @@ bool dxfRW::processVports()
 
 bool dxfRW::processAppId()
 {
-  DRW_DBG( "dxfRW::processAppId" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   bool reading = false;
   DRW_AppId vp;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       if ( reading )
         iface->addAppId( vp );
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "APPID" )
       {
         reading = true;
@@ -2510,18 +2503,16 @@ bool dxfRW::processAppId()
 
 bool dxfRW::processBlocks()
 {
-  DRW_DBG( "dxfRW::processBlocks\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   std::string sectionstr;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     if ( code == 0 )
     {
       sectionstr = reader->getString();
-      DRW_DBG( sectionstr );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "section=%1" ).arg( sectionstr.c_str() ) );
       if ( sectionstr == "BLOCK" )
       {
         processBlock();
@@ -2537,20 +2528,18 @@ bool dxfRW::processBlocks()
 
 bool dxfRW::processBlock()
 {
-  DRW_DBG( "dxfRW::processBlock" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Block block;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addBlock( block );
         if ( nextentity == "ENDBLK" )
         {
@@ -2577,7 +2566,7 @@ bool dxfRW::processBlock()
 
 bool dxfRW::processEntities( bool isblock )
 {
-  DRW_DBG( "dxfRW::processEntities\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   if ( !reader->readRec( &code ) )
   {
@@ -2700,20 +2689,18 @@ bool dxfRW::processEntities( bool isblock )
 
 bool dxfRW::processEllipse()
 {
-  DRW_DBG( "dxfRW::processEllipse" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Ellipse ellipse;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           ellipse.applyExtrusion();
         iface->addEllipse( ellipse );
@@ -2729,20 +2716,18 @@ bool dxfRW::processEllipse()
 
 bool dxfRW::processTrace()
 {
-  DRW_DBG( "dxfRW::processTrace" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Trace trace;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           trace.applyExtrusion();
         iface->addTrace( trace );
@@ -2758,20 +2743,18 @@ bool dxfRW::processTrace()
 
 bool dxfRW::processSolid()
 {
-  DRW_DBG( "dxfRW::processSolid" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Solid solid;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           solid.applyExtrusion();
         iface->addSolid( solid );
@@ -2787,20 +2770,18 @@ bool dxfRW::processSolid()
 
 bool dxfRW::process3dface()
 {
-  DRW_DBG( "dxfRW::process3dface" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_3Dface face;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->add3dFace( face );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2814,20 +2795,18 @@ bool dxfRW::process3dface()
 
 bool dxfRW::processViewport()
 {
-  DRW_DBG( "dxfRW::processViewport" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Viewport vp;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addViewport( vp );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2841,20 +2820,18 @@ bool dxfRW::processViewport()
 
 bool dxfRW::processPoint()
 {
-  DRW_DBG( "dxfRW::processPoint\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Point point;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addPoint( point );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2868,20 +2845,18 @@ bool dxfRW::processPoint()
 
 bool dxfRW::processLine()
 {
-  DRW_DBG( "dxfRW::processLine\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Line line;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addLine( line );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2895,20 +2870,18 @@ bool dxfRW::processLine()
 
 bool dxfRW::processRay()
 {
-  DRW_DBG( "dxfRW::processRay\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Ray line;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addRay( line );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2922,20 +2895,18 @@ bool dxfRW::processRay()
 
 bool dxfRW::processXline()
 {
-  DRW_DBG( "dxfRW::processXline\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Xline line;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addXline( line );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -2949,20 +2920,18 @@ bool dxfRW::processXline()
 
 bool dxfRW::processCircle()
 {
-  DRW_DBG( "dxfRW::processPoint\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Circle circle;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           circle.applyExtrusion();
         iface->addCircle( circle );
@@ -2978,20 +2947,18 @@ bool dxfRW::processCircle()
 
 bool dxfRW::processArc()
 {
-  DRW_DBG( "dxfRW::processPoint\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Arc arc;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           arc.applyExtrusion();
         iface->addArc( arc );
@@ -3007,20 +2974,18 @@ bool dxfRW::processArc()
 
 bool dxfRW::processInsert()
 {
-  DRW_DBG( "dxfRW::processInsert" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Insert insert;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addInsert( insert );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3034,20 +2999,18 @@ bool dxfRW::processInsert()
 
 bool dxfRW::processLWPolyline()
 {
-  DRW_DBG( "dxfRW::processLWPolyline" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_LWPolyline pl;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( applyExt )
           pl.applyExtrusion();
         iface->addLWPolyline( pl );
@@ -3063,20 +3026,18 @@ bool dxfRW::processLWPolyline()
 
 bool dxfRW::processPolyline()
 {
-  DRW_DBG( "dxfRW::processPolyline" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Polyline pl;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( nextentity != "VERTEX" )
         {
           iface->addPolyline( pl );
@@ -3097,21 +3058,19 @@ bool dxfRW::processPolyline()
 
 bool dxfRW::processVertex( DRW_Polyline *pl )
 {
-  DRW_DBG( "dxfRW::processVertex" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Vertex *v = new DRW_Vertex();
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         pl->appendVertex( v );
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         if ( nextentity == "SEQEND" )
         {
           return true;  //found SEQEND no more vertex, terminate
@@ -3131,20 +3090,18 @@ bool dxfRW::processVertex( DRW_Polyline *pl )
 
 bool dxfRW::processText()
 {
-  DRW_DBG( "dxfRW::processText" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Text txt;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addText( txt );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3158,20 +3115,18 @@ bool dxfRW::processText()
 
 bool dxfRW::processMText()
 {
-  DRW_DBG( "dxfRW::processMText" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_MText txt;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         txt.updateAngle();
         iface->addMText( txt );
         return true;  //found new entity or ENDSEC, terminate
@@ -3186,20 +3141,18 @@ bool dxfRW::processMText()
 
 bool dxfRW::processHatch()
 {
-  DRW_DBG( "dxfRW::processHatch" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Hatch hatch;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addHatch( &hatch );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3214,20 +3167,18 @@ bool dxfRW::processHatch()
 
 bool dxfRW::processSpline()
 {
-  DRW_DBG( "dxfRW::processSpline" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Spline sp;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addSpline( &sp );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3242,20 +3193,18 @@ bool dxfRW::processSpline()
 
 bool dxfRW::processImage()
 {
-  DRW_DBG( "dxfRW::processImage" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Image img;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addImage( &img );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3270,20 +3219,18 @@ bool dxfRW::processImage()
 
 bool dxfRW::processDimension()
 {
-  DRW_DBG( "dxfRW::processDimension" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Dimension dim;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         int type = dim.type & 0x0F;
         switch ( type )
         {
@@ -3342,20 +3289,18 @@ bool dxfRW::processDimension()
 
 bool dxfRW::processLeader()
 {
-  DRW_DBG( "dxfRW::processLeader" );
+  QgsDebugMsg( "Entering." );
   int code;
   DRW_Leader leader;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->addLeader( &leader );
         return true;  //found new entity or ENDSEC, terminate
       }
@@ -3372,7 +3317,7 @@ bool dxfRW::processLeader()
 
 bool dxfRW::processObjects()
 {
-  DRW_DBG( "dxfRW::processObjects\n" );
+  QgsDebugMsg( "Entering." );
   int code;
   if ( !reader->readRec( &code ) )
   {
@@ -3415,20 +3360,19 @@ bool dxfRW::processObjects()
 
 bool dxfRW::processImageDef()
 {
-  DRW_DBG( "dxfRW::processImageDef" );
+  QgsDebugMsg( "Entering." );
+
   int code;
   DRW_ImageDef img;
   while ( reader->readRec( &code ) )
   {
-    DRW_DBG( code );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "code=%1" ).arg( code ) );
     switch ( code )
     {
       case 0:
       {
         nextentity = reader->getString();
-        DRW_DBG( nextentity );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "nextentity=%1" ).arg( nextentity.c_str() ) );
         iface->linkImage( &img );
         return true;  //found new entity or ENDSEC, terminate
       }
