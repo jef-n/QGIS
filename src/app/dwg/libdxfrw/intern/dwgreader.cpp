@@ -20,6 +20,9 @@
 #include "drw_textcodec.h"
 
 #include "qgslogger.h"
+#include <QStringList>
+
+
 
 dwgReader::~dwgReader()
 {
@@ -132,11 +135,13 @@ bool dwgReader::readDwgHeader( DRW_Header& hdr, dwgBuffer *buf, dwgBuffer *hBuf 
 bool dwgReader::checkSentinel( dwgBuffer *buf, enum secEnum::DWGSection, bool start )
 {
   DRW_UNUSED( start );
+  QStringList l;
   for ( int i = 0; i < 16;i++ )
   {
     int t = buf->getRawChar8();
-    QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
+    l << QString( "0x%1" ).arg( t, 0, 16 );
   }
+  QgsDebugMsg( l.join( " " ) );
   return true;
 }
 
