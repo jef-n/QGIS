@@ -1,3 +1,5 @@
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/core)
+
 ADD_LIBRARY(libdxfrw STATIC
     drw_classes.cpp
     drw_entities.cpp

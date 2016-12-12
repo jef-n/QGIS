@@ -12,7 +12,7 @@
 
 #include "drw_dbg.h"
 
-#include "../../../../core/qgslogger.h"
+#include "qgslogger.h"
 
 
 #include <QTextStream>

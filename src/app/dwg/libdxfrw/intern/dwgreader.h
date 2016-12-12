@@ -95,7 +95,7 @@ class dwgSectionInfo
   public:
     dwgSectionInfo()
         : Id( -1 )
-	, compressed( 1 ) //1=no, 2=yes
+        , compressed( 1 ) //1=no, 2=yes
         , encrypted( 0 ) //???
         , pageCount( 0 )
         , address( 0 )
@@ -184,8 +184,8 @@ class dwgReader
 
   public:
     std::map<duint32, objHandle>ObjectMap;
-    std::map<duint32, objHandle>objObjectMap; //stores the ojects & entities not read in readDwgEntities
-    std::map<duint32, objHandle>remainingMap; //stores the ojects & entities not read in all proces, for debug only
+    std::map<duint32, objHandle>objObjectMap; //stores the objects & entities not read in readDwgEntities
+    std::map<duint32, objHandle>remainingMap; //stores the objects & entities not read in all processes, for debug only
     std::map<duint32, DRW_LType*> ltypemap;
     std::map<duint32, DRW_Layer*> layermap;
     std::map<duint32, DRW_Block*> blockmap;

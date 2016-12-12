@@ -11,11 +11,20 @@
 ******************************************************************************/
 
 #include <cstdlib>
+
 #include "drw_entities.h"
 #include "intern/dxfreader.h"
 #include "intern/dwgbuffer.h"
 #include "intern/drw_dbg.h"
 
+#include "qgslogger.h"
+
+#define RESERVE( vector, size ) try { \
+    vector.reserve(size); \
+  } catch(const std::exception &e) { \
+    QgsDebugMsg( QString( "allocation exception (size=%1; error=%2)" ).arg( size ).arg( e.what() ) ); \
+    throw e; \
+  }
 
 //! Calculate arbitary axis
 /*!
@@ -209,103 +218,86 @@ bool DRW_Entity::parseDxfGroups( int code, dxfReader *reader )
 bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strBuf, duint32 bs )
 {
   objSize = 0;
-  DRW_DBG( "\n***************************** parsing entity *********************************************\n" );
+  QgsDebugMsg( "***************************** parsing entity *********************************************" );
   oType = buf->getObjType( version );
-  DRW_DBG( "Object type: " );
-  DRW_DBG( oType );
-  DRW_DBG( ", " );
-  DRW_DBGH( oType );
+  QgsDebugMsg( QString( "Object type: %1, 0x%2" ).arg( oType ).arg( oType, 0, 16 ) );
 
   if ( version > DRW::AC1014 && version < DRW::AC1024 )  //2000 & 2004
   {
     objSize = buf->getRawLong32();  //RL 32bits object size in bits
-    DRW_DBG( " Object size: " );
-    DRW_DBG( objSize );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " Object size: %1" ).arg( objSize ) );
   }
   if ( version > DRW::AC1021 )  //2010+
   {
     duint32 ms = buf->size();
     objSize = ms * 8 - bs;
-    DRW_DBG( " Object size: " );
-    DRW_DBG( objSize );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " Object size: %1" ).arg( objSize ) );
   }
 
   if ( strBuf && version > DRW::AC1018 )  //2007+
   {
     strBuf->moveBitPos( objSize - 1 );
-    DRW_DBG( " strBuf strbit pos 2007: " );
-    DRW_DBG( strBuf->getPosition() );
-    DRW_DBG( " strBuf bpos 2007: " );
-    DRW_DBG( strBuf->getBitPos() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "strBuf strbit pos 2007:%1 strBuf bpos 2007:%2" )
+                 .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
+               );
     if ( strBuf->getBit() == 1 )
     {
-      DRW_DBG( "DRW_TableEntry::parseDwg string bit is 1\n" );
+      QgsDebugMsg( "string bit is 1" );
       strBuf->moveBitPos( -17 );
       duint16 strDataSize = strBuf->getRawShort16();
-      DRW_DBG( "\nDRW_TableEntry::parseDwg string strDataSize: " );
-      DRW_DBGH( strDataSize );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "strDataSize: %1" ).arg( strDataSize ) );
       if (( strDataSize& 0x8000 ) == 0x8000 )
       {
-        DRW_DBG( "\nDRW_TableEntry::parseDwg string 0x8000 bit is set" );
+        QgsDebugMsg( "string 0x8000 bit is set" );
         strBuf->moveBitPos( -33 );//RLZ pending to verify
         duint16 hiSize = strBuf->getRawShort16();
         strDataSize = (( strDataSize & 0x7fff ) | ( hiSize << 15 ) );
       }
       strBuf->moveBitPos( -strDataSize - 16 ); //-14
-      DRW_DBG( " strBuf start strDataSize pos 2007: " );
-      DRW_DBG( strBuf->getPosition() );
-      DRW_DBG( " strBuf bpos 2007: " );
-      DRW_DBG( strBuf->getBitPos() );
-      DRW_DBG( "\n" );
+
+      QgsDebugMsg( QString( "strBuf start strDataSize pos 2007:%1 strBuf bpos 2007:%2" )
+                   .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
+                 );
     }
     else
-      DRW_DBG( "\nDRW_TableEntry::parseDwg string bit is 0" );
-    DRW_DBG( " strBuf start pos 2007: " );
-    DRW_DBG( strBuf->getPosition() );
-    DRW_DBG( " strBuf bpos 2007: " );
-    DRW_DBG( strBuf->getBitPos() );
-    DRW_DBG( "\n" );
+    {
+      QgsDebugMsg( "string bit is 0" );
+    }
+
+    QgsDebugMsg( QString( "strBuf start pos 2007:%1 strBuf bpos 2007:%2" )
+                 .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
+               );
   }
 
   dwgHandle ho = buf->getHandle();
   handle = ho.ref;
-  DRW_DBG( "Entity Handle: " );
-  DRW_DBGHL( ho.code, ho.size, ho.ref );
+  QgsDebugMsg( QString( "Entity Handle: %1.%2 0x%3" ).arg( ho.code ).arg( ho.size ).arg( ho.ref, 0, 16 ) );
   dint16 extDataSize = buf->getBitShort(); //BS
-  DRW_DBG( " ext data size: " );
-  DRW_DBG( extDataSize );
+  QgsDebugMsg( QString( " ext data size: %1" ).arg( extDataSize ) );
   while ( extDataSize > 0 && buf->isGood() )
   {
     /* RLZ: TODO */
     dwgHandle ah = buf->getHandle();
-    DRW_DBG( "\n App Handle: " );
-    DRW_DBGHL( ah.code, ah.size, ah.ref );
+    QgsDebugMsg( QString( " App Handle: %1.%2 0x%3" ).arg( ah.code ).arg( ah.size ).arg( ah.ref, 0, 16 ) );
     duint8 *tmpExtData = new duint8[extDataSize];
     buf->getBytes( tmpExtData, extDataSize );
     dwgBuffer tmpExtDataBuf( tmpExtData, extDataSize, buf->decoder );
 
     duint8 dxfCode = tmpExtDataBuf.getRawChar8();
-    DRW_DBG( " dxfCode: " );
-    DRW_DBG( dxfCode );
+    QgsDebugMsg( QString( " dxfCode: %1" ).arg( dxfCode ) );
+
     switch ( dxfCode )
     {
       case 0:
       {
         duint8 strLength = tmpExtDataBuf.getRawChar8();
-        DRW_DBG( " strLength: " );
-        DRW_DBG( strLength );
         duint16 cp = tmpExtDataBuf.getBERawShort16();
-        DRW_DBG( " str codepage: " );
-        DRW_DBG( cp );
-        for ( int i = 0;i < strLength + 1;i++ )  //string length + null terminating char
+        QgsDebugMsg( QString( " strLength:%1; str codepage:%2" ).arg( strLength ).arg( cp ) );
+
+        for ( int i = 0;i < strLength + 1; i++ )  //string length + null terminating char
         {
           duint8 dxfChar = tmpExtDataBuf.getRawChar8();
-          DRW_DBG( " dxfChar: " );
-          DRW_DBG( dxfChar );
+          QgsDebugMsg( QString( " dxfChar:%1" ).arg( dxfChar ) );
         }
         break;
       }
@@ -315,35 +307,26 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
     }
     delete[]tmpExtData;
     extDataSize = buf->getBitShort(); //BS
-    DRW_DBG( " ext data size: " );
-    DRW_DBG( extDataSize );
+    QgsDebugMsg( QString( " ext data size: %1" ).arg( extDataSize ) );
   } //end parsing extData (EED)
   duint8 graphFlag = buf->getBit(); //B
-  DRW_DBG( "\n graphFlag: " );
-  DRW_DBG( graphFlag );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "graphFlag:%1" ).arg( graphFlag ) );
   if ( graphFlag )
   {
     duint32 graphDataSize = buf->getRawLong32();  //RL 32bits
-    DRW_DBG( "graphData in bytes: " );
-    DRW_DBG( graphDataSize );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "graphData in bytes: %1" ).arg( graphDataSize ) );
 // RLZ: TODO
     //skip graphData bytes
     duint8 *tmpGraphData = new duint8[graphDataSize];
     buf->getBytes( tmpGraphData, graphDataSize );
     dwgBuffer tmpGraphDataBuf( tmpGraphData, graphDataSize, buf->decoder );
-    DRW_DBG( "graph data remaining bytes: " );
-    DRW_DBG( tmpGraphDataBuf.numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "graph data remaining bytes:%1" ).arg( tmpGraphDataBuf.numRemainingBytes() ) );
     delete[]tmpGraphData;
   }
   if ( version < DRW::AC1015 )  //14-
   {
     objSize = buf->getRawLong32();  //RL 32bits object size in bits
-    DRW_DBG( " Object size in bits: " );
-    DRW_DBG( objSize );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " Object size in bits: %1" ).arg( objSize ) );
   }
 
   duint8 entmode = buf->get2Bits(); //BB
@@ -352,12 +335,10 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
 //        entmode = 2;
   else if ( entmode == 2 )
     entmode = 0;
+
   space = ( DRW::Space )entmode; //RLZ verify cast values
-  DRW_DBG( "entmode: " );
-  DRW_DBG( entmode );
   numReactors = buf->getBitShort(); //BS
-  DRW_DBG( ", numReactors: " );
-  DRW_DBG( numReactors );
+  QgsDebugMsg( QString( "entmode:%1, numReactors: %2" ).arg( entmode ).arg( numReactors ) );
 
   if ( version < DRW::AC1015 )  //14-
   {
@@ -371,45 +352,33 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
       lineType = "";
       ltFlags = 3;
     }
-    DRW_DBG( " lineType: " );
-    DRW_DBG( lineType.c_str() );
-    DRW_DBG( " ltFlags: " );
-    DRW_DBG( ltFlags );
+    QgsDebugMsg( QString( " lineType:%1 ltFlags:%2" ).arg( lineType.c_str() ).arg( ltFlags ) );
   }
   if ( version > DRW::AC1015 )  //2004+
   {
     xDictFlag = buf->getBit();
-    DRW_DBG( " xDictFlag: " );
-    DRW_DBG( xDictFlag );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " xDictFlag: %1" ).arg( xDictFlag ) );
   }
 
   if ( version > DRW::AC1024 || version < DRW::AC1018 )
   {
     haveNextLinks = buf->getBit(); //aka nolinks //B
-    DRW_DBG( ", haveNextLinks (0 yes, 1 prev next): " );
-    DRW_DBG( haveNextLinks );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "haveNextLinks (0 yes, 1 prev next): %1" ).arg( haveNextLinks ) );
   }
   else
   {
     haveNextLinks = 1; //aka nolinks //B
-    DRW_DBG( ", haveNextLinks (forced): " );
-    DRW_DBG( haveNextLinks );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "haveNextLinks (forced): %1" ).arg( haveNextLinks ) );
   }
 //ENC color
   color = buf->getEnColor( version, color24, transparency ); //BS or CMC //ok for R14 or negate
   ltypeScale = buf->getBitDouble(); //BD
-  DRW_DBG( " entity color: " );
-  DRW_DBG( color );
-  DRW_DBG( " ltScale: " );
-  DRW_DBG( ltypeScale );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( " entity color:%1 ltScale:%2" ).arg( color ).arg( ltypeScale ) );
+
   if ( version > DRW::AC1014 )  //2000+
   {
     UTF8STRING plotStyleName;
-    for ( duint8 i = 0; i < 2;++i )   //two flags in one
+    for ( duint8 i = 0; i < 2; ++i )   //two flags in one
     {
       plotFlags = buf->get2Bits(); //BB
       if ( plotFlags == 1 )
@@ -424,57 +393,39 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
       {
         ltFlags = plotFlags;
         lineType = plotStyleName; //RLZ: howto solve? if needed plotStyleName;
-        DRW_DBG( " ltFlags: " );
-        DRW_DBG( ltFlags );
-        DRW_DBG( " lineType: " );
-        DRW_DBG( lineType.c_str() );
+        QgsDebugMsg( QString( "ltFlags:%1 lineType:%2" ).arg( lineType.c_str() ).arg( ltFlags ) );
       }
       else
       {
-        DRW_DBG( ", plotFlags: " );
-        DRW_DBG( plotFlags );
+        QgsDebugMsg( QString( "plotFlags:%1" ).arg( plotFlags ) );
       }
     }
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     materialFlag = buf->get2Bits(); //BB
-    DRW_DBG( " materialFlag: " );
-    DRW_DBG( materialFlag );
     shadowFlag = buf->getRawChar8(); //RC
-    DRW_DBG( " shadowFlag: " );
-    DRW_DBG( shadowFlag );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " materialFlag:%1 shadowFlag:%2" ).arg( materialFlag ).arg( shadowFlag ) );
   }
   if ( version > DRW::AC1021 )  //2010+
   {
     duint8 visualFlags = buf->get2Bits(); //full & face visual style
-    DRW_DBG( " shadowFlag 2: " );
-    DRW_DBG( visualFlags );
-    DRW_DBG( "\n" );
     duint8 unk = buf->getBit(); //edge visual style
-    DRW_DBG( " unknown bit: " );
-    DRW_DBG( unk );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " shadowFlag 2:%1 unknown bit:%2" ).arg( visualFlags ).arg( unk ) );
   }
   dint16 invisibleFlag = buf->getBitShort(); //BS
-  DRW_DBG( " invisibleFlag: " );
-  DRW_DBG( invisibleFlag );
+  QgsDebugMsg( QString( " invisibleFlag:%1" ).arg( invisibleFlag ) );
   if ( version > DRW::AC1014 )  //2000+
   {
     lWeight = DRW_LW_Conv::dwgInt2lineWidth( buf->getRawChar8() ); //RC
-    DRW_DBG( " lwFlag (lWeight): " );
-    DRW_DBG( lWeight );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " lwFlag (lWeight):%1" ).arg( lWeight ) );
   }
 #if 0
   //Only in blocks ????????
   if ( version > DRW::AC1018 )  //2007+
   {
     duint8 unk = buf->getBit();
-    DRW_DBG( "unknown bit: " );
-    DRW_DBG( unk );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "unknown bit: %1" ).arg( unk ) );
   }
 #endif
   return buf->isGood();
@@ -491,61 +442,51 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
   if ( ownerHandle ) //entity are in block or in a polyline
   {
     dwgHandle ownerH = buf->getOffsetHandle( handle );
-    DRW_DBG( "\nowner (parent) Handle: " );
-    DRW_DBGHL( ownerH.code, ownerH.size, ownerH.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "   Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "owner (parent) Handle:%1.%2 0x%3 Remaining bytes:%4" )
+                 .arg( ownerH.code ).arg( ownerH.size ).arg( ownerH.ref, 0, 16 )
+                 .arg( buf->numRemainingBytes() )
+               );
     parentHandle = ownerH.ref;
-    DRW_DBG( "Block (parent) Handle: " );
-    DRW_DBGHL( ownerH.code, ownerH.size, parentHandle );
-    DRW_DBG( "\n" );
   }
   else
-    DRW_DBG( "\nNO Block (parent) Handle\n" );
+  {
+    QgsDebugMsg( "NO Block (parent) Handle" );
+  }
 
-  DRW_DBG( "\n Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
-  for ( int i = 0; i < numReactors;++i )
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
+  for ( int i = 0; i < numReactors; ++i )
   {
     dwgHandle reactorsH = buf->getHandle();
-    DRW_DBG( " reactorsH control Handle: " );
-    DRW_DBGHL( reactorsH.code, reactorsH.size, reactorsH.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "reactorsH control Handle:%1.%2 0x%3" )
+                 .arg( reactorsH.code ).arg( reactorsH.size ).arg( reactorsH.ref, 0, 16 )
+               );
   }
   if ( xDictFlag != 1 ) //linetype in 2004 seems not have XDicObjH or NULL handle
   {
     dwgHandle XDicObjH = buf->getHandle();
-    DRW_DBG( " XDicObj control Handle: " );
-    DRW_DBGHL( XDicObjH.code, XDicObjH.size, XDicObjH.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "XDicObj control Handle:%1.%2 0x%3" )
+                 .arg( XDicObjH.code ).arg( XDicObjH.size ).arg( XDicObjH.ref, 0, 16 )
+               );
   }
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
 
   if ( version < DRW::AC1015 )  //R14-
   {
     //layer handle
     layerH = buf->getOffsetHandle( handle );
-    DRW_DBG( " layer Handle: " );
-    DRW_DBGHL( layerH.code, layerH.size, layerH.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "   Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " layer Handle:%1.%2 0x%3, remaining bytes %4" )
+                 .arg( layerH.code ).arg( layerH.size ).arg( layerH.ref, 0, 16 )
+                 .arg( buf->numRemainingBytes() )
+               );
+
     //lineType handle
     if ( ltFlags == 3 )
     {
       lTypeH = buf->getOffsetHandle( handle );
-      DRW_DBG( "linetype Handle: " );
-      DRW_DBGHL( lTypeH.code, lTypeH.size, lTypeH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "   Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( " linetype Handle:%1.%2 0x%3, remaining bytes %4" )
+                   .arg( lTypeH.code ).arg( lTypeH.size ).arg( lTypeH.ref, 0, 16 )
+                   .arg( buf->numRemainingBytes() ) );
     }
   }
   if ( version < DRW::AC1018 )  //2000+
@@ -553,20 +494,14 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
     if ( haveNextLinks == 0 )
     {
       dwgHandle nextLinkH = buf->getOffsetHandle( handle );
-      DRW_DBG( " prev nextLinkers Handle: " );
-      DRW_DBGHL( nextLinkH.code, nextLinkH.size, nextLinkH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "\n Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( " prev nextLinkers Handle:%1.%2 0x%3, remaining bytes %4" )
+                   .arg( nextLinkH.code ).arg( nextLinkH.size ).arg( nextLinkH.ref, 0, 16 )
+                   .arg( buf->numRemainingBytes() ) );
       prevEntLink = nextLinkH.ref;
       nextLinkH = buf->getOffsetHandle( handle );
-      DRW_DBG( " next nextLinkers Handle: " );
-      DRW_DBGHL( nextLinkH.code, nextLinkH.size, nextLinkH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "\n Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( " next nextLinkers Handle:%1.%2 0x%3, remaining bytes %4" )
+                   .arg( nextLinkH.code ).arg( nextLinkH.size ).arg( nextLinkH.ref, 0, 16 )
+                   .arg( buf->numRemainingBytes() ) );
       nextEntLink = nextLinkH.ref;
     }
     else
@@ -583,22 +518,16 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
   {
     //layer handle
     layerH = buf->getOffsetHandle( handle );
-    DRW_DBG( " layer Handle: " );
-    DRW_DBGHL( layerH.code, layerH.size, layerH.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "   Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( " layer Handle:%1.%2 0x%3, remaining bytes %4" )
+                 .arg( layerH.code ).arg( layerH.size ).arg( layerH.ref, 0, 16 )
+                 .arg( buf->numRemainingBytes() ) );
     //lineType handle
     if ( ltFlags == 3 )
     {
       lTypeH = buf->getOffsetHandle( handle );
-      DRW_DBG( "linetype Handle: " );
-      DRW_DBGHL( lTypeH.code, lTypeH.size, lTypeH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "   Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( " linetype Handle:%1.%2 0x%3, remaining bytes %4" )
+                   .arg( lTypeH.code ).arg( lTypeH.size ).arg( lTypeH.ref, 0, 16 )
+                   .arg( buf->numRemainingBytes() ) );
     }
   }
   if ( version > DRW::AC1014 )  //2000+
@@ -608,38 +537,28 @@ bool DRW_Entity::parseDwgEntHandle( DRW::Version version, dwgBuffer *buf )
       if ( materialFlag == 3 )
       {
         dwgHandle materialH = buf->getOffsetHandle( handle );
-        DRW_DBG( " material Handle: " );
-        DRW_DBGHL( materialH.code, materialH.size, materialH.ref );
-        DRW_DBG( "\n" );
-        DRW_DBG( "\n Remaining bytes: " );
-        DRW_DBG( buf->numRemainingBytes() );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( " material handle:%1.%2 0x%3, remaining bytes %4" )
+                     .arg( materialH.code ).arg( materialH.size ).arg( materialH.ref, 0, 16 )
+                     .arg( buf->numRemainingBytes() ) );
       }
       if ( shadowFlag == 3 )
       {
         dwgHandle shadowH = buf->getOffsetHandle( handle );
-        DRW_DBG( " shadow Handle: " );
-        DRW_DBGHL( shadowH.code, shadowH.size, shadowH.ref );
-        DRW_DBG( "\n" );
-        DRW_DBG( "\n Remaining bytes: " );
-        DRW_DBG( buf->numRemainingBytes() );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( " shadow handle:%1.%2 0x%3, remaining bytes %4" )
+                     .arg( shadowH.code ).arg( shadowH.size ).arg( shadowH.ref, 0, 16 )
+                     .arg( buf->numRemainingBytes() ) );
       }
     }
     if ( plotFlags == 3 )
     {
       dwgHandle plotStyleH = buf->getOffsetHandle( handle );
-      DRW_DBG( " plot style Handle: " );
-      DRW_DBGHL( plotStyleH.code, plotStyleH.size, plotStyleH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "\n Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( " plot style handle:%1.%2 0x%3, remaining bytes %4" )
+                   .arg( plotStyleH.code ).arg( plotStyleH.size ).arg( plotStyleH.ref, 0, 16 )
+                   .arg( buf->numRemainingBytes() ) );
     }
   }
-  DRW_DBG( "\n DRW_Entity::parseDwgEntHandle Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "remaining bytes:%1" ).arg( buf->numRemainingBytes() ) );
+
   return buf->isGood();
 }
 
@@ -680,27 +599,27 @@ bool DRW_Point::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing point *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing point *********************************************" );
 
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-  DRW_DBG( "point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
   thickness = buf->getThickness( version > DRW::AC1014 );//BD
-  DRW_DBG( "\nthickness: " );
-  DRW_DBG( thickness );
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( ", Extrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
-
   double x_axis = buf->getBitDouble();//BD
-  DRW_DBG( "\n  x_axis: " );
-  DRW_DBG( x_axis );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "point:%1 thickness:%2, extrusion:%3, x_axis:%4" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( thickness )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+               .arg( x_axis )
+             );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
+
   //    RS crc;   //RS */
 
   return buf->isGood();
@@ -730,7 +649,8 @@ bool DRW_Line::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing line *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing line *********************************************" );
 
   if ( version < DRW::AC1015 )  //14-
   {
@@ -754,21 +674,22 @@ bool DRW_Line::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       secPoint.z = buf->getDefaultDouble( basePoint.z );//DD
     }
   }
-  DRW_DBG( "start point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\nend point: " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
+
   thickness = buf->getThickness( version > DRW::AC1014 );//BD
-  DRW_DBG( "\nthickness: " );
-  DRW_DBG( thickness );
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( ", Extrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "startpoint:%1 endpoint:%2 thickness:%3 extrusion:%4" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( thickness )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+             );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -777,21 +698,27 @@ bool DRW_Ray::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing ray/xline *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing ray/xline *********************************************" );
+
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
   secPoint.x = buf->getBitDouble();
   secPoint.y = buf->getBitDouble();
   secPoint.z = buf->getBitDouble();
-  DRW_DBG( "start point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\nvector: " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
+
+  QgsDebugMsg( QString( "startpoint:%1 vector:%2" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+             );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -824,29 +751,28 @@ bool DRW_Circle::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing circle *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing circle *********************************************" );
 
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-  DRW_DBG( "center: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
   mRadius = buf->getBitDouble();
-  DRW_DBG( "\nradius: " );
-  DRW_DBG( mRadius );
-
   thickness = buf->getThickness( version > DRW::AC1014 );
-  DRW_DBG( " thickness: " );
-  DRW_DBG( thickness );
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( "\nextrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "center:%1 radius:%2 thickness:%3 extrusion:%4" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( mRadius ).arg( thickness )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+             );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -894,33 +820,29 @@ bool DRW_Arc::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing circle arc *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing circle arc *********************************************" );
 
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-  DRW_DBG( "center point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-
   mRadius = buf->getBitDouble();
-  DRW_DBG( "\nradius: " );
-  DRW_DBG( mRadius );
   thickness = buf->getThickness( version > DRW::AC1014 );
-  DRW_DBG( " thickness: " );
-  DRW_DBG( thickness );
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( "\nextrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
   staangle = buf->getBitDouble();
-  DRW_DBG( "\nstart angle: " );
-  DRW_DBG( staangle );
   endangle = buf->getBitDouble();
-  DRW_DBG( " end angle: " );
-  DRW_DBG( endangle );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "center:%1,%2,%3 radius:%4 thickness:%5 extrusion:%6,%7,%8 staangle:%9 endangle:%10" )
+               .arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z )
+               .arg( mRadius ).arg( thickness )
+               .arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z )
+               .arg( staangle ).arg( endangle )
+             );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
+
   return buf->isGood();
 }
 
@@ -993,33 +915,29 @@ bool DRW_Ellipse::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing ellipse *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing ellipse *********************************************" );
 
   basePoint = buf->get3BitDouble();
-  DRW_DBG( "center: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
   secPoint = buf->get3BitDouble();
-  DRW_DBG( ", axis: " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
-  DRW_DBG( "\n" );
   extPoint = buf->get3BitDouble();
-  DRW_DBG( "Extrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
   ratio = buf->getBitDouble();//BD
-  DRW_DBG( "\nratio: " );
-  DRW_DBG( ratio );
   staparam = buf->getBitDouble();//BD
-  DRW_DBG( " start param: " );
-  DRW_DBG( staparam );
   endparam = buf->getBitDouble();//BD
-  DRW_DBG( " end param: " );
-  DRW_DBG( endparam );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "center:%1 axis:%2 extrusion:%3 ratio:%4 staparam:%5 endparam:%6" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+               .arg( ratio ).arg( staparam ).arg( endparam )
+             );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  //    RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -1106,7 +1024,8 @@ bool DRW_Trace::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing Trace *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing Trace *********************************************" );
 
   thickness = buf->getThickness( version > DRW::AC1014 );
   basePoint.z = buf->getBitDouble();
@@ -1123,19 +1042,14 @@ bool DRW_Trace::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   fourthPoint.z = basePoint.z;
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
 
-  DRW_DBG( " - base " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\n - sec " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
-  DRW_DBG( "\n - third " );
-  DRW_DBGPT( thirdPoint.x, thirdPoint.y, thirdPoint.z );
-  DRW_DBG( "\n - fourth " );
-  DRW_DBGPT( fourthPoint.x, fourthPoint.y, fourthPoint.z );
-  DRW_DBG( "\n - extrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
-  DRW_DBG( "\n - thickness: " );
-  DRW_DBG( thickness );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "base:%1 sec:%2 third:%3 fourth:%4 extrusion:%5 thickness:%6" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( thirdPoint.x ).arg( thirdPoint.y ).arg( thirdPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( fourthPoint.x ).arg( fourthPoint.y ).arg( fourthPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+               .arg( thickness )
+             );
 
   /* Common Entity Handle Data */
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -1154,7 +1068,7 @@ void DRW_Solid::parseCode( int code, dxfReader *reader )
 
 bool DRW_Solid::parseDwg( DRW::Version v, dwgBuffer *buf, duint32 bs )
 {
-  DRW_DBG( "\n***************************** parsing Solid *********************************************\n" );
+  QgsDebugMsg( "***************************** parsing Solid *********************************************" );
   return DRW_Trace::parseDwg( v, buf, bs );
 }
 
@@ -1176,7 +1090,8 @@ bool DRW_3Dface::parseDwg( DRW::Version v, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( v, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing 3Dface *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing 3Dface *********************************************" );
 
   if ( v < DRW::AC1015 )  // R13 & R14
   {
@@ -1215,23 +1130,15 @@ bool DRW_3Dface::parseDwg( DRW::Version v, dwgBuffer *buf, duint32 bs )
   drw_assert( invisibleflag >= NoEdge );
   drw_assert( invisibleflag <= AllEdges );
 
-  DRW_DBG( " - base " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\n" );
-  DRW_DBG( " - sec " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
-  DRW_DBG( "\n" );
-  DRW_DBG( " - third " );
-  DRW_DBGPT( thirdPoint.x, thirdPoint.y, thirdPoint.z );
-  DRW_DBG( "\n" );
-  DRW_DBG( " - fourth " );
-  DRW_DBGPT( fourthPoint.x, fourthPoint.y, fourthPoint.z );
-  DRW_DBG( "\n" );
-  DRW_DBG( " - Invisibility mask: " );
-  DRW_DBG( invisibleflag );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "base:%1 sec:%2 third:%3 fourth:%4 invisibleFlag:%5" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( thirdPoint.x ).arg( thirdPoint.y ).arg( thirdPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( fourthPoint.x ).arg( fourthPoint.y ).arg( fourthPoint.z ) )
+               .arg( invisibleflag )
+             );
 
-  /* Common Entity Handle Data */
+  // Common Entity Handle Data
   ret = DRW_Entity::parseDwgEntHandle( v, buf );
   if ( !ret )
     return ret;
@@ -1267,22 +1174,18 @@ bool DRW_Block::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     return ret;
   if ( !isEnd )
   {
-    DRW_DBG( "\n***************************** parsing block *********************************************\n" );
+    QgsDebugMsg( "***************************** parsing block *********************************************" );
     name = sBuf->getVariableText( version, false );
-    DRW_DBG( "Block name: " );
-    DRW_DBG( name.c_str() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "Block name: %1" ).arg( name.c_str() ) );
   }
   else
   {
-    DRW_DBG( "\n***************************** parsing end block *********************************************\n" );
+    QgsDebugMsg( "***************************** parsing end block *********************************************" );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     duint8 unk = buf->getBit();
-    DRW_DBG( "unknown bit: " );
-    DRW_DBG( unk );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "unknown bit: %1" ).arg( unk ) );
   }
 //    X handleAssoc;   //X
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -1336,13 +1239,17 @@ bool DRW_Insert::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n************************** parsing insert/minsert *****************************************\n" );
+
+  QgsDebugMsg( "************************** parsing insert/minsert *****************************************" );
+
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-  DRW_DBG( "insertion point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "insertion point:%1" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+             );
+
   if ( version < DRW::AC1015 )  //14-
   {
     xscale = buf->getBitDouble();
@@ -1373,26 +1280,25 @@ bool DRW_Insert::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       zscale = buf->getDefaultDouble( xscale );
     }
   }
+
   angle = buf->getBitDouble();
-  DRW_DBG( "scale : " );
-  DRW_DBGPT( xscale, yscale, zscale );
-  DRW_DBG( ", angle: " );
-  DRW_DBG( angle );
   extPoint = buf->getExtrusion( false ); //3BD R14 style
-  DRW_DBG( "\nextrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
+
+  QgsDebugMsg( QString( "scale:%1, angle:%2 extrusion:%3" )
+               .arg( QString( "%1,%2,%3" ).arg( xscale ).arg( yscale ).arg( zscale ) )
+               .arg( angle )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+             );
 
   bool hasAttrib = buf->getBit();
-  DRW_DBG( "   has Attrib: " );
-  DRW_DBG( hasAttrib );
+
+  QgsDebugMsg( QString( "   has Attrib:%1" ).arg( hasAttrib ) );
 
   if ( hasAttrib && version > DRW::AC1015 )  //2004+
   {
     objCount = buf->getBitLong();
-    DRW_UNUSED( objCount );
-    DRW_DBG( "   objCount: " );
-    DRW_DBG( objCount );
-    DRW_DBG( "\n" );
+    Q_UNUSED( objCount );
+    QgsDebugMsg( QString( "objCount:%1" ).arg( objCount ) );
   }
   if ( oType == 8 )  //entity are minsert
   {
@@ -1401,56 +1307,58 @@ bool DRW_Insert::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     colspace = buf->getBitDouble();
     rowspace = buf->getBitDouble();
   }
-  DRW_DBG( "   Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "   Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   blockRecH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
-  DRW_DBG( "BLOCK HEADER Handle: " );
-  DRW_DBGHL( blockRecH.code, blockRecH.size, blockRecH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "   Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
 
-  /*attribs follows*/
+  QgsDebugMsg( QString( "   BLOCK HEADER Handle: %1.%2 0x%3, remaining bytes %4" )
+               .arg( blockRecH.code ).arg( blockRecH.size ).arg( blockRecH.ref, 0, 16 )
+               .arg( buf->numRemainingBytes() )
+             );
+
+  // attribs follows
   if ( hasAttrib )
   {
     if ( version < DRW::AC1018 )  //2000-
     {
       dwgHandle attH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
-      DRW_DBG( "first attrib Handle: " );
-      DRW_DBGHL( attH.code, attH.size, attH.ref );
-      DRW_DBG( "\n" );
+
+      QgsDebugMsg( QString( "   first attrib handle: %1.%2 0x%3" )
+                   .arg( attH.code ).arg( attH.size ).arg( attH.ref, 0, 16 )
+                 );
+
       attH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
-      DRW_DBG( "second attrib Handle: " );
-      DRW_DBGHL( attH.code, attH.size, attH.ref );
-      DRW_DBG( "\n" );
+
+      QgsDebugMsg( QString( "   second attrib handle: %1.%2 0x%3" )
+                   .arg( attH.code ).arg( attH.size ).arg( attH.ref, 0, 16 )
+                 );
     }
     else
     {
       for ( duint8 i = 0; i < objCount; ++i )
       {
         dwgHandle attH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
-        DRW_DBG( "attrib Handle #" );
-        DRW_DBG( i );
-        DRW_DBG( ": " );
-        DRW_DBGHL( attH.code, attH.size, attH.ref );
-        DRW_DBG( "\n" );
+        QgsDebugMsg( QString( "   attrib handle #%1: %2.%3 0x%4" )
+                     .arg( i ).arg( attH.code ).arg( attH.size ).arg( attH.ref, 0, 16 )
+                   );
       }
     }
     seqendH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
-    DRW_DBG( "seqendH Handle: " );
-    DRW_DBGHL( seqendH.code, seqendH.size, seqendH.ref );
-    DRW_DBG( "\n" );
+
+    QgsDebugMsg( QString( "   seqend handle: %1.%2 0x%3" )
+                 .arg( seqendH.code ).arg( seqendH.size ).arg( seqendH.ref, 0, 16 )
+               );
   }
-  DRW_DBG( "   Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "   Remaining bytes:%1" ).arg( buf->numRemainingBytes() ) );
 
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  //    RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -1511,7 +1419,7 @@ void DRW_LWPolyline::parseCode( int code, dxfReader *reader )
       break;
     case 90:
       vertexnum = reader->getInt32();
-      vertlist.reserve( vertexnum );
+      RESERVE( vertlist, vertexnum );
       break;
     case 210:
       haveExtrusion = true;
@@ -1534,11 +1442,12 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing LWPolyline *******************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing LWPolyline *******************************************" );
 
   flags = buf->getBitShort();
-  DRW_DBG( "flags value: " );
-  DRW_DBG( flags );
+  QgsDebugMsg( QString( "flags value:0x%1" ).arg( flags, 0, 16 ) );
+
   if ( flags & 4 )
     width = buf->getBitDouble();
   if ( flags & 8 )
@@ -1547,8 +1456,9 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
     thickness = buf->getBitDouble();
   if ( flags & 1 )
     extPoint = buf->getExtrusion( false );
+
   vertexnum = buf->getBitLong();
-  vertlist.reserve( vertexnum );
+  RESERVE( vertlist, vertexnum );
   unsigned int bulgesnum = 0;
   if ( flags & 16 )
     bulgesnum = buf->getBitLong();
@@ -1562,20 +1472,17 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
   unsigned int widthsnum = 0;
   if ( flags & 32 )
     widthsnum = buf->getBitLong();
-  DRW_DBG( "\nvertex num: " );
-  DRW_DBG( vertexnum );
-  DRW_DBG( " bulges num: " );
-  DRW_DBG( bulgesnum );
-  DRW_DBG( " vertexIdCount: " );
-  DRW_DBG( vertexIdCount );
-  DRW_DBG( " widths num: " );
-  DRW_DBG( widthsnum );
+
+  QgsDebugMsg( QString( "vertex num:%1, bulges num:%2, vertexIdCount:%3,  widths num:%4" )
+               .arg( vertexnum ).arg( bulgesnum ).arg( vertexIdCount ).arg( widthsnum )
+             );
+
   //clear all bit except 128 = plinegen and set 1 to open/close //RLZ:verify plinegen & open
   //dxf: plinegen 128 & open 1
   flags = ( flags & 512 ) ? ( flags | 1 ) : ( flags | 0 );
   flags &= 129;
-  DRW_DBG( "end flags value: " );
-  DRW_DBG( flags );
+
+  QgsDebugMsg( QString( "end flags value:0x%1" ).arg( flags, 0, 16 ) );
 
   if ( vertexnum > 0 ) //verify if is lwpol without vertex (empty)
   {
@@ -1637,31 +1544,27 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
       }
     }
   }
-  if ( DRW_DBGGL == DRW_dbg::DEBUG )
+
+  QgsDebugMsgLevel( "Vertex list: ", 5 );
+  for ( std::vector<DRW_Vertex2D *>::iterator it = vertlist.begin() ; it != vertlist.end(); ++it )
   {
-    DRW_DBG( "\nVertex list: " );
-    for ( std::vector<DRW_Vertex2D *>::iterator it = vertlist.begin() ; it != vertlist.end(); ++it )
-    {
-      DRW_Vertex2D* pv = *it;
-      DRW_DBG( "\n   x: " );
-      DRW_DBG( pv->x );
-      DRW_DBG( " y: " );
-      DRW_DBG( pv->y );
-      DRW_DBG( " bulge: " );
-      DRW_DBG( pv->bulge );
-      DRW_DBG( " stawidth: " );
-      DRW_DBG( pv->stawidth );
-      DRW_DBG( " endwidth: " );
-      DRW_DBG( pv->endwidth );
-    }
+    DRW_Vertex2D* pv = *it;
+
+    QgsDebugMsgLevel( QString( "x:%1 y:%2 bulge:%3 stawidth:%4 endwidth:%5" )
+                      .arg( pv->x ).arg( pv->y )
+                      .arg( pv->bulge )
+                      .arg( pv->stawidth )
+                      .arg( pv->endwidth ), 5
+                    );
   }
 
-  DRW_DBG( "\n" );
-  /* Common Entity Handle Data */
+  // Common Entity Handle Data
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-  /* CRC X --- */
+
+  // CRC X
+
   return buf->isGood();
 }
 
@@ -1714,16 +1617,17 @@ bool DRW_Text::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing text *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing text *********************************************" );
 
 // DataFlags RC Used to determine presence of subsquent data, set to 0xFF for R14-
   duint8 data_flags = 0x00;
   if ( version > DRW::AC1014 )  //2000+
   {
     data_flags = buf->getRawChar8(); /* DataFlags RC Used to determine presence of subsquent data */
-    DRW_DBG( "data_flags: " );
-    DRW_DBG( data_flags );
-    DRW_DBG( "\n" );
+
+    QgsDebugMsg( QString( "data_flags:%1" ).arg( data_flags, 0, 16 ) );
+
     if ( !( data_flags & 0x01 ) ) /* Elevation RD --- present if !(DataFlags & 0x01) */
     {
       basePoint.z = buf->getRawDouble();
@@ -1735,9 +1639,11 @@ bool DRW_Text::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   }
   basePoint.x = buf->getRawDouble(); /* Insertion pt 2RD 10 */
   basePoint.y = buf->getRawDouble();
-  DRW_DBG( "Insert point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Insert point:%1" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+             );
+
   if ( version > DRW::AC1014 )  //2000+
   {
     if ( !( data_flags & 0x02 ) ) /* Alignment pt 2DD 11 present if !(DataFlags & 0x02), use 10 & 20 values for 2 default values.*/
@@ -1756,14 +1662,13 @@ bool DRW_Text::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     secPoint.y = buf->getRawDouble();
   }
   secPoint.z = basePoint.z;
-  DRW_DBG( "Alignment: " );
-  DRW_DBGPT( secPoint.x, secPoint.y, basePoint.z );
-  DRW_DBG( "\n" );
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( "Extrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
-  DRW_DBG( "\n" );
   thickness = buf->getThickness( version > DRW::AC1014 ); /* Thickness BD 39 */
+
+  QgsDebugMsg( QString( "alignment:%1 extrusion:%2" )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+             );
 
   if ( version > DRW::AC1014 )  //2000+
   {
@@ -1788,41 +1693,31 @@ bool DRW_Text::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     height = buf->getBitDouble(); /* Height BD 40 */
     widthscale = buf->getBitDouble(); /* Width factor BD 41 */
   }
-  DRW_DBG( "thickness: " );
-  DRW_DBG( thickness );
-  DRW_DBG( ", Oblique ang: " );
-  DRW_DBG( oblique );
-  DRW_DBG( ", Width: " );
-  DRW_DBG( widthscale );
-  DRW_DBG( ", Rotation: " );
-  DRW_DBG( angle );
-  DRW_DBG( ", height: " );
-  DRW_DBG( height );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "thickness:%1, Oblique ang:%2, Width:%3, rotation:%4, height:%5" )
+               .arg( thickness ).arg( oblique ).arg( widthscale ).arg( angle ).arg( height )
+             );
+
   text = sBuf->getVariableText( version, false ); /* Text value TV 1 */
-  DRW_DBG( "text string: " );
-  DRW_DBG( text.c_str() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "text string:%1" ).arg( text.c_str() ) );
+
   //textgen, alignH, alignV always present in R14-, data_flags set in initialisation
   if ( !( data_flags & 0x20 ) ) /* Generation BS 71 present if !(DataFlags & 0x20) */
   {
     textgen = buf->getBitShort();
-    DRW_DBG( "textgen: " );
-    DRW_DBG( textgen );
+    QgsDebugMsg( QString( "textgen:%1" ).arg( textgen ) );
   }
   if ( !( data_flags & 0x40 ) ) /* Horiz align. BS 72 present if !(DataFlags & 0x40) */
   {
     alignH = ( HAlign )buf->getBitShort();
-    DRW_DBG( ", alignH: " );
-    DRW_DBG( alignH );
+    QgsDebugMsg( QString( "alignH:%1" ).arg( alignH ) );
   }
   if ( !( data_flags & 0x80 ) ) /* Vert align. BS 73 present if !(DataFlags & 0x80) */
   {
     alignV = ( VAlign )buf->getBitShort();
-    DRW_DBG( ", alignV: " );
-    DRW_DBG( alignV );
+    QgsDebugMsg( QString( "alignV:%1" ).arg( alignV ) );
   }
-  DRW_DBG( "\n" );
 
   /* Common Entity Handle Data */
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -1830,9 +1725,10 @@ bool DRW_Text::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     return ret;
 
   styleH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "text style Handle: " );
-  DRW_DBGHL( styleH.code, styleH.size, styleH.ref );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "text style Handle:%1.%2 0x%3" )
+               .arg( styleH.code ).arg( styleH.size ).arg( styleH.ref, 0, 16 )
+             );
 
   /* CRC X --- */
   return buf->isGood();
@@ -1873,12 +1769,15 @@ bool DRW_MText::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing mtext *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing mtext *********************************************" );
 
   basePoint = buf->get3BitDouble(); /* Insertion pt 3BD 10 - First picked point. */
-  DRW_DBG( "Insertion: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "insertion:%1" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+             );
+
   extPoint = buf->get3BitDouble(); /* Extrusion 3BD 210 Undocumented; */
   secPoint = buf->get3BitDouble(); /* X-axis dir 3BD 11 */
   updateAngle();
@@ -1939,13 +1838,10 @@ bool DRW_MText::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     return ret;
 
   styleH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "text style Handle: " );
-  DRW_DBG( styleH.code );
-  DRW_DBG( "." );
-  DRW_DBG( styleH.size );
-  DRW_DBG( "." );
-  DRW_DBG( styleH.ref );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "text style Handle:%1.%2 0x%3" )
+               .arg( styleH.code ).arg( styleH.size ).arg( styleH.ref, 0, 16 )
+             );
 
   /* CRC X --- */
   return buf->isGood();
@@ -2001,14 +1897,14 @@ bool DRW_Polyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing polyline *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing polyline *********************************************" );
 
   dint32 ooCount = 0;
   if ( oType == 0x0F ) //pline 2D
   {
     flags = buf->getBitShort();
-    DRW_DBG( "flags value: " );
-    DRW_DBG( flags );
+    QgsDebugMsg( QString( "flags value:0x%1" ).arg( flags, 0, 16 ) );
     curvetype = buf->getBitShort();
     defstawidth = buf->getBitDouble();
     defendwidth = buf->getBitDouble();
@@ -2019,8 +1915,7 @@ bool DRW_Polyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   else if ( oType == 0x10 ) //pline 3D
   {
     duint8 tmpFlag = buf->getRawChar8();
-    DRW_DBG( "flags 1 value: " );
-    DRW_DBG( tmpFlag );
+    QgsDebugMsg( QString( "flags 1 value:0x%1" ).arg( tmpFlag, 0, 16 ) );
     if ( tmpFlag & 1 )
       curvetype = 5;
     else if ( tmpFlag & 2 )
@@ -2034,20 +1929,16 @@ bool DRW_Polyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     if ( tmpFlag & 1 )
       flags |= 1;
     flags |= 8; //indicate 3DPOL
-    DRW_DBG( "flags 2 value: " );
-    DRW_DBG( tmpFlag );
+    QgsDebugMsg( QString( "flags 2 value:0x%1" ).arg( tmpFlag, 0, 16 ) );
   }
   else if ( oType == 0x1D ) //PFACE
   {
     flags = 64;
     vertexcount = buf->getBitShort();
-    DRW_DBG( "vertex count: " );
-    DRW_DBG( vertexcount );
     facecount = buf->getBitShort();
-    DRW_DBG( "face count: " );
-    DRW_DBG( facecount );
-    DRW_DBG( "flags value: " );
-    DRW_DBG( flags );
+    QgsDebugMsg( QString( "vertex count:%1 face count:%2 flags value:0x%3" )
+                 .arg( vertexcount ).arg( facecount ).arg( flags, 0, 16 )
+               );
   }
   if ( version > DRW::AC1015 )  //2004+
   {
@@ -2062,17 +1953,17 @@ bool DRW_Polyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     dwgHandle objectH = buf->getOffsetHandle( handle );
     firstEH = objectH.ref;
-    DRW_DBG( " first Vertex Handle: " );
-    DRW_DBGHL( objectH.code, objectH.size, objectH.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "first vertex handle:%1.%2 0x%3" )
+                 .arg( objectH.code ).arg( objectH.size ).arg( objectH.ref, 0, 16 )
+               );
+
     objectH = buf->getOffsetHandle( handle );
     lastEH = objectH.ref;
-    DRW_DBG( " last Vertex Handle: " );
-    DRW_DBGHL( objectH.code, objectH.size, objectH.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+
+    QgsDebugMsg( QString( "last vertex:%1, remaining bytes %2" )
+                 .arg( QString( "%1.%2 0x%3" ).arg( objectH.code ).arg( objectH.size ).arg( objectH.ref, 0, 16 ) )
+                 .arg( buf->numRemainingBytes() )
+               );
   }
   else
   {
@@ -2080,23 +1971,22 @@ bool DRW_Polyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     {
       dwgHandle objectH = buf->getOffsetHandle( handle );
       handleList.push_back( objectH.ref );
-      DRW_DBG( " Vertex Handle: " );
-      DRW_DBGHL( objectH.code, objectH.size, objectH.ref );
-      DRW_DBG( "\n" );
-      DRW_DBG( "Remaining bytes: " );
-      DRW_DBG( buf->numRemainingBytes() );
-      DRW_DBG( "\n" );
+
+      QgsDebugMsg( QString( "vertex handle:%1, remaining bytes %2" )
+                   .arg( QString( "%1.%2 0x%3" ).arg( objectH.code ).arg( objectH.size ).arg( objectH.ref, 0, 16 ) )
+                   .arg( buf->numRemainingBytes() )
+                 );
     }
   }
   seqEndH = buf->getOffsetHandle( handle );
-  DRW_DBG( " SEQEND Handle: " );
-  DRW_DBGHL( seqEndH.code, seqEndH.size, seqEndH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
 
-//    RS crc;   //RS */
+  QgsDebugMsg( QString( "SEQEND handle:%1 remaining bytes %2" )
+               .arg( QString( "%1.%2 0x%3" ).arg( seqEndH.code ).arg( seqEndH.size ).arg( seqEndH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -2150,17 +2040,20 @@ bool DRW_Vertex::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs, dou
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing pline Vertex *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing pline Vertex *********************************************" );
 
   if ( oType == 0x0A ) //pline 2D, needed example
   {
     flags = buf->getRawChar8(); //RLZ: EC  unknown type
-    DRW_DBG( "flags value: " );
-    DRW_DBG( flags );
     basePoint = buf->get3BitDouble();
     basePoint.z = el;
-    DRW_DBG( "basePoint: " );
-    DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
+
+    QgsDebugMsg( QString( " flags value:0x%1 basePoint:%2" )
+                 .arg( flags, 0, 16 )
+                 .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               );
+
     stawidth = buf->getBitDouble();
     if ( stawidth < 0 )
       endwidth = stawidth = fabs( stawidth );
@@ -2168,18 +2061,21 @@ bool DRW_Vertex::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs, dou
       endwidth = buf->getBitDouble();
     bulge = buf->getBitDouble();
     if ( version > DRW::AC1021 ) //2010+
-      DRW_DBG( "Vertex ID: " );
-    DRW_DBG( buf->getBitLong() );
+    {
+      dint32 id = buf->getBitLong();
+      QgsDebugMsg( QString( " Vertex ID:%1" ).arg( id ) );
+    }
     tgdir = buf->getBitDouble();
   }
   else if ( oType == 0x0B || oType == 0x0C || oType == 0x0D ) //PFACE
   {
     flags = buf->getRawChar8(); //RLZ: EC  unknown type
-    DRW_DBG( "flags value: " );
-    DRW_DBG( flags );
     basePoint = buf->get3BitDouble();
-    DRW_DBG( "basePoint: " );
-    DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
+
+    QgsDebugMsg( QString( " flags value:0x%1 basePoint:%2" )
+                 .arg( flags, 0, 16 )
+                 .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               );
   }
   else if ( oType == 0x0E ) //PFACE FACE
   {
@@ -2192,7 +2088,9 @@ bool DRW_Vertex::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs, dou
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-//    RS crc;   //RS */
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -2290,7 +2188,7 @@ void DRW_Hatch::parseCode( int code, dxfReader *reader )
       break;
     case 91:
       loopsnum = reader->getInt32();
-      looplist.reserve( loopsnum );
+      RESERVE( looplist, loopsnum );
       break;
     case 92:
       loop = new DRW_HatchLoop( reader->getInt32() );
@@ -2305,8 +2203,10 @@ void DRW_Hatch::parseCode( int code, dxfReader *reader )
       else ispol = false;
       break;
     case 93:
-      if ( pline ) pline->vertexnum = reader->getInt32();
-      else loop->numedges = reader->getInt32();//aqui reserve
+      if ( pline )
+        pline->vertexnum = reader->getInt32();
+      else
+        loop->numedges = reader->getInt32();//aqui reserve
       break;
     case 98: //seed points ??
       clearEntities();
@@ -2331,77 +2231,78 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing hatch *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing hatch *********************************************" );
 
   //Gradient data, RLZ: is ok or if grad > 0 continue read ?
   if ( version > DRW::AC1015 ) //2004+
   {
     dint32 isGradient = buf->getBitLong();
-    DRW_DBG( "is Gradient: " );
-    DRW_DBG( isGradient );
     dint32 res = buf->getBitLong();
-    DRW_DBG( " reserved: " );
-    DRW_DBG( res );
     double gradAngle = buf->getBitDouble();
-    DRW_DBG( " Gradient angle: " );
-    DRW_DBG( gradAngle );
     double gradShift = buf->getBitDouble();
-    DRW_DBG( " Gradient shift: " );
-    DRW_DBG( gradShift );
     dint32 singleCol = buf->getBitLong();
-    DRW_DBG( "\nsingle color Grad: " );
-    DRW_DBG( singleCol );
     double gradTint = buf->getBitDouble();
-    DRW_DBG( " Gradient tint: " );
-    DRW_DBG( gradTint );
     dint32 numCol = buf->getBitLong();
-    DRW_DBG( " num colors: " );
-    DRW_DBG( numCol );
+
+    QgsDebugMsg( QString( "is Gradient:%1 reserved:%2 Gradient angle:%3 Gradient shift:%4 single color Grad:%5 Gradient tint:%6, num colors:%7" )
+                 .arg( isGradient )
+                 .arg( res )
+                 .arg( gradAngle )
+                 .arg( gradShift )
+                 .arg( singleCol )
+                 .arg( gradTint )
+                 .arg( numCol )
+               );
+
     for ( dint32 i = 0 ; i < numCol; ++i )
     {
       double unkDouble = buf->getBitDouble();
-      DRW_DBG( "\nunkDouble: " );
-      DRW_DBG( unkDouble );
       duint16 unkShort = buf->getBitShort();
-      DRW_DBG( " unkShort: " );
-      DRW_DBG( unkShort );
       dint32 rgbCol = buf->getBitLong();
-      DRW_DBG( " rgb color: " );
-      DRW_DBG( rgbCol );
       duint8 ignCol = buf->getRawChar8();
-      DRW_DBG( " ignored color: " );
-      DRW_DBG( ignCol );
+
+      QgsDebugMsg( QString( "unkDouble:%1 unkShort:%2 rgbcolor:%3 ignoredcolor:%4" )
+                   .arg( unkDouble ).arg( unkShort )
+                   .arg( rgbCol )
+                   .arg( ignCol )
+                 );
     }
     UTF8STRING gradName = sBuf->getVariableText( version, false );
-    DRW_DBG( "\ngradient name: " );
-    DRW_DBG( gradName.c_str() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "gradient name:%1" ).arg( gradName.c_str() ) );
   }
   basePoint.z = buf->getBitDouble();
   extPoint = buf->get3BitDouble();
-  DRW_DBG( "base point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
-  DRW_DBG( "\nextrusion: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
   name = sBuf->getVariableText( version, false );
-  DRW_DBG( "\nhatch pattern name: " );
-  DRW_DBG( name.c_str() );
-  DRW_DBG( "\n" );
   solid = buf->getBit();
   associative = buf->getBit();
   loopsnum = buf->getBitLong();
 
+  QgsDebugMsg( QString( "base point:%1, extrusion:%2, pattern:%3, solid:%4 associative:%5 loops:%6" )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
+               .arg( name.c_str() )
+               .arg( solid )
+               .arg( associative )
+               .arg( loopsnum )
+             );
+
   //read loops
-  for ( std::vector<DRW_HatchLoop *>::size_type i = 0 ; i < loopsnum; ++i )
+  for ( std::vector<DRW_HatchLoop *>::size_type i = 0 ; i < loopsnum && buf->isGood(); ++i )
   {
     loop = new DRW_HatchLoop( buf->getBitLong() );
+    QgsDebugMsg( QString( " type: %1" ).arg( loop->type ) );
     hasPixelSize |= ( loop->type & 4 ) != 0;
     if ( !( loop->type & 2 ) )  //Not polyline
     {
       dint32 numPathSeg = buf->getBitLong();
-      for ( dint32 j = 0; j < numPathSeg;++j )
+
+      QgsDebugMsg( QString( "segs: %1" ).arg( numPathSeg ) );
+
+      for ( dint32 j = 0; j < numPathSeg; ++j )
       {
         duint8 typePath = buf->getRawChar8();
+        QgsDebugMsg( QString( "  typepath: %1" ).arg( typePath ) );
         if ( typePath == 1 )  //line
         {
           addLine();
@@ -2436,28 +2337,46 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
           spline->flags |= ( buf->getBit() << 1 ); //periodic
           spline->nknots = buf->getBitLong();
           spline->ncontrol = buf->getBitLong();
-          spline->knotslist.reserve( spline->nknots );
-          for ( dint32 j = 0; j < spline->nknots;++j )
+
+          QgsDebugMsg( QString( "  degree:%1 flags:0x%2 nknots:%3 ncontrol:%4" )
+                       .arg( spline->degree ).arg( spline->flags, 0, 16 )
+                       .arg( spline->nknots ).arg( spline->ncontrol )
+                     );
+          RESERVE( spline->knotslist, spline->nknots );
+          for ( dint32 j = 0; j < spline->nknots; ++j )
           {
             spline->knotslist.push_back( buf->getBitDouble() );
+            QgsDebugMsg( QString( "  knot %1: %2" ).arg( j )
+                         .arg( spline->knotslist.back() )
+                       );
           }
-          spline->controllist.reserve( spline->ncontrol );
-          for ( dint32 j = 0; j < spline->ncontrol; ++j )
+          RESERVE( spline->controllist, spline->ncontrol );
+          for ( dint32 j = 0; j < spline->ncontrol && buf->isGood(); ++j )
           {
             DRW_Coord* crd = new DRW_Coord( buf->get2RawDouble() );
             spline->controllist.push_back( crd );
             if ( isRational )
-              crd->z =  buf->getBitDouble(); //RLZ: investigate how store weight
+              crd->z = buf->getBitDouble(); //RLZ: investigate how store weight
             spline->controllist.push_back( crd );
+            QgsDebugMsg( QString( "  control %1: %2" )
+                         .arg( j )
+                         .arg( QString( "%1,%2,%3" ).arg( crd->x ).arg( crd->y ).arg( crd->z ) )
+                       );
           }
           if ( version > DRW::AC1021 ) //2010+
           {
             spline->nfit = buf->getBitLong();
-            spline->fitlist.reserve( spline->nfit );
-            for ( dint32 j = 0; j < spline->nfit;++j )
+            QgsDebugMsg( QString( " nfit:%1" ).arg( spline->nfit ) );
+            RESERVE( spline->fitlist, spline->nfit );
+            for ( dint32 j = 0; j < spline->nfit && buf->isGood(); ++j )
             {
               DRW_Coord* crd = new DRW_Coord( buf->get2RawDouble() );
               spline->fitlist.push_back( crd );
+
+              QgsDebugMsg( QString( "  fit %1: %2" )
+                           .arg( j )
+                           .arg( QString( "%1,%2,%3" ).arg( crd->x ).arg( crd->y ).arg( crd->z ) )
+                         );
             }
             spline->tgStart = buf->get2RawDouble();
             spline->tgEnd = buf->get2RawDouble();
@@ -2471,7 +2390,12 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       bool hasBulges = buf->getBit();
       pline->flags = buf->getBit();//closed bit
       dint32 numVert = buf->getBitLong();
-      for ( dint32 j = 0; j < numVert;++j )
+
+      QgsDebugMsg( QString( "hasBulge:%1 flags:%2 verts:%3" )
+                   .arg( hasBulges ).arg( pline->flags, 0, 16 ).arg( numVert )
+                 );
+
+      for ( dint32 j = 0; j < numVert && buf->isGood(); ++j )
       {
         DRW_Vertex2D v;
         v.x = buf->getRawDouble();
@@ -2485,23 +2409,27 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     loop->update();
     looplist.push_back( loop );
     totalBoundItems += buf->getBitLong();
-    DRW_DBG( " totalBoundItems: " );
-    DRW_DBG( totalBoundItems );
+
+    QgsDebugMsg( QString( " totalBoundItems:%1" ).arg( totalBoundItems ) );
   } //end read loops
 
   hstyle = buf->getBitShort();
   hpattern = buf->getBitShort();
-  DRW_DBG( "\nhatch style: " );
-  DRW_DBG( hstyle );
-  DRW_DBG( " pattern type" );
-  DRW_DBG( hpattern );
+
+  QgsDebugMsg( QString( "hatch style:%1 pattern type:%2" ).arg( hstyle ).arg( hpattern ) );
   if ( !solid )
   {
     angle = buf->getBitDouble();
     scale = buf->getBitDouble();
     doubleflag = buf->getBit();
     deflines = buf->getBitShort();
-    for ( dint32 i = 0 ; i < deflines; ++i )
+
+    QgsDebugMsg( QString( "angle:%1 scale:%2 double:%3 deflines:%4" )
+                 .arg( angle ).arg( scale )
+                 .arg( doubleflag ).arg( deflines )
+               );
+
+    for ( dint32 i = 0 ; i < deflines && buf->isGood(); ++i )
     {
       DRW_Coord ptL, offL;
       double angleL = buf->getBitDouble();
@@ -2510,23 +2438,17 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       offL.x = buf->getBitDouble();
       offL.y = buf->getBitDouble();
       duint16 numDashL = buf->getBitShort();
-      DRW_DBG( "\ndef line: " );
-      DRW_DBG( angleL );
-      DRW_DBG( "," );
-      DRW_DBG( ptL.x );
-      DRW_DBG( "," );
-      DRW_DBG( ptL.y );
-      DRW_DBG( "," );
-      DRW_DBG( offL.x );
-      DRW_DBG( "," );
-      DRW_DBG( offL.y );
-      DRW_DBG( "," );
-      DRW_DBG( angleL );
+
+      QgsDebugMsg( QString( "def line: a=%1 pt=%2 off=%3" )
+                   .arg( angleL )
+                   .arg( QString( "%1,%2" ).arg( ptL.x ).arg( ptL.y ) )
+                   .arg( QString( "%1,%2" ).arg( offL.x ).arg( offL.y ) )
+                 );
+
       for ( duint16 j = 0 ; j < numDashL; ++j )
       {
         double lengthL = buf->getBitDouble();
-        DRW_DBG( "," );
-        DRW_DBG( lengthL );
+        QgsDebugMsg( QString( " %1: %2" ).arg( j ).arg( lengthL ) );
       }
     }//end deflines
   } //end not solid
@@ -2534,42 +2456,35 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   if ( hasPixelSize )
   {
     ddouble64 pixsize = buf->getBitDouble();
-    DRW_DBG( "\npixel size: " );
-    DRW_DBG( pixsize );
+    QgsDebugMsg( QString( "pixel size:%1" ).arg( pixsize ) );
   }
+
   dint32 numSeedPoints = buf->getBitLong();
-  DRW_DBG( "\nnum Seed Points  " );
-  DRW_DBG( numSeedPoints );
+  QgsDebugMsg( QString( "num Seed Points %1" ).arg( numSeedPoints ) );
   //read Seed Points
   DRW_Coord seedPt;
-  for ( dint32 i = 0 ; i < numSeedPoints; ++i )
+  for ( dint32 i = 0 ; i < numSeedPoints && buf->isGood(); ++i )
   {
     seedPt.x = buf->getRawDouble();
     seedPt.y = buf->getRawDouble();
-    DRW_DBG( "\n  " );
-    DRW_DBG( seedPt.x );
-    DRW_DBG( "," );
-    DRW_DBG( seedPt.y );
+    QgsDebugMsg( QString( " %1: %2,%3" ).arg( i ).arg( seedPt.x ).arg( seedPt.y ) );
   }
 
-  DRW_DBG( "\n" );
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
 
-  for ( duint32 i = 0 ; i < totalBoundItems; ++i )
+  QgsDebugMsg( QString( "Remaining bytes:%1" ).arg( buf->numRemainingBytes() ) );
+
+  for ( duint32 i = 0 ; i < totalBoundItems && buf->isGood(); ++i )
   {
     dwgHandle biH = buf->getHandle();
-    DRW_DBG( "Boundary Items Handle: " );
-    DRW_DBGHL( biH.code, biH.size, biH.ref );
+    QgsDebugMsg( QString( "Boundary Items Handle:%1.%2 0x%3" ).arg( biH.code ).arg( biH.size ).arg( biH.ref, 0, 16 ) );
   }
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
-//    RS crc;   //RS */
+  QgsDebugMsg( QString( "Remaining bytes:%1" ).arg( buf->numRemainingBytes() ) );
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -2674,118 +2589,105 @@ bool DRW_Spline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, nullptr, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing spline *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing spline *********************************************" );
+
   duint8 weight = 0; // RLZ ??? flags, weight, code 70, bit 4 (16)
 
   dint32 scenario = buf->getBitLong();
-  DRW_DBG( "scenario: " );
-  DRW_DBG( scenario );
+
+  QgsDebugMsg( QString( "scenario: %1" ).arg( scenario ) );
+
   if ( version > DRW::AC1024 )
   {
     dint32 splFlag1 = buf->getBitLong();
     if ( splFlag1 & 1 )
       scenario = 2;
     dint32 knotParam = buf->getBitLong();
-    DRW_DBG( "2013 splFlag1: " );
-    DRW_DBG( splFlag1 );
-    DRW_DBG( " 2013 knotParam: " );
-    DRW_DBG( knotParam );
-//        DRW_DBG("unk bit: "); DRW_DBG(buf->getBit());
+
+    QgsDebugMsg( QString( "2013 splFlag1:%1, 2013 knotParam:%2" ).arg( splFlag1 ).arg( knotParam ) );
+    // QgsDebugMsg( QString( "unk bit:%1").arg( buf->getBit()) );
   }
+
   degree = buf->getBitLong(); //RLZ: code 71, verify with dxf
-  DRW_DBG( " degree: " );
-  DRW_DBG( degree );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( " degree:%1" ).arg( degree ) );
+
   if ( scenario == 2 )
   {
     flags = 8;//scenario 2 = not rational & planar
     tolfit = buf->getBitDouble();//BD
-    DRW_DBG( "flags: " );
-    DRW_DBG( flags );
-    DRW_DBG( " tolfit: " );
-    DRW_DBG( tolfit );
     tgStart = buf->get3BitDouble();
-    DRW_DBG( " Start Tangent: " );
-    DRW_DBGPT( tgStart.x, tgStart.y, tgStart.z );
     tgEnd = buf->get3BitDouble();
-    DRW_DBG( "\nEnd Tangent: " );
-    DRW_DBGPT( tgEnd.x, tgEnd.y, tgEnd.z );
     nfit = buf->getBitLong();
-    DRW_DBG( "\nnumber of fit points: " );
-    DRW_DBG( nfit );
+
+    QgsDebugMsg( QString( "flags: 0x%1, tolfit:%2, tangent start:%3 end:%4 nfit:%5" )
+                 .arg( flags, 0, 16 ).arg( tolfit )
+                 .arg( QString( "%1,%2,%3" ).arg( tgStart.x ).arg( tgStart.y ).arg( tgStart.z ) )
+                 .arg( QString( "%1,%2,%3" ).arg( tgEnd.x ).arg( tgEnd.y ).arg( tgEnd.z ) )
+                 .arg( nfit )
+               );
   }
   else if ( scenario == 1 )
   {
-    flags = 8;//scenario 1 = rational & planar
+    flags = 8; //scenario 1 = rational & planar
     flags |= buf->getBit() << 2; //flags, rational, code 70, bit 2 (4)
     flags |= buf->getBit(); //flags, closed, code 70, bit 0 (1)
     flags |= buf->getBit() << 1; //flags, periodic, code 70, bit 1 (2)
     tolknot = buf->getBitDouble();
     tolcontrol = buf->getBitDouble();
-    DRW_DBG( "flags: " );
-    DRW_DBG( flags );
-    DRW_DBG( " knot tolerance: " );
-    DRW_DBG( tolknot );
-    DRW_DBG( " control point tolerance: " );
-    DRW_DBG( tolcontrol );
     nknots = buf->getBitLong();
     ncontrol = buf->getBitLong();
     weight = buf->getBit(); // RLZ ??? flags, weight, code 70, bit 4 (16)
-    DRW_DBG( "\nnum of knots: " );
-    DRW_DBG( nknots );
-    DRW_DBG( " num of control pt: " );
-    DRW_DBG( ncontrol );
-    DRW_DBG( " weight bit: " );
-    DRW_DBG( weight );
+
+    QgsDebugMsg( QString( "flags:%1, knot tolerance:%2, control point tolerance:%3, num knots:%4, num control pt:%5, weight:%6" )
+                 .arg( flags, 0, 16 ).arg( tolknot ).arg( tolcontrol ).arg( nknots ).arg( ncontrol ).arg( weight )
+               );
   }
   else
   {
-    DRW_DBG( "\ndwg Ellipse, unknouwn scenario\n" );
+    QgsDebugMsg( "dwg Ellipse, unknown scenario" );
     return false; //RLZ: from doc only 1 or 2 are ok ?
   }
 
-  knotslist.reserve( nknots );
+  RESERVE( knotslist, nknots );
   for ( dint32 i = 0; i < nknots; ++i )
   {
     knotslist.push_back( buf->getBitDouble() );
   }
-  controllist.reserve( ncontrol );
+  RESERVE( controllist, ncontrol );
   for ( dint32 i = 0; i < ncontrol; ++i )
   {
     DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
     controllist.push_back( crd );
     if ( weight )
     {
-      DRW_DBG( "\n w: " );
-      DRW_DBG( buf->getBitDouble() ); //RLZ Warning: D (BD or RD)
+      double w = buf->getBitDouble(); //RLZ Warning: D (BD or RD)
+      QgsDebugMsg( QString( "w:%1" ).arg( w ) );
     }
   }
-  fitlist.reserve( nfit );
+  RESERVE( fitlist, nfit );
   for ( dint32 i = 0; i < nfit; ++i )
   {
     DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
     fitlist.push_back( crd );
   }
-  if ( DRW_DBGGL == DRW_dbg::DEBUG )
+
+  QgsDebugMsgLevel( "knots list: ", 5 );
+  for ( std::vector<double>::iterator it = knotslist.begin() ; it != knotslist.end(); ++it )
   {
-    DRW_DBG( "\nknots list: " );
-    for ( std::vector<double>::iterator it = knotslist.begin() ; it != knotslist.end(); ++it )
-    {
-      DRW_DBG( "\n" );
-      DRW_DBG( *it );
-    }
-    DRW_DBG( "\ncontrol point list: " );
-    for ( std::vector<DRW_Coord *>::iterator it = controllist.begin() ; it != controllist.end(); ++it )
-    {
-      DRW_DBG( "\n" );
-      DRW_DBGPT(( *it )->x, ( *it )->y, ( *it )->z );
-    }
-    DRW_DBG( "\nfit point list: " );
-    for ( std::vector<DRW_Coord *>::iterator it = fitlist.begin() ; it != fitlist.end(); ++it )
-    {
-      DRW_DBG( "\n" );
-      DRW_DBGPT(( *it )->x, ( *it )->y, ( *it )->z );
-    }
+    QgsDebugMsgLevel( QString( " knot:%1" ).arg( *it ), 5 );
+  }
+
+  QgsDebugMsgLevel( "control point list:", 5 );
+  for ( std::vector<DRW_Coord *>::iterator it = controllist.begin() ; it != controllist.end(); ++it )
+  {
+    QgsDebugMsgLevel( QString( " %1,%2,%3" ).arg(( *it )->x ).arg(( *it )->y ).arg(( *it )->z ), 5 );
+  }
+
+  QgsDebugMsg( "fit point list:" );
+  for ( std::vector<DRW_Coord *>::iterator it = fitlist.begin() ; it != fitlist.end(); ++it )
+  {
+    QgsDebugMsgLevel( QString( " %1,%2,%3" ).arg(( *it )->x ).arg(( *it )->y ).arg(( *it )->z ), 5 );
   }
 
   /* Common Entity Handle Data */
@@ -2847,26 +2749,24 @@ bool DRW_Image::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing image *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing image *********************************************" );
 
   dint32 classVersion = buf->getBitLong();
-  DRW_DBG( "class Version: " );
-  DRW_DBG( classVersion );
   basePoint = buf->get3BitDouble();
-  DRW_DBG( "\nbase point: " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
   secPoint = buf->get3BitDouble();
-  DRW_DBG( "\nU vector: " );
-  DRW_DBGPT( secPoint.x, secPoint.y, secPoint.z );
   vVector = buf->get3BitDouble();
-  DRW_DBG( "\nV vector: " );
-  DRW_DBGPT( vVector.x, vVector.y, vVector.z );
   sizeu = buf->getRawDouble();
   sizev = buf->getRawDouble();
-  DRW_DBG( "\nsize U: " );
-  DRW_DBG( sizeu );
-  DRW_DBG( "\nsize V: " );
-  DRW_DBG( sizev );
+
+  QgsDebugMsg( QString( "class version:%1, base point:%2, U:%3, V:%4, size U:%5, V:%6" )
+               .arg( classVersion )
+               .arg( QString( "%1,%2,%3" ).arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( secPoint.x ).arg( secPoint.y ).arg( secPoint.z ) )
+               .arg( QString( "%1,%2,%3" ).arg( vVector.x ).arg( vVector.y ).arg( vVector.z ) )
+               .arg( sizeu ).arg( sizev )
+             );
+
   duint16 displayProps = buf->getBitShort();
   DRW_UNUSED( displayProps );//RLZ: temporary, complete API
   clip = buf->getBit();
@@ -2887,28 +2787,29 @@ bool DRW_Image::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   else   //clipType == 2
   {
     dint32 numVerts = buf->getBitLong();
-    for ( int i = 0; i < numVerts;++i )
+    for ( int i = 0; i < numVerts; ++i )
       buf->get2RawDouble();
   }
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
 
   dwgHandle biH = buf->getHandle();
-  DRW_DBG( "ImageDef Handle: " );
-  DRW_DBGHL( biH.code, biH.size, biH.ref );
+
+  QgsDebugMsg( QString( "ImageDef handle:%1.%2 0x%3" ).arg( biH.code ).arg( biH.size ).arg( biH.ref, 0, 16 ) );
+
   ref = biH.ref;
   biH = buf->getHandle();
-  DRW_DBG( "ImageDefReactor Handle: " );
-  DRW_DBGHL( biH.code, biH.size, biH.ref );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
-//    RS crc;   //RS */
+
+  QgsDebugMsg( QString( "ImageDefReactor handle:%1.%2 0x%3" ).arg( biH.code ).arg( biH.size ).arg( biH.ref, 0, 16 ) );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
+  // RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -3023,73 +2924,79 @@ void DRW_Dimension::parseCode( int code, dxfReader *reader )
 
 bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *sBuf )
 {
-  DRW_DBG( "\n***************************** parsing dimension *********************************************" );
+  QgsDebugMsg( "***************************** parsing dimension *********************************************" );
+
   if ( version > DRW::AC1021 ) //2010+
   {
     duint8 dimVersion = buf->getRawChar8();
-    DRW_DBG( "\ndimVersion: " );
-    DRW_DBG( dimVersion );
+    QgsDebugMsg( QString( "dimVersion:%1" ).arg( dimVersion ) );
   }
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( "\nextPoint: " );
-  DRW_DBGPT( extPoint.x, extPoint.y, extPoint.z );
+
+  QgsDebugMsg( QString( "extrusion:%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) );
+
   if ( version > DRW::AC1014 ) //2000+
   {
-    DRW_DBG( "\nFive unknown bits: " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
+    int bit0 = buf->getBit();
+    int bit1 = buf->getBit();
+    int bit2 = buf->getBit();
+    int bit3 = buf->getBit();
+    int bit4 = buf->getBit();
+
+    QgsDebugMsg( QString( "Five unknown bits: %1%2%3%4%5" ).arg( bit0 ).arg( bit1 ).arg( bit2 ).arg( bit3 ).arg( bit4 ) );
   }
   textPoint.x = buf->getRawDouble();
   textPoint.y = buf->getRawDouble();
   textPoint.z = buf->getBitDouble();
-  DRW_DBG( "\ntextPoint: " );
-  DRW_DBGPT( textPoint.x, textPoint.y, textPoint.z );
+
+  QgsDebugMsg( QString( "textPoint:%1,%2,%3" ).arg( textPoint.x ).arg( textPoint.y ).arg( textPoint.z ) );
+
   type = buf->getRawChar8();
-  DRW_DBG( "\ntype (70) read: " );
-  DRW_DBG( type );
+
+  QgsDebugMsg( QString( "type (70) read: %1" ).arg( type ) );
   type = ( type & 1 ) ? type & 0x7F : type | 0x80; //set bit 7
   type = ( type & 2 ) ? type | 0x20 : type & 0xDF; //set bit 5
-  DRW_DBG( " type (70) set: " );
-  DRW_DBG( type );
+  QgsDebugMsg( QString( "type (70) set: %1" ).arg( type ) );
+
   //clear last 3 bits to set integer dim type
   type &= 0xF8;
   text = sBuf->getVariableText( version, false );
-  DRW_DBG( "\nforced dim text: " );
-  DRW_DBG( text.c_str() );
+
+  QgsDebugMsg( QString( "forced dim text:%1" ).arg( text.c_str() ) );
   rot = buf->getBitDouble();
   hdir = buf->getBitDouble();
   DRW_Coord inspoint = buf->get3BitDouble();
-  DRW_DBG( "\ninspoint: " );
-  DRW_DBGPT( inspoint.x, inspoint.y, inspoint.z );
   double insRot_code54 = buf->getBitDouble(); //RLZ: unknown, investigate
-  DRW_DBG( " insRot_code54: " );
-  DRW_DBG( insRot_code54 );
+
+  QgsDebugMsg( QString( "insPoint:%1 insRot_code54:%4" )
+               .arg( QString( "%1,%2,%3" ).arg( inspoint.x ).arg( inspoint.y ).arg( inspoint.z ) )
+               .arg( insRot_code54 )
+             );
+
   if ( version > DRW::AC1014 ) //2000+
   {
     align = buf->getBitShort();
     linesty = buf->getBitShort();
     linefactor = buf->getBitDouble();
     double actMeas = buf->getBitDouble();
-    DRW_DBG( "\n  actMeas_code42: " );
-    DRW_DBG( actMeas );
+
+    QgsDebugMsg( QString( " actMeas_code42: %1" ).arg( actMeas ) );
+
     if ( version > DRW::AC1018 ) //2007+
     {
       bool unk = buf->getBit();
       bool flip1 = buf->getBit();
       bool flip2 = buf->getBit();
-      DRW_DBG( "\n2007, unk, flip1, flip2: " );
-      DRW_DBG( unk );
-      DRW_DBG( flip1 );
-      DRW_DBG( flip2 );
+
+      QgsDebugMsg( QString( "2007, unk, flip1, flip2: %1, %2, %3" )
+                   .arg( unk ).arg( flip1 ).arg( flip2 )
+                 );
     }
   }
   clonePoint.x = buf->getRawDouble();
   clonePoint.y = buf->getRawDouble();
-  DRW_DBG( "\nclonePoint: " );
-  DRW_DBGPT( clonePoint.x, clonePoint.y, clonePoint.z );
+
+  QgsDebugMsg( QString( "clonePoint:%1,%2,%3" ).arg( clonePoint.x ).arg( clonePoint.y ).arg( clonePoint.z ) );
 
   return buf->isGood();
 }
@@ -3109,49 +3016,54 @@ bool DRW_DimAligned::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
   if ( !ret )
     return ret;
   if ( oType == 0x15 )
-    DRW_DBG( "\n***************************** parsing dim linear *********************************************\n" );
+  {
+    QgsDebugMsg( "***************************** parsing dim linear *********************************************" );
+  }
   else
-    DRW_DBG( "\n***************************** parsing dim aligned *********************************************\n" );
+  {
+    QgsDebugMsg( "***************************** parsing dim aligned *********************************************" );
+  }
   DRW_Coord pt = buf->get3BitDouble();
   setPt3( pt ); //def1
-  DRW_DBG( "def1: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def1: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt4( pt );
-  DRW_DBG( "\ndef2: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def2: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setDefPoint( pt );
-  DRW_DBG( "\ndefPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   setOb52( buf->getBitDouble() );
   if ( oType == 0x15 )
     setAn50( buf->getBitDouble() * ARAD );
   else
     type |= 1;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -3169,40 +3081,40 @@ bool DRW_DimRadial::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   ret = DRW_Dimension::parseDwg( version, buf, sBuf );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing dim radial *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing dim radial *********************************************" );
+
   DRW_Coord pt = buf->get3BitDouble();
   setDefPoint( pt ); //code 10
-  DRW_DBG( "defPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt5( pt ); //center pt  code 15
-  DRW_DBG( "\ncenter point: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "center point: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   setRa40( buf->getBitDouble() ); //leader length code 40
-  DRW_DBG( "\nleader length: " );
-  DRW_DBG( getRa40() );
+  QgsDebugMsg( QString( "leader length: %1" ).arg( getRa40() ) );
   type |= 4;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
   return buf->isGood();
@@ -3222,40 +3134,38 @@ bool DRW_DimDiametric::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
   ret = DRW_Dimension::parseDwg( version, buf, sBuf );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing dim diametric *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing dim diametric *********************************************" );
+
   DRW_Coord pt = buf->get3BitDouble();
   setPt5( pt ); //center pt  code 15
-  DRW_DBG( "center point: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "center point: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setDefPoint( pt ); //code 10
-  DRW_DBG( "\ndefPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   setRa40( buf->getBitDouble() ); //leader length code 40
-  DRW_DBG( "\nleader length: " );
-  DRW_DBG( getRa40() );
+  QgsDebugMsg( QString( "leader length: %1" ).arg( getRa40() ) );
+
   type |= 3;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
   return buf->isGood();
@@ -3275,51 +3185,55 @@ bool DRW_DimAngular::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
   ret = DRW_Dimension::parseDwg( version, buf, sBuf );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing dim angular *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing dim angular *********************************************" );
+
   DRW_Coord pt;
   pt.x = buf->getRawDouble();
   pt.y = buf->getRawDouble();
   setPt6( pt ); //code 16
-  DRW_DBG( "arc Point: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "arc point: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt3( pt ); //def1  code 13
-  DRW_DBG( "\ndef1: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def1: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt4( pt ); //def2  code 14
-  DRW_DBG( "\ndef2: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def2: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt5( pt ); //center pt  code 15
-  DRW_DBG( "\ncenter point: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "center point: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setDefPoint( pt ); //code 10
-  DRW_DBG( "\ndefPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   type |= 0x02;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
   return buf->isGood();
@@ -3339,45 +3253,47 @@ bool DRW_DimAngular3p::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
   ret = DRW_Dimension::parseDwg( version, buf, sBuf );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing dim angular3p *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing dim angular3p *********************************************" );
+
   DRW_Coord pt = buf->get3BitDouble();
   setDefPoint( pt ); //code 10
-  DRW_DBG( "defPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt3( pt ); //def1  code 13
-  DRW_DBG( "\ndef1: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def1: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt4( pt ); //def2  code 14
-  DRW_DBG( "\ndef2: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def2: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt5( pt ); //center pt  code 15
-  DRW_DBG( "\ncenter point: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "center point: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   type |= 0x05;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
   return buf->isGood();
@@ -3397,47 +3313,51 @@ bool DRW_DimOrdinate::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs
   ret = DRW_Dimension::parseDwg( version, buf, sBuf );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing dim ordinate *********************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing dim ordinate *********************************************" );
+
   DRW_Coord pt = buf->get3BitDouble();
   setDefPoint( pt );
-  DRW_DBG( "defPoint: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "defPoint: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt3( pt ); //def1
-  DRW_DBG( "\ndef1: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def1: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   pt = buf->get3BitDouble();
   setPt4( pt );
-  DRW_DBG( "\ndef2: " );
-  DRW_DBGPT( pt.x, pt.y, pt.z );
+
+  QgsDebugMsg( QString( "def2: %1,%2,%3" ).arg( pt.x ).arg( pt.y ).arg( pt.z ) );
+
   duint8 type2 = buf->getRawChar8();//RLZ: correct this
-  DRW_DBG( "type2 (70) read: " );
-  DRW_DBG( type2 );
+
+  QgsDebugMsg( QString( "type2 (70) read: %1" ).arg( type2 ) );
+
   type = ( type2 & 1 ) ? type | 0x80 : type & 0xBF; //set bit 6
-  DRW_DBG( " type (70) set: " );
-  DRW_DBG( type );
+
+  QgsDebugMsg( QString( "type (70) set: %1" ).arg( type ) );
+
   type |= 6;
-  DRW_DBG( "\n  type (70) final: " );
-  DRW_DBG( type );
+
+  QgsDebugMsg( QString( "type (70) final: %1" ).arg( type ) );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   if ( !ret )
     return ret;
+
   dimStyleH = buf->getHandle();
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   blockH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "anon block Handle: " );
-  DRW_DBGHL( blockH.code, blockH.size, blockH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "dim style Handle:%1, anon block handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( blockH.code ).arg( blockH.size ).arg( blockH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
 
   //    RS crc;   //RS */
   return buf->isGood();
@@ -3548,121 +3468,110 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing leader *********************************************\n" );
-  DRW_DBG( "unknown bit " );
-  DRW_DBG( buf->getBit() );
-  DRW_DBG( " annot type " );
-  DRW_DBG( buf->getBitShort() );
-  DRW_DBG( " Path type " );
-  DRW_DBG( buf->getBitShort() );
-  dint32 nPt = buf->getBitLong();
-  DRW_DBG( " Num pts " );
-  DRW_DBG( nPt );
 
-  // add vertexs
+  QgsDebugMsg( "***************************** parsing leader *********************************************" );
+
+  int bit0 = buf->getBit();
+  int annot = buf->getBitShort();
+  int pathtype = buf->getBitShort();
+  dint32 nPt = buf->getBitLong();
+
+  QgsDebugMsg( QString( "unknown:%1 annottype:%2 pathtype:%3 numpts:%4" )
+               .arg( bit0 ).arg( annot ).arg( pathtype ).arg( nPt )
+             );
+
+  // add vertices
   for ( int i = 0; i < nPt; i++ )
   {
     DRW_Coord* vertex = new DRW_Coord( buf->get3BitDouble() );
     vertexlist.push_back( vertex );
-    DRW_DBG( "\nvertex " );
-    DRW_DBGPT( vertex->x, vertex->y, vertex->z );
+    QgsDebugMsg( QString( " vertex %1: %2,%3,%4" ).arg( i ).arg( vertex->x ).arg( vertex->y ).arg( vertex->z ) );
   }
   DRW_Coord Endptproj = buf->get3BitDouble();
-  DRW_DBG( "\nEndptproj " );
-  DRW_DBGPT( Endptproj.x, Endptproj.y, Endptproj.z );
+
+  QgsDebugMsg( QString( " endptproj: %1,%2,%3" ).arg( Endptproj.x ).arg( Endptproj.y ).arg( Endptproj.z ) );
   extrusionPoint = buf->getExtrusion( version > DRW::AC1014 );
-  DRW_DBG( "\nextrusionPoint " );
-  DRW_DBGPT( extrusionPoint.x, extrusionPoint.y, extrusionPoint.z );
+  QgsDebugMsg( QString( " extrusion: %1,%2,%3" ).arg( extrusionPoint.x ).arg( extrusionPoint.y ).arg( extrusionPoint.z ) );
+
   if ( version > DRW::AC1014 ) //2000+
   {
-    DRW_DBG( "\nFive unknown bits: " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( buf->getBit() );
+    int bit0 = buf->getBit();
+    int bit1 = buf->getBit();
+    int bit2 = buf->getBit();
+    int bit3 = buf->getBit();
+    int bit4 = buf->getBit();
+
+    QgsDebugMsg( QString( "Five unknown bits: %1%2%3%4%5" ).arg( bit0 ).arg( bit1 ).arg( bit2 ).arg( bit3 ).arg( bit4 ) );
   }
   horizdir = buf->get3BitDouble();
-  DRW_DBG( "\nhorizdir " );
-  DRW_DBGPT( horizdir.x, horizdir.y, horizdir.z );
   offsetblock = buf->get3BitDouble();
-  DRW_DBG( "\noffsetblock " );
-  DRW_DBGPT( offsetblock.x, offsetblock.y, offsetblock.z );
+
+  QgsDebugMsg( QString( " horizdir: %1,%2,%3" ).arg( horizdir.x ).arg( horizdir.y ).arg( horizdir.z ) );
+  QgsDebugMsg( QString( " offsetblock: %1,%2,%3" ).arg( offsetblock.x ).arg( offsetblock.y ).arg( offsetblock.z ) );
+
   if ( version > DRW::AC1012 ) //R14+
   {
     DRW_Coord unk = buf->get3BitDouble();
-    DRW_DBG( "\nunknown " );
-    DRW_DBGPT( unk.x, unk.y, unk.z );
+    QgsDebugMsg( QString( " unknown: %1,%2,%3" ).arg( unk.x ).arg( unk.y ).arg( unk.z ) );
   }
   if ( version < DRW::AC1015 ) //R14 -
   {
-    DRW_DBG( "\ndimgap " );
-    DRW_DBG( buf->getBitDouble() );
+    double dimgap = buf->getBitDouble();
+    QgsDebugMsg( QString( "dimgap %1" ).arg( dimgap ) );
   }
   if ( version < DRW::AC1024 ) //2010-
   {
     textheight = buf->getBitDouble();
     textwidth = buf->getBitDouble();
-    DRW_DBG( "\ntextheight " );
-    DRW_DBG( textheight );
-    DRW_DBG( " textwidth " );
-    DRW_DBG( textwidth );
+
+    QgsDebugMsg( QString( "textheight:%1 textwidth:%2" ).arg( textheight ).arg( textwidth ) );
   }
   hookline = buf->getBit();
   arrow = buf->getBit();
-  DRW_DBG( " hookline " );
-  DRW_DBG( hookline );
-  DRW_DBG( " arrow flag " );
-  DRW_DBG( arrow );
+
+  QgsDebugMsg( QString( "hookline:%1 arrow flag:%2" ).arg( hookline ).arg( arrow ) );
 
   if ( version < DRW::AC1015 ) //R14 -
   {
-    DRW_DBG( "\nArrow head type " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "dimasz " );
-    DRW_DBG( buf->getBitDouble() );
-    DRW_DBG( "\nunk bit " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( " unk bit " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( " unk short " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( " byBlock color " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( " unk bit " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( " unk bit " );
-    DRW_DBG( buf->getBit() );
+    int headtype = buf->getBitShort();
+    double dimasz = buf->getBitDouble();
+    int unk0 = buf->getBit();
+    int unk1 = buf->getBit();
+    int unk2 = buf->getBitShort();
+    int byblockcol = buf->getBitShort();
+    int unk3 = buf->getBit();
+    int unk4 = buf->getBit();
+
+    QgsDebugMsg( QString( "Arrow head type:%1 dimasz:%2 unk0:%3 unk1:%4 unk2:%5 byblockcol:%6 unk3:%7 unk3:%9" )
+                 .arg( headtype ).arg( dimasz ).arg( unk0 ).arg( unk1 ).arg( unk2 ).arg( byblockcol ).arg( unk3 ).arg( unk4 )
+               );
   }
   else   //R2000+
   {
-    DRW_DBG( "\nunk short " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( " unk bit " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( " unk bit " );
-    DRW_DBG( buf->getBit() );
+    int unk0 = buf->getBitShort();
+    int unk1 = buf->getBit();
+    int unk2 = buf->getBit();
+    QgsDebugMsg( QString( "unk0:%1 unk1:%2 unk2:%3" ).arg( unk0 ).arg( unk1 ).arg( unk2 ) );
   }
-  DRW_DBG( "\n" );
+
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   AnnotH = buf->getHandle();
   annotHandle = AnnotH.ref;
-  DRW_DBG( "annot block Handle: " );
-  DRW_DBGHL( AnnotH.code, AnnotH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
   dimStyleH = buf->getHandle(); /* H 7 STYLE (hard pointer) */
-  DRW_DBG( "dim style Handle: " );
-  DRW_DBGHL( dimStyleH.code, dimStyleH.size, dimStyleH.ref );
-  DRW_DBG( "\n" );
-  DRW_DBG( "Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
-//    RS crc;   //RS */
+
+  QgsDebugMsg( QString( "annot block Handle:%1, dim style handle:%2, remaining bytes %3" )
+               .arg( QString( "%1.%2 0x%3" ).arg( AnnotH.code ).arg( AnnotH.size ).arg( AnnotH.ref, 0, 16 ) )
+               .arg( QString( "%1.%2 0x%3" ).arg( dimStyleH.code ).arg( dimStyleH.size ).arg( dimStyleH.ref, 0, 16 ) )
+               .arg( buf->numRemainingBytes() )
+             );
+
+  //    RS crc;   //RS */
+
   return buf->isGood();
 }
 
@@ -3707,219 +3616,183 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   bool ret = DRW_Entity::parseDwg( version, buf, sBuf, bs );
   if ( !ret )
     return ret;
-  DRW_DBG( "\n***************************** parsing viewport *****************************************\n" );
+
+  QgsDebugMsg( "***************************** parsing viewport *****************************************" );
+
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-  DRW_DBG( "center " );
-  DRW_DBGPT( basePoint.x, basePoint.y, basePoint.z );
   pswidth = buf->getBitDouble();
   psheight = buf->getBitDouble();
-  DRW_DBG( "\nWidth: " );
-  DRW_DBG( pswidth );
-  DRW_DBG( ", Height: " );
-  DRW_DBG( psheight );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "center: %1,%2,%3 width:%4 height:%5" )
+               .arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z )
+               .arg( pswidth ).arg( psheight )
+             );
+
   //RLZ TODO: complete in dxf
   if ( version > DRW::AC1014 )  //2000+
   {
     viewTarget.x = buf->getBitDouble();
     viewTarget.y = buf->getBitDouble();
     viewTarget.z = buf->getBitDouble();
-    DRW_DBG( "view Target " );
-    DRW_DBGPT( viewTarget.x, viewTarget.y, viewTarget.z );
+
+    QgsDebugMsg( QString( "viewTarget: %1,%2,%3" ).arg( viewTarget.x ).arg( viewTarget.y ).arg( viewTarget.z ) );
+
     viewDir.x = buf->getBitDouble();
     viewDir.y = buf->getBitDouble();
     viewDir.z = buf->getBitDouble();
-    DRW_DBG( "\nview direction " );
-    DRW_DBGPT( viewDir.x, viewDir.y, viewDir.z );
+
+    QgsDebugMsg( QString( "viewDir: %1,%2,%3" ).arg( viewDir.x ).arg( viewDir.y ).arg( viewDir.z ) );
+
     twistAngle = buf->getBitDouble();
-    DRW_DBG( "\nView twist Angle: " );
-    DRW_DBG( twistAngle );
     viewHeight = buf->getBitDouble();
-    DRW_DBG( "\nview Height: " );
-    DRW_DBG( viewHeight );
     viewLength = buf->getBitDouble();
-    DRW_DBG( " Lens Length: " );
-    DRW_DBG( viewLength );
     frontClip = buf->getBitDouble();
-    DRW_DBG( "\nfront Clip Z: " );
-    DRW_DBG( frontClip );
     backClip = buf->getBitDouble();
-    DRW_DBG( " back Clip Z: " );
-    DRW_DBG( backClip );
     snapAngle = buf->getBitDouble();
-    DRW_DBG( "\n snap Angle: " );
-    DRW_DBG( snapAngle );
+
+    QgsDebugMsg( QString( "View twist Angle:%1 Height:%2 LensLength:%3 front Clip Z:%4 back Clip Z:%5 snap Angle:%6" )
+                 .arg( twistAngle ).arg( viewHeight ).arg( viewLength ).arg( frontClip ).arg( backClip ).arg( snapAngle )
+               );
+
     centerPX = buf->getRawDouble();
     centerPY = buf->getRawDouble();
-    DRW_DBG( "\nview center X: " );
-    DRW_DBG( centerPX );
-    DRW_DBG( ", Y: " );
-    DRW_DBG( centerPX );
+
+    QgsDebugMsg( QString( "viewCenter: %1,%2" ).arg( centerPX ).arg( centerPY ) );
+
     snapPX = buf->getRawDouble();
     snapPY = buf->getRawDouble();
-    DRW_DBG( "\nSnap base point X: " );
-    DRW_DBG( snapPX );
-    DRW_DBG( ", Y: " );
-    DRW_DBG( snapPY );
+
+    QgsDebugMsg( QString( "snapBase: %1,%2" ).arg( snapPX ).arg( snapPY ) );
+
     snapSpPX = buf->getRawDouble();
     snapSpPY = buf->getRawDouble();
-    DRW_DBG( "\nSnap spacing X: " );
-    DRW_DBG( snapSpPX );
-    DRW_DBG( ", Y: " );
-    DRW_DBG( snapSpPY );
+
+    QgsDebugMsg( QString( "snapSpacing: %1,%2" ).arg( snapSpPX ).arg( snapSpPY ) );
+
     //RLZ: need to complete
-    DRW_DBG( "\nGrid spacing X: " );
-    DRW_DBG( buf->getRawDouble() );
-    DRW_DBG( ", Y: " );
-    DRW_DBG( buf->getRawDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Circle zoom?: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\n" );
+    double gridX = buf->getRawDouble();
+    double gridY = buf->getRawDouble();
+    int czoom = buf->getBitShort();
+
+    QgsDebugMsg( QString( "gridSpacing: %1,%2" ).arg( gridX ).arg( gridY ) );
+    QgsDebugMsg( QString( "Circle zoom?: %1" ).arg( czoom ) );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
-    DRW_DBG( "Grid major?: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\n" );
+    int gridmajor = buf->getBitShort();
+    QgsDebugMsg( QString( "Grid major?: %1" ).arg( gridmajor ) );
   }
   if ( version > DRW::AC1014 )  //2000+
   {
     frozenLyCount = buf->getBitLong();
-    DRW_DBG( "Frozen Layer count?: " );
-    DRW_DBG( frozenLyCount );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Status Flags?: " );
-    DRW_DBG( buf->getBitLong() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "Frozen Layer count?: %1" ).arg( frozenLyCount ) );
+
+    int t = buf->getBitLong();
+    QgsDebugMsg( QString( "Status Flags?: %1" ).arg( t ) );
+
     //RLZ: Warning needed separate string bufer
-    DRW_DBG( "Style sheet?: " );
-    DRW_DBG( sBuf->getVariableText( version, false ) );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Render mode?: " );
-    DRW_DBG( buf->getRawChar8() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS OMore...: " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS VMore...: " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS OMore...: " );
-    DRW_DBGPT( buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "ucs XAMore...: " );
-    DRW_DBGPT( buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS YMore....: " );
-    DRW_DBGPT( buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS EMore...: " );
-    DRW_DBG( buf->getBitDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "UCS OVMore...: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\n" );
+    std::string txt = sBuf->getVariableText( version, false );
+    QgsDebugMsg( QString( "Style sheet?: %1" ).arg( txt.c_str() ) );
+
+    t = buf->getRawChar8();
+    QgsDebugMsg( QString( "Render mode?: %1" ).arg( t ) );
+    t = buf->getBit();
+    QgsDebugMsg( QString( "UCS OMore...: %1" ).arg( t ) );
+    t = buf->getBit();
+    QgsDebugMsg( QString( "UCS VMore...: %1" ).arg( t ) );
+
+    double x, y, z;
+    x = buf->getBitDouble();
+    y = buf->getBitDouble();
+    z = buf->getBitDouble();
+    QgsDebugMsg( QString( "UCS OMode: %1,%2,%3" ).arg( x ).arg( y ).arg( z ) );
+
+    x = buf->getBitDouble();
+    y = buf->getBitDouble();
+    z = buf->getBitDouble();
+    QgsDebugMsg( QString( "UCS XAMode: %1,%2,%3" ).arg( x ).arg( y ).arg( z ) );
+
+    x = buf->getBitDouble();
+    y = buf->getBitDouble();
+    z = buf->getBitDouble();
+    QgsDebugMsg( QString( "UCS YMode: %1,%2,%3" ).arg( x ).arg( y ).arg( z ) );
+
+    x =  buf->getBitDouble();
+    QgsDebugMsg( QString( "UCS EMore: %1" ).arg( x ) );
+
+    t = buf->getBitShort();
+    QgsDebugMsg( QString( "UCS OVMore: %1" ).arg( t ) );
   }
   if ( version > DRW::AC1015 )  //2004+
   {
-    DRW_DBG( "ShadePlot Mode...: " );
-    DRW_DBG( buf->getBitShort() );
-    DRW_DBG( "\n" );
+    int t = buf->getBitShort();
+    QgsDebugMsg( QString( "ShadePlot Mode...: %1" ).arg( t ) );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
-    DRW_DBG( "Use def Ligth...: " );
-    DRW_DBG( buf->getBit() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Def ligth tipe?: " );
-    DRW_DBG( buf->getRawChar8() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Brightness: " );
-    DRW_DBG( buf->getBitDouble() );
-    DRW_DBG( "\n" );
-    DRW_DBG( "Contrast: " );
-    DRW_DBG( buf->getBitDouble() );
-    DRW_DBG( "\n" );
-//        DRW_DBG("Ambient Cmc or Enc: "); DRW_DBG(buf->getCmColor(version)); DRW_DBG("\n");
-    DRW_DBG( "Ambient (Cmc or Enc?), Enc: " );
-    DRW_DBG( buf->getEnColor( version, color24, transparency ) );
-    DRW_DBG( "\n" );
+    int t;
+    t = buf->getBit();
+    QgsDebugMsg( QString( "Use def Light...: %1" ).arg( t ) );
+
+    t = buf->getRawChar8();
+    QgsDebugMsg( QString( "Def light tipe?: %1" ).arg( t ) );
+
+    double d = buf->getBitDouble();
+    QgsDebugMsg( QString( "Brightness: %1" ).arg( d ) );
+
+    d = buf->getBitDouble();
+    QgsDebugMsg( QString( "Contrast: %1" ).arg( d ) );
+
+    t = buf->getEnColor( version, color24, transparency );
+    QgsDebugMsg( QString( "Ambient (Cmc or Enc?), Enc: 0x%1" ).arg( buf->getEnColor( version, color24, transparency ), 0, 16 ) );
   }
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
 
   dwgHandle someHdl;
   if ( version < DRW::AC1015 )  //R13 & R14 only
   {
-    DRW_DBG( "\n Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
     someHdl = buf->getHandle();
-    DRW_DBG( "ViewPort ent header: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "viewport ent handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1014 )  //2000+
   {
     for ( duint8 i = 0; i < frozenLyCount; ++i )
     {
       someHdl = buf->getHandle();
-      DRW_DBG( "Frozen layer handle " );
-      DRW_DBG( i );
-      DRW_DBG( ": " );
-      DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "frozen layer handle %1: %2.%3 0x%4" ).arg( i ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
     }
+
     someHdl = buf->getHandle();
-    DRW_DBG( "Clip bpundary handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "clip boundary handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
+
     if ( version == DRW::AC1015 )  //2000 only
     {
       someHdl = buf->getHandle();
-      DRW_DBG( "ViewPort ent header: " );
-      DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-      DRW_DBG( "\n" );
+      QgsDebugMsg( QString( "viewport ent handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
     }
     someHdl = buf->getHandle();
-    DRW_DBG( "Named ucs handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "\n Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "named ucs handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
+    QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
     someHdl = buf->getHandle();
-    DRW_DBG( "base ucs handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "base ucs handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     someHdl = buf->getHandle();
-    DRW_DBG( "background handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "background handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
     someHdl = buf->getHandle();
-    DRW_DBG( "visual style handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "visual style handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
     someHdl = buf->getHandle();
-    DRW_DBG( "shadeplot ID handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
-    DRW_DBG( "\n Remaining bytes: " );
-    DRW_DBG( buf->numRemainingBytes() );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "shadeplot id handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
+    QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
     someHdl = buf->getHandle();
-    DRW_DBG( "SUN handle: " );
-    DRW_DBGHL( someHdl.code, someHdl.size, someHdl.ref );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "SUN handle: %1.%2 0x%3" ).arg( someHdl.code ).arg( someHdl.size ).arg( someHdl.ref, 0, 16 ) );
   }
-  DRW_DBG( "\n Remaining bytes: " );
-  DRW_DBG( buf->numRemainingBytes() );
-  DRW_DBG( "\n" );
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
 
   if ( !ret )
     return ret;

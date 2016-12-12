@@ -14,9 +14,12 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+
 #include "dxfreader.h"
 #include "drw_textcodec.h"
-#include "drw_dbg.h"
+
+#include "qgslogger.h"
+
 
 bool dxfReader::readRec( int *codeData )
 {
@@ -86,7 +89,7 @@ bool dxfReader::readRec( int *codeData )
     //break in binary files because the conduct is unpredictable
     return false;
 
-  return ( filestr->good() );
+  return filestr->good();
 }
 int dxfReader::getHandleString()
 {
@@ -112,35 +115,36 @@ bool dxfReaderBinary::readCode( int *code )
 //exist a 32bits int (code 90) with 2 bytes???
   if (( *code == 90 ) && ( *int16p > 2000 ) )
   {
-    DRW_DBG( *code );
-    DRW_DBG( " de 16bits\n" );
+    QgsDebugMsg( QString( "%1 de 16bits" ).arg( *code ) );
+
     filestr->seekg( -4, std::ios_base::cur );
     filestr->read( buffer, 2 );
     int16p = ( unsigned short * ) buffer;
   }
   *code = *int16p;
-  DRW_DBG( *code );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "%1" ).arg( *code ) );
 
-  return ( filestr->good() );
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readString()
 {
   type = STRING;
   std::getline( *filestr, strData, '\0' );
-  DRW_DBG( strData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( strData.c_str() ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readString( std::string *text )
 {
   type = STRING;
   std::getline( *filestr, *text, '\0' );
-  DRW_DBG( *text );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( text->c_str() ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readInt16()
@@ -149,9 +153,10 @@ bool dxfReaderBinary::readInt16()
   char buffer[2];
   filestr->read( buffer, 2 );
   intData = ( int )(( buffer[1] << 8 ) | buffer[0] );
-  DRW_DBG( intData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( intData ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readInt32()
@@ -162,9 +167,10 @@ bool dxfReaderBinary::readInt32()
   filestr->read( buffer, 4 );
   int32p = ( unsigned int * ) buffer;
   intData = *int32p;
-  DRW_DBG( intData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( intData ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readInt64()
@@ -175,18 +181,20 @@ bool dxfReaderBinary::readInt64()
   filestr->read( buffer, 8 );
   int64p = ( unsigned long long int * ) buffer;
   int64 = *int64p;
-  DRW_DBG( int64 );
-  DRW_DBG( " int64\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1 int64" ).arg( int64 ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderBinary::readDouble()
 {
   type = DOUBLE;
   filestr->read(( char* ) &doubleData, sizeof doubleData );
-  DRW_DBG( doubleData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( doubleData ) );
+
+  return filestr->good();
 }
 
 //saved as int or add a bool member??
@@ -195,9 +203,10 @@ bool dxfReaderBinary::readBool()
   char buffer;
   filestr->read( &buffer, 1 );
   intData = buffer;
-  DRW_DBG( intData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( intData ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderAscii::readCode( int *code )
@@ -205,9 +214,10 @@ bool dxfReaderAscii::readCode( int *code )
   std::string text;
   std::getline( *filestr, text );
   *code = atoi( text.c_str() );
-  DRW_DBG( *code );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( *code ) );
+
+  return filestr->good();
 }
 bool dxfReaderAscii::readString( std::string *text )
 {
@@ -215,7 +225,8 @@ bool dxfReaderAscii::readString( std::string *text )
   std::getline( *filestr, *text );
   if ( !text->empty() && text->at( text->size() - 1 ) == '\r' )
     text->erase( text->size() - 1 );
-  return ( filestr->good() );
+
+  return filestr->good();
 }
 
 bool dxfReaderAscii::readString()
@@ -224,9 +235,10 @@ bool dxfReaderAscii::readString()
   std::getline( *filestr, strData );
   if ( !strData.empty() && strData.at( strData.size() - 1 ) == '\r' )
     strData.erase( strData.size() - 1 );
-  DRW_DBG( strData );
-  DRW_DBG( "\n" );
-  return ( filestr->good() );
+
+  QgsDebugMsg( QString( "%1" ).arg( strData.c_str() ) );
+
+  return filestr->good();
 }
 
 bool dxfReaderAscii::readInt16()
@@ -236,8 +248,9 @@ bool dxfReaderAscii::readInt16()
   if ( readString( &text ) )
   {
     intData = atoi( text.c_str() );
-    DRW_DBG( intData );
-    DRW_DBG( "\n" );
+
+    QgsDebugMsg( QString( "%1" ).arg( intData ) );
+
     return true;
   }
   else
@@ -266,20 +279,19 @@ bool dxfReaderAscii::readDouble()
     int succeeded = sscanf( & ( text[0] ), "%lg", &doubleData );
     if ( succeeded != 1 )
     {
-      DRW_DBG( "dxfReaderAscii::readDouble(): reading double error: " );
-      DRW_DBG( text );
-      DRW_DBG( '\n' );
+      QgsDebugMsg( QString( "reading double error:%1" ).arg( text.c_str() ) );
     }
 #else
     std::istringstream sd( text );
     sd >> doubleData;
-    DRW_DBG( doubleData );
-    DRW_DBG( '\n' );
+    QgsDebugMsg( QString( "%1" ).arg( doubleData ) );
 #endif
     return true;
   }
   else
+  {
     return false;
+  }
 }
 
 //saved as int or add a bool member??
@@ -290,11 +302,11 @@ bool dxfReaderAscii::readBool()
   if ( readString( &text ) )
   {
     intData = atoi( text.c_str() );
-    DRW_DBG( intData );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "%1" ).arg( intData ) );
     return true;
   }
   else
+  {
     return false;
+  }
 }
-

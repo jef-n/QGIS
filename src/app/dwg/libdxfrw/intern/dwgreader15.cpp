@@ -1,3 +1,4 @@
+
 /******************************************************************************
 **  libDXFrw - Library to read/write DXF files (ascii & binary)              **
 **                                                                           **
@@ -15,29 +16,30 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include "drw_dbg.h"
+
 #include "dwgreader15.h"
 #include "drw_textcodec.h"
+
 #include "../libdwgr.h"
+
+#include "qgslogger.h"
 
 bool dwgReader15::readMetaData()
 {
+  QgsDebugMsg( "Entering." );
   version = parent->getVersion();
   decoder.setVersion( version, false );
-  DRW_DBG( "dwgReader15::readMetaData\n" );
+
   if ( ! fileBuf->setPosition( 13 ) )
     return false;
   previewImagePos = fileBuf->getRawLong32();
-  DRW_DBG( "previewImagePos (seekerImageData) = " );
-  DRW_DBG( previewImagePos );
+  QgsDebugMsg( QString( "previewImagePos (seekerImageData) = %1" ).arg( previewImagePos ) );
   /* MEASUREMENT system variable 2 bytes*/
   duint16 meas = fileBuf->getRawShort16();
-  DRW_DBG( "\nMEASUREMENT (0 = English, 1 = Metric)= " );
-  DRW_DBG( meas );
+  QgsDebugMsg( QString( "MEASUREMENT (0 = English, 1 = Metric)= %1" ).arg( meas ) );
   duint16 cp = fileBuf->getRawShort16();
-  DRW_DBG( "\ncodepage= " );
-  DRW_DBG( cp );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "codepage= %1" ).arg( cp ) );
+
   if ( cp == 29 ) //TODO RLZ: locate wath code page and correct this
     decoder.setCodePage( "ANSI_1252", false );
   if ( cp == 30 )
@@ -47,14 +49,12 @@ bool dwgReader15::readMetaData()
 
 bool dwgReader15::readFileHeader()
 {
+  QgsDebugMsg( "Entering." );
   bool ret = true;
-  DRW_DBG( "dwgReader15::readFileHeader\n" );
   if ( ! fileBuf->setPosition( 21 ) )
     return false;
   duint32 count = fileBuf->getRawLong32();
-  DRW_DBG( "count records= " );
-  DRW_DBG( count );
-  DRW_DBG( "\n" );
+  QgsDebugMsg( QString( "count records=%1" ).arg( count ) );
 
   for ( unsigned int i = 0; i < count; i++ )
   {
@@ -67,50 +67,32 @@ bool dwgReader15::readFileHeader()
     si.address = address;
     if ( rec == 0 )
     {
-      DRW_DBG( "\nSection HEADERS address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section HEADERS address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::HEADER] = si;
     }
     else if ( rec == 1 )
     {
-      DRW_DBG( "\nSection CLASSES address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section CLASSES address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::CLASSES] = si;
     }
     else if ( rec == 2 )
     {
-      DRW_DBG( "\nSection OBJECTS (handles) address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section OBJECTS (handles) address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::HANDLES] = si;
     }
     else if ( rec == 3 )
     {
-      DRW_DBG( "\nSection UNKNOWN address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section UNKNOWN address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::UNKNOWNS] = si;
     }
     else if ( rec == 4 )
     {
-      DRW_DBG( "\nSection R14DATA (AcDb:Template) address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section R14DATA (AcDb::Template) address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::TEMPLATE] = si;
     }
     else if ( rec == 5 )
     {
-      DRW_DBG( "\nSection R14REC5 (AcDb:AuxHeader) address= " );
-      DRW_DBG( address );
-      DRW_DBG( " size= " );
-      DRW_DBG( size );
+      QgsDebugMsg( QString( "Section R14REC5 (AcDb::AuxHeader) address=%1 size=%2" ).arg( address ).arg( size ) );
       sections[secEnum::AUXHEADER] = si;
     }
     else
@@ -120,13 +102,10 @@ bool dwgReader15::readFileHeader()
   }
   if ( ! fileBuf->isGood() )
     return false;
-  DRW_DBG( "\nposition after read section locator records= " );
-  DRW_DBG( fileBuf->getPosition() );
-  DRW_DBG( ", bit are= " );
-  DRW_DBG( fileBuf->getBitPos() );
+
+  QgsDebugMsg( QString( "position after read section locator records=%1, bit are=%2" ).arg( fileBuf->getPosition() ).arg( fileBuf->getBitPos() ) );
   duint32 ckcrc = fileBuf->crc8( 0, 0, fileBuf->getPosition() );
-  DRW_DBG( "\nfile header crc8 0 result= " );
-  DRW_DBG( ckcrc );
+  QgsDebugMsg( QString( "file header crc8 0 result=%1" ).arg( ckcrc ) );
   switch ( count )
   {
     case 3:
@@ -141,25 +120,23 @@ bool dwgReader15::readFileHeader()
     case 6:
       ckcrc = ckcrc ^ 0x8461;
   }
-  DRW_DBG( "\nfile header crc8 xor result= " );
-  DRW_DBG( ckcrc );
-  DRW_DBG( "\nfile header CRC= " );
-  DRW_DBG( fileBuf->getRawShort16() );
-  DRW_DBG( "\nfile header sentinel= " );
+
+  int headercrc = fileBuf->getRawShort16();
+
+  QgsDebugMsg( QString( "file header crc8 xor result=%1, file header CRC=%2" ).arg( ckcrc ).arg( headercrc ) );
   checkSentinel( fileBuf, secEnum::FILEHEADER, false );
 
-  DRW_DBG( "\nposition after read file header sentinel= " );
-  DRW_DBG( fileBuf->getPosition() );
-  DRW_DBG( ", bit are= " );
-  DRW_DBG( fileBuf->getBitPos() );
+  QgsDebugMsg( QString( "position after read file header sentinel=%1, bit pos=%2" ).arg( fileBuf->getPosition() ).arg( fileBuf->getBitPos() ) );
 
-  DRW_DBG( "\ndwgReader15::readFileHeader END\n" );
+  QgsDebugMsg( "Leaving." );
+
   return ret;
 }
 
 bool dwgReader15::readDwgHeader( DRW_Header& hdr )
 {
-  DRW_DBG( "dwgReader15::readDwgHeader\n" );
+  QgsDebugMsg( "Entering." );
+
   dwgSectionInfo si = sections[secEnum::HEADER];
   if ( si.Id < 0 )//not found, ends
     return false;
@@ -168,7 +145,8 @@ bool dwgReader15::readDwgHeader( DRW_Header& hdr )
   duint8 *tmpByteStr = new duint8[si.size];
   fileBuf->getBytes( tmpByteStr, si.size );
   dwgBuffer buff( tmpByteStr, si.size, &decoder );
-  DRW_DBG( "Header section sentinel= " );
+
+  QgsDebugMsg( "checksentinel" );
   checkSentinel( &buff, secEnum::HEADER, true );
   bool ret = dwgReader::readDwgHeader( hdr, &buff, &buff );
   delete[]tmpByteStr;
@@ -178,24 +156,21 @@ bool dwgReader15::readDwgHeader( DRW_Header& hdr )
 
 bool dwgReader15::readDwgClasses()
 {
-  DRW_DBG( "\ndwgReader15::readDwgClasses\n" );
+  QgsDebugMsg( "Entering." );
+
   dwgSectionInfo si = sections[secEnum::CLASSES];
   if ( si.Id < 0 )//not found, ends
     return false;
   if ( !fileBuf->setPosition( si.address ) )
     return false;
 
-  DRW_DBG( "classes section sentinel= " );
+  QgsDebugMsg( "classes section sentinel" );
   checkSentinel( fileBuf, secEnum::CLASSES, true );
 
   duint32 size = fileBuf->getRawLong32();
   if ( size != ( si.size - 38 ) )
   {
-    DRW_DBG( "\nWARNING dwgReader15::readDwgClasses size are " );
-    DRW_DBG( size );
-    DRW_DBG( " and secSize - 38 are " );
-    DRW_DBG( si.size - 38 );
-    DRW_DBG( "\n" );
+    QgsDebugMsg( QString( "size is %1 and secSize - 38 are %1" ).arg( size ).arg( si.size - 38 ) );
   }
   duint8 *tmpByteStr = new duint8[size];
   fileBuf->getBytes( tmpByteStr, size );
@@ -207,10 +182,10 @@ bool dwgReader15::readDwgClasses()
     cl->parseDwg( version, &buff, &buff );
     classesmap[cl->classNum] = cl;
   }
-  DRW_DBG( "\nCRC: " );
-  DRW_DBGH( fileBuf->getRawShort16() );
-  DRW_DBG( "\nclasses section end sentinel= " );
+  int crc = fileBuf->getRawShort16();
+  QgsDebugMsg( QString( "crc=%1, classes section end sentinel" ).arg( crc ) );
   checkSentinel( fileBuf, secEnum::CLASSES, false );
+
   bool ret = buff.isGood();
   delete[]tmpByteStr;
   return ret;
@@ -218,7 +193,7 @@ bool dwgReader15::readDwgClasses()
 
 bool dwgReader15::readDwgHandles()
 {
-  DRW_DBG( "\ndwgReader15::readDwgHandles\n" );
+  QgsDebugMsg( "Entering." );
   dwgSectionInfo si = sections[secEnum::HANDLES];
   if ( si.Id < 0 )//not found, ends
     return false;
