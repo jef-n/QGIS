@@ -2322,7 +2322,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   dwgBuffer sBuff = *buf;
   dwgBuffer *sBuf = buf;
   duint32 totalBoundItems = 0;
-  bool havePixelSize = false;
+  bool hasPixelSize = false;
 
   if ( version > DRW::AC1018 )  //2007+
   {
@@ -2395,7 +2395,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   for ( std::vector<DRW_HatchLoop *>::size_type i = 0 ; i < loopsnum; ++i )
   {
     loop = new DRW_HatchLoop( buf->getBitLong() );
-    havePixelSize |= ( loop->type & 4 ) != 0;
+    hasPixelSize |= ( loop->type & 4 ) != 0;
     if ( !( loop->type & 2 ) )  //Not polyline
     {
       dint32 numPathSeg = buf->getBitLong();
@@ -2435,16 +2435,16 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
           spline->flags |= ( isRational << 2 ); //rational
           spline->flags |= ( buf->getBit() << 1 ); //periodic
           spline->nknots = buf->getBitLong();
+          spline->ncontrol = buf->getBitLong();
           spline->knotslist.reserve( spline->nknots );
           for ( dint32 j = 0; j < spline->nknots;++j )
           {
             spline->knotslist.push_back( buf->getBitDouble() );
           }
-          spline->ncontrol = buf->getBitLong();
           spline->controllist.reserve( spline->ncontrol );
-          for ( dint32 j = 0; j < spline->ncontrol;++j )
+          for ( dint32 j = 0; j < spline->ncontrol; ++j )
           {
-            DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
+            DRW_Coord* crd = new DRW_Coord( buf->get2RawDouble() );
             spline->controllist.push_back( crd );
             if ( isRational )
               crd->z =  buf->getBitDouble(); //RLZ: investigate how store weight
@@ -2456,7 +2456,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
             spline->fitlist.reserve( spline->nfit );
             for ( dint32 j = 0; j < spline->nfit;++j )
             {
-              DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
+              DRW_Coord* crd = new DRW_Coord( buf->get2RawDouble() );
               spline->fitlist.push_back( crd );
             }
             spline->tgStart = buf->get2RawDouble();
@@ -2468,7 +2468,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     else   //end not pline, start polyline
     {
       pline = new DRW_LWPolyline;
-      bool asBulge = buf->getBit();
+      bool hasBulges = buf->getBit();
       pline->flags = buf->getBit();//closed bit
       dint32 numVert = buf->getBitLong();
       for ( dint32 j = 0; j < numVert;++j )
@@ -2476,7 +2476,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
         DRW_Vertex2D v;
         v.x = buf->getRawDouble();
         v.y = buf->getRawDouble();
-        if ( asBulge )
+        if ( hasBulges )
           v.bulge = buf->getBitDouble();
         pline->addVertex( v );
       }
@@ -2522,16 +2522,16 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       DRW_DBG( offL.y );
       DRW_DBG( "," );
       DRW_DBG( angleL );
-      for ( duint16 i = 0 ; i < numDashL; ++i )
+      for ( duint16 j = 0 ; j < numDashL; ++j )
       {
-        double lenghtL = buf->getBitDouble();
+        double lengthL = buf->getBitDouble();
         DRW_DBG( "," );
-        DRW_DBG( lenghtL );
+        DRW_DBG( lengthL );
       }
     }//end deflines
   } //end not solid
 
-  if ( havePixelSize )
+  if ( hasPixelSize )
   {
     ddouble64 pixsize = buf->getBitDouble();
     DRW_DBG( "\npixel size: " );
