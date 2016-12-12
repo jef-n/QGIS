@@ -21,6 +21,7 @@
 #include "intern/dwgutil.h"
 
 #include "qgslogger.h"
+#include <QStringList>
 
 #define RESERVE( vector, size ) try { \
     vector.reserve(size); \
@@ -527,23 +528,18 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     dint16 xrefindex = buf->getBitShort();
     QgsDebugMsg( QString( "xrefindex: %1" ).arg( xrefindex ) );
   }
+
   duint8 xdep = buf->getBit();
-  QgsDebugMsg( QString( "xdep: %1" ).arg( xdep ) );
-
   flags |= xdep << 4;
-  QgsDebugMsg( QString( "flags: %1" ).arg( flags ) );
-
   desc = sBuf->getVariableText( version, false );
-  QgsDebugMsg( QString( "desc: %1" ).arg( desc.c_str() ) );
-
   length = buf->getBitDouble();
-  QgsDebugMsg( QString( "pattern length: %1" ).arg( length ) );
-
   char align = buf->getRawChar8();
-  QgsDebugMsg( QString( "align: %1" ).arg( align ) );
-
   size = buf->getRawChar8();
-  QgsDebugMsg( QString( "num dashes, size %1" ).arg( size ) );
+
+  QgsDebugMsg( QString( "xdep: %1; flags:0x%2; desc:%3; pattern length:%4 align:%5; num dashes, size %6" )
+               .arg( xdep ).arg( flags, 0, 16 ).arg( desc.c_str() ).arg( length ).arg( align ).arg( size )
+             );
+
   bool haveStrArea = false;
   for ( std::vector<double>::size_type i = 0; i < size; i++ )
   {
@@ -561,11 +557,13 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     int bs2 = buf->getBitShort();
     if (( bs2 & 2 ) != 0 ) haveStrArea = true;
   }
+
+  QStringList l;
   for ( unsigned i = 0; i < path.size() ; i++ )
   {
-    QgsDebugMsg( QString( "%1" ).arg( path[i] ) );
+    l << QString( "%1" ).arg( path[i] );
   }
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+  QgsDebugMsg( QString( "path=%1 rem:%2" ).arg( l.join( " " ) ).arg( buf->numRemainingBytes() ) );
 
   if ( version < DRW::AC1021 ) //2004-
   {
@@ -590,8 +588,9 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
   if ( version > DRW::AC1021 )  //2007+ skip string area
   {
-    QgsDebugMsg( QString( "ltype end of object data pos 2010: %1; strBuf bpos 2007:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
+    QgsDebugMsgLevel( QString( "ltype end of object data pos 2010: %1; strBuf bpos 2007:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ), 4 );
   }
+
   if ( version > DRW::AC1018 )  //2007+ skip string area
   {
     buf->setPosition( objSize >> 3 );
@@ -600,39 +599,33 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
   if ( version > DRW::AC1021 )  //2007+ skip string area
   {
-    QgsDebugMsg( QString( "ltype start of handle data pos 2010: %1; strBuf bpos 2007:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ) );
+    QgsDebugMsgLevel( QString( "ltype start of handle data pos 2010: %1; strBuf bpos 2007:%2" ).arg( buf->getPosition() ).arg( buf->getBitPos() ), 4 );
   }
 
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
-
   dwgHandle ltControlH = buf->getHandle();
-  QgsDebugMsg( QString( "line type control handle: %1.%2 0x%3" ).arg( ltControlH.code ).arg( ltControlH.size ).arg( ltControlH.ref, 0, 16 ) );
+  QgsDebugMsgLevel( QString( "line type control handle: %1.%2 0x%3; rem:%4" )
+                    .arg( ltControlH.code ).arg( ltControlH.size ).arg( ltControlH.ref, 0, 16 ).arg( buf->numRemainingBytes() ), 4 );
   parentHandle = ltControlH.ref;
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
 
   for ( int i = 0; i < numReactors;++i )
   {
     dwgHandle reactorsH = buf->getHandle();
-    QgsDebugMsg( QString( "reactorsH control handle: %1.%2 0x%3" ).arg( reactorsH.code ).arg( reactorsH.size ).arg( reactorsH.ref, 0, 16 ) );
+    QgsDebugMsgLevel( QString( "reactorsH control handle: %1.%2 0x%3" ).arg( reactorsH.code ).arg( reactorsH.size ).arg( reactorsH.ref, 0, 16 ), 4 );
   }
   if ( xDictFlag != 1 ) //linetype in 2004 seems not have XDicObjH or NULL handle
   {
     dwgHandle XDicObjH = buf->getHandle();
-    QgsDebugMsg( QString( "XDicObjH control handle: %1.%2 0x%3" ).arg( XDicObjH.code ).arg( XDicObjH.size ).arg( XDicObjH.ref, 0, 16 ) );
-    QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+    QgsDebugMsg( QString( "XDicObjH control handle: %1.%2 0x%3 rem:%4" ).arg( XDicObjH.code ).arg( XDicObjH.size ).arg( XDicObjH.ref, 0, 16 ).arg( buf->numRemainingBytes() ) );
   }
   if ( size > 0 )
   {
     dwgHandle XRefH = buf->getHandle();
     QgsDebugMsg( QString( "XRefH control handle: %1.%2 0x%3" ).arg( XRefH.code ).arg( XRefH.size ).arg( XRefH.ref, 0, 16 ) );
     dwgHandle shpHandle = buf->getHandle();
-    QgsDebugMsg( QString( "shapeFile handle: %1.%2 0x%3" ).arg( shpHandle.code ).arg( shpHandle.size ).arg( shpHandle.ref, 0, 16 ) );
-    QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+    QgsDebugMsg( QString( "shapeFile handle: %1.%2 0x%3; rem:%4" ).arg( shpHandle.code ).arg( shpHandle.size ).arg( shpHandle.ref, 0, 16 ).arg( buf->numRemainingBytes() ) );
   }
   dwgHandle shpHandle = buf->getHandle();
-  QgsDebugMsg( QString( "shapeFile +1 handle ??: %1.%2 0x%3" ).arg( shpHandle.code ).arg( shpHandle.size ).arg( shpHandle.ref, 0, 16 ) );
-
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+  QgsDebugMsg( QString( "shapeFile +1 handle ??: %1.%2 0x%3; rem:%4" ).arg( shpHandle.code ).arg( shpHandle.size ).arg( shpHandle.ref, 0, 16 ).arg( buf->numRemainingBytes() ) );
 
 //    RS crc;   //RS */
   return buf->isGood();
@@ -750,13 +743,12 @@ bool DRW_Layer::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     QgsDebugMsg( QString( "Material control handle: %1.%2 0x%3" ).arg( materialH.code ).arg( materialH.size ).arg( materialH.ref, 0, 16 ) );
     handleMaterialS = DRW::toHexStr( materialH.ref );//RLZ: verify conversion
   }
+
+  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   //lineType handle
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
-
   lTypeH = buf->getHandle();
-  QgsDebugMsg( QString( "line type handle: %1.%2 0x%3" ).arg( lTypeH.code ).arg( lTypeH.size ).arg( lTypeH.ref, 0, 16 ) );
-
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+  QgsDebugMsg( QString( "line type handle: %1.%2 0x%3; rem:%4" ).arg( lTypeH.code ).arg( lTypeH.size ).arg( lTypeH.ref, 0, 16 ).arg( buf->numRemainingBytes() ) );
 
 //    RS crc;   //RS */
   return buf->isGood();
@@ -896,6 +888,7 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
     }
   }
   QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
+
   dwgHandle endBlockH = buf->getOffsetHandle( handle );
   QgsDebugMsg( QString( "endBlockH handle %1.%2 0x%3" ).arg( endBlockH.code ).arg( endBlockH.size ).arg( endBlockH.ref, 0, 16 ) );
   endBlock = endBlockH.ref;
@@ -907,11 +900,11 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
       dwgHandle insertsH = buf->getHandle();
       QgsDebugMsgLevel( QString( "insertsH handle %1: %2.%3 0x%4" ).arg( i ).arg( insertsH.code ).arg( insertsH.size ).arg( insertsH.ref, 0, 16 ), 6 );
     }
+
     QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
     dwgHandle layoutH = buf->getHandle();
     QgsDebugMsg( QString( "layoutH handle %1.%2 0x%3" ).arg( layoutH.code ).arg( layoutH.size ).arg( layoutH.ref, 0, 16 ) );
   }
-  QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );
 
 //    RS crc;   //RS */
   return buf->isGood();

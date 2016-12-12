@@ -1770,6 +1770,166 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
   }
 }
 
+
+/**
+ * Generates B-Spline open knot vector with multiplicity
+ * equal to the order at the ends.
+ */
+static std::vector<double> knot( const DRW_Spline &data, size_t num, size_t order )
+{
+  if ( data.knotslist.size() == num + order )
+  {
+    return data.knotslist;
+  }
+  else
+  {
+    std::vector<double> v( num + order, 0. );
+
+    for ( size_t i = 0; i < num; ++i )
+      v[ order + i ] = i + 1;
+
+    for ( size_t i = num + 1; i < v.size(); ++i )
+      v[ i ] = v[num];
+
+    return v;
+  }
+}
+
+static std::vector<double> knotu( const DRW_Spline &data, size_t num, size_t order )
+{
+  if ( data.knotslist.size() == num + order )
+  {
+    return data.knotslist;
+  }
+  else
+  {
+    std::vector<double> v( num + order, 0. );
+
+    for ( size_t i = 0; i < v.size(); ++i )
+      v[i] = i;
+
+    return v;
+  }
+}
+
+static std::vector<double> rbasis( int c, double t, int npts,
+                                   const std::vector<double> &x,
+                                   const std::vector<double> &h )
+{
+  int nplusc = npts + c;
+  std::vector<double> temp( nplusc, 0. );
+
+  // calculate the first order nonrational basis functions n[i]
+  for ( int i = 0; i < nplusc - 1; ++i )
+  {
+    if ( t >= x[i] && t < x[i+1] )
+      temp[i] = 1;
+  }
+
+  // calculate the higher order nonrational base functions
+  for ( int k = 2; k <= c; ++k )
+  {
+    for ( int i = 0; i < nplusc - k; ++i )
+    {
+      // if the lower order basis function is zero skip the calculation
+      if ( temp[i] != 0 )
+        temp[i] = (( t - x[i] ) * temp[i] ) / ( x[i+k-1] - x[i] );
+
+      // if the lower order basis function is zero skip the calculation
+      if ( temp[i+1] != 0 )
+        temp[i] += (( x[i+k] - t ) * temp[i+1] ) / ( x[i+k] - x[i+1] );
+    }
+  }
+
+  // pick up last point
+  if ( t >= x[nplusc-1] )
+    temp[ npts-1 ] = 1;
+
+  // calculate sum for denominator of rational basis functions
+  double sum = 0.;
+  for ( int i = 0; i < npts; ++i )
+  {
+    sum += temp[i] * h[i];
+  }
+
+  std::vector<double> r( npts, 0. );
+
+  // form rational basis functions and put in r vector
+  if ( sum != 0.0 )
+  {
+    for ( int i = 0; i < npts; i++ )
+    {
+      r[i] = ( temp[i] * h[i] ) / sum;
+    }
+  }
+
+  return r;
+}
+
+/**
+ * Generates a rational B-spline curve using a uniform open knot vector.
+ */
+static void rbspline( const DRW_Spline &data,
+                      size_t npts, size_t k, int p1,
+                      const std::vector<QgsVector> &b,
+                      const std::vector<double> &h,
+                      std::vector<QgsPoint> &p )
+{
+  int nplusc = npts + k;
+
+  // generate the open knot vector
+  std::vector<double> x( knot( data, npts, k ) );
+
+  // calculate the points on the rational B-spline curve
+  double t = 0.;
+
+  double step = x[nplusc-1] / ( p1 - 1 );
+  for ( size_t i = 0; i < p.size(); ++i, t += step )
+  {
+    if ( x[nplusc-1] - t < 5e-6 )
+      t = x[nplusc-1];
+
+    // generate the basis function for this value of t
+    std::vector<double> nbasis( rbasis( k, t, npts, x, h ) );
+
+    // generate a point on the curve
+    for ( size_t j = 0; j < npts; j++ )
+      p[i] += b[j] * nbasis[j];
+  }
+
+}
+
+static void rbsplinu( const DRW_Spline &data,
+                      size_t npts, size_t k, int p1,
+                      const std::vector<QgsVector> &b,
+                      const std::vector<double> &h,
+                      std::vector<QgsPoint> &p )
+{
+  size_t const nplusc = npts + k;
+
+  // generate the periodic knot vector
+  std::vector<double> x( knotu( data, npts, k ) );
+
+  // calculate the points on the rational B-spline curve
+  double t = k - 1;
+  double const step = double( npts - k + 1 ) / ( p1 - 1 );
+
+  for ( size_t i = 0; i < p.size(); ++i, t += step )
+  {
+    if ( x[nplusc-1] - t < 5e-6 )
+      t = x[nplusc-1];
+
+    // generate the base function for this value of t
+    std::vector<double> nbasis( rbasis( k, t, npts, x, h ) );
+
+    // generate a point on the curve, for x, y, z
+    for ( size_t j = 0; j < npts; ++j )
+    {
+      p[i] += b[j] * nbasis[j];
+    }
+  }
+}
+
 void QgsDwgImporter::addSpline( const DRW_Spline *data )
 {
   QgsDebugCall;
@@ -1790,27 +1950,43 @@ void QgsDwgImporter::addSpline( const DRW_Spline *data )
                .arg( data->controllist.size() )
                .arg( data->fitlist.size() ) );
 
-  QgsPointSequenceV2 in;
-  for ( std::vector<DRW_Coord *>::size_type i = 0; i < data->controllist.size(); i++ )
+  std::vector<QgsVector> cps;
+  for ( size_t i = 0; i < data->controllist.size(); ++i )
   {
     const DRW_Coord &p = *data->controllist[i];
-    in << QgsPointV2( QgsWKBTypes::PointZ, p.x, p.y, p.z );
+    cps.push_back( QgsVector( p.x, p.y ) );
   }
 
-#if 0
   if ( data->ncontrol == 0 && data->degree != 2 )
   {
-    for ( std::vector<DRW_Coord *>::size_type i = 0; i < data->fitlist.size(); i++ )
+    for ( std::vector<DRW_Coord *>::size_type i = 0; i < data->fitlist.size(); ++i )
     {
       const DRW_Coord &p = *data->fitlist[i];
-      in << QgsPointV2( QgsWKBTypes::PointZ, p.x, p.y, p.z );
+      cps.push_back( QgsVector( p.x, p.y ) );
     }
   }
 
-  QgsPointSequenceV2 out = getStrokePoints( in, data->flags );
+  if ( cps.size() > 0 && data->flags & 1 )
+  {
+    for ( int i = 0; i < data->degree; ++i )
+      cps.push_back( cps[i] );
+  }
 
-  QgsDebugMsg( QString( "in.size():%1 out.size():%2" ).arg( in.size() ).arg( out.size() ) );
-#endif
+  size_t npts = cps.size();
+  size_t k = data->degree + 1;
+  size_t p1 = mSplineSegs * npts;
+
+  std::vector<double> h( npts + 1, 1. );
+  std::vector<QgsPoint> p( p1, QgsPoint( 0., 0. ) );
+
+  if ( data->flags & 1 )
+  {
+    rbsplinu( *data, npts, k, p1, cps, h, p );
+  }
+  else
+  {
+    rbspline( *data, npts, k, p1, cps, h, p );
+  }
 
   OGRLayerH layer = OGR_DS_GetLayerByName( mDs, "polylines" );
   Q_ASSERT( layer );
@@ -1822,10 +1998,10 @@ void QgsDwgImporter::addSpline( const DRW_Spline *data )
   addEntity( dfn, f, *data );
 
   QgsLineStringV2 l;
-  l.setPoints( in );
-#if 0
-  l.setPoints( out );
-#endif
+  QgsPointSequenceV2 ps;
+  for ( size_t i = 0; i < p.size(); ++i )
+    ps << QgsPointV2( p[i] );
+  l.setPoints( ps );
 
   int binarySize;
   unsigned char *wkb = l.asWkb( binarySize );
@@ -2317,119 +2493,4 @@ void QgsDwgImporter::writeDimstyles()
 void QgsDwgImporter::writeAppId()
 {
   QgsDebugCall;
-}
-
-QgsPointV2 QgsDwgImporter::getQuadPoint( const QgsPointV2& x1, const QgsPointV2& c1, const QgsPointV2& x2, double dt ) const
-{
-  return QgsPointV2(
-           QgsWKBTypes::PointZ,
-           x1.x()*( 1.0 - dt )*( 1.0 - dt ) + c1.x() * 2.0 * dt * ( 1.0 - dt ) + x2.x()*dt*dt,
-           x1.y()*( 1.0 - dt )*( 1.0 - dt ) + c1.y() * 2.0 * dt * ( 1.0 - dt ) + x2.y()*dt*dt,
-           x1.z()*( 1.0 - dt )*( 1.0 - dt ) + c1.z() * 2.0 * dt * ( 1.0 - dt ) + x2.z()*dt*dt
-         );
-}
-
-int QgsDwgImporter::getQuadPoints( int iSeg, const QgsPointSequenceV2 &cps, bool closed, QgsPointV2 &start, QgsPointV2 &control, QgsPointV2 &end ) const
-{
-  int n = cps.size();
-
-  int i1 = iSeg - 1;
-  int i2 = iSeg;
-  int i3 = iSeg + 1;
-
-  if ( closed )
-  {
-    if ( n < 3 )
-      return 0;
-
-    i1 = ( i1 + n - 1 ) % n;
-    i2--;
-    i3 = ( i3 + n - 1 ) % n;
-
-    start = QgsPointV2( QgsWKBTypes::PointZ,
-                        ( cps.at( i1 ).x() + cps.at( i2 ).x() ) / 2.0,
-                        ( cps.at( i1 ).y() + cps.at( i2 ).y() ) / 2.0,
-                        ( cps.at( i1 ).z() + cps.at( i2 ).z() ) / 2.0 );
-
-    control = cps.at( i2 );
-
-    end = QgsPointV2( QgsWKBTypes::PointZ,
-                      ( cps.at( i2 ).x() + cps.at( i3 ).x() ) / 2.0,
-                      ( cps.at( i2 ).y() + cps.at( i3 ).y() ) / 2.0,
-                      ( cps.at( i2 ).z() + cps.at( i3 ).z() ) / 2.0 );
-  }
-  else
-  {
-    if ( iSeg < 1 || n < 1 )
-      return 0;
-
-    start = cps.at( 0 );
-
-    if ( n < 2 )
-      return 1;
-
-    end = cps.at( 1 );
-
-    if ( n < 3 )
-      return 2;
-
-    control = end;
-    end = cps.at( 2 );
-
-    if ( n < 4 )
-      return 3;
-
-    start = i1 < 1 ? cps.at( 0 ) : QgsPointV2( QgsWKBTypes::PointZ,
-            ( cps.at( i1 ).x() + cps.at( i2 ).x() ) / 2.0,
-            ( cps.at( i1 ).y() + cps.at( i2 ).y() ) / 2.0,
-            ( cps.at( i1 ).z() + cps.at( i2 ).z() ) / 2.0 );
-
-    control = cps.at( i2 );
-
-    end = i3 > n - 2 ?  cps.at( n - 1 ) : QgsPointV2( QgsWKBTypes::PointZ,
-          ( cps.at( i2 ).x() + cps.at( i3 ).x() ) / 2.0,
-          ( cps.at( i2 ).y() + cps.at( i3 ).y() ) / 2.0,
-          ( cps.at( i2 ).z() + cps.at( i3 ).z() ) / 2.0 );
-  }
-
-  return 3;
-}
-
-void QgsDwgImporter::strokeQuad( QgsPointSequenceV2 &list, const QgsPointV2 &vx1, const QgsPointV2 &vc1, const QgsPointV2 &vx2 ) const
-{
-  if ( mSplineSegs < 1 )
-  {
-    list << vx1;
-    return;
-  }
-
-  for ( int i = 0; i < mSplineSegs; i++ )
-  {
-    list << getQuadPoint( vx1, vc1, vx2, ( double ) i / ( double ) mSplineSegs );
-  }
-}
-
-QgsPointSequenceV2 QgsDwgImporter::getStrokePoints( const QgsPointSequenceV2 &cps, bool closed ) const
-{
-  QgsPointSequenceV2 ps;
-
-  int iSplines = ( int ) cps.size();
-  if ( !closed )
-    iSplines -= 2;
-
-  QgsPointV2 end;
-  for ( int i = 1; i <= iSplines; ++i )
-  {
-    QgsPointV2 start, control;
-    int iPts = getQuadPoints( i, ps, closed, start, control, end );
-    if ( iPts > 2 )
-      strokeQuad( ps, start, control, end );
-    else if ( iPts > 1 )
-      ps << start;
-  }
-
-  if ( !closed && iSplines > 0 )
-    ps << end;
-
-  return ps;
 }

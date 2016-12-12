@@ -649,18 +649,23 @@ std::string dwgBuffer::get8bitStr()
   if ( !good )
     return std::string();
 
-  /*    filestr->read (buffer,textSize);
-      if (!filestr->good())
-          return std::string();
+#if 0
+  filestr->read( buffer, textSize );
+  if ( !filestr->good() )
+    return std::string();
 
-      duint8 tmp;
-      if (bitPos != 0){
-          for (int i=0; i<textSize;i++){
-              tmp =  buffer[i];
-              buffer[i] = (currByte << bitPos) | (tmp >> (8 - bitPos));
-              currByte = tmp;
-          }
-      }*/
+  duint8 tmp;
+  if ( bitPos != 0 )
+  {
+    for ( int i = 0; i < textSize;i++ )
+    {
+      tmp =  buffer[i];
+      buffer[i] = ( currByte << bitPos ) | ( tmp >> ( 8 - bitPos ) );
+      currByte = tmp;
+    }
+  }
+#endif
+
   std::string str( reinterpret_cast<char*>( tmpBuffer ), textSize );
   delete[]tmpBuffer;
 
@@ -1024,25 +1029,30 @@ duint32 dwgBuffer::crc32( duint32 seed, dint32 start, dint32 end )
 }
 
 
-/*std::string dwgBuffer::getBytes(int size){
-    char buffer[size];
-    char tmp;
-    filestr->read (buffer,size);
-    if (!filestr->good())
-        return nullptr;
+#if 0
+std::string dwgBuffer::getBytes( int size )
+{
+  char buffer[size];
+  char tmp;
+  filestr->read( buffer, size );
+  if ( !filestr->good() )
+    return nullptr;
 
-    if (bitPos != 0){
-        for (int i=0; i<=size;i++){
-            tmp =  buffer[i];
-            buffer[i] = (currByte << bitPos) | (tmp >> (8 - bitPos));
-            currByte = tmp;
-        }
+  if ( bitPos != 0 )
+  {
+    for ( int i = 0; i <= size;i++ )
+    {
+      tmp =  buffer[i];
+      buffer[i] = ( currByte << bitPos ) | ( tmp >> ( 8 - bitPos ) );
+      currByte = tmp;
     }
-    std::string st;
-    for (int i=0; i<size;i++) {
-        st.push_back(buffer[i]);
-    }
-    return st;
+  }
+  std::string st;
+  for ( int i = 0; i < size;i++ )
+  {
+    st.push_back( buffer[i] );
+  }
+  return st;
 //    return std::string(buffer);
-}*/
-
+}
+#endif

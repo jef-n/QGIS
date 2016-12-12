@@ -17,6 +17,7 @@
 #include "intern/dwgbuffer.h"
 
 #include "qgslogger.h"
+#include <QStringList>
 
 #include <assert.h>
 
@@ -1937,7 +1938,6 @@ bool DRW_Header::getCoord( std::string key, DRW_Coord *varCoord )
 
 bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf, duint8 mv )
 {
-  bool result = true;
   duint32 size = buf->getRawLong32();
   duint32 bitSize = 0;
   duint32 endBitPos = 160; //start bit: 16 sentinel + 4 size
@@ -1948,7 +1948,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     duint32 hSize = buf->getRawLong32();
     endBitPos += 32; //start bit: + 4 hight size
-    QgsDebugMsg( QString( "\n2010+ & MV> 3, higth 32b:%1" ).arg( hSize ) );
+    QgsDebugMsg( QString( "2010+ & MV> 3, higth 32b:%1" ).arg( hSize ) );
   }
 //RLZ TODO add $ACADVER var & $DWGCODEPAGE & $MEASUREMENT
 //RLZ TODO EN 2000 falta $CELWEIGHT, $ENDCAPS, $EXTNAMES $JOINSTYLE $LWDISPLAY $PSTYLEMODE $TDUCREATE  $TDUUPDATE $XEDIT
@@ -2683,16 +2683,19 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     buf->getRawLong32();//advance 4 bytes (hisize)
   }
-  QgsDebugMsg( QString( "setting position to: %1" ).arg( buf->getPosition() ) );
+
+  QgsDebugMsg( QString( "set position to: %1" ).arg( buf->getPosition() ) );
   t = buf->getRawShort16();
   QgsDebugMsg( QString( "Header CRC: 0x%1" ).arg( t, 0, 16 ) );
   QgsDebugMsg( QString( "buf position: %1" ).arg( buf->getPosition() ) );
-  QgsDebugMsg( "dwg header end sentinel = " );
+
+  QStringList l;
   for ( int i = 0; i < 16;i++ )
   {
     t = buf->getRawChar8();
-    QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
+    l << QString( "0x%1" ).arg( t, 0, 16 );
   }
+  QgsDebugMsg( QString( "dwg header end sentinel=%1" ).arg( l.join( " " ) ) );
 
   //temporary code to show header end sentinel
   duint64 sz = buf->size() - 1;
@@ -2700,71 +2703,44 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     sz = buf->size() - 16;
     buf->setPosition( sz );
-
-    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
-
-    QgsDebugMsg( "dwg header end sentinel= " );
-    for ( int i = 0; i < 16; i++ )
-    {
-      t = buf->getRawChar8();
-      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
-    }
   }
   else if ( version == DRW::AC1018 )  //2004
   {
 //        sz= buf->size()-132;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
-
-    QgsDebugMsg( "dwg header end sentinel= " );
-    for ( int i = 0; i < 16;i++ )
-    {
-      t = buf->getRawChar8();
-      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
-    }
   }
   else if ( version == DRW::AC1021 )  //2007
   {
     sz = buf->size() - 16;
     buf->setPosition( sz );
-    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
-
-    QgsDebugMsg( "dwg header end sentinel= " );
-    for ( int i = 0; i < 16; i++ )
-    {
-      t = buf->getRawChar8();
-      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
-    }
   }
   else if ( version == DRW::AC1024 )  //2010
   {
 //        sz= buf->size()-93;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
-
-    QgsDebugMsg( "dwg header end sentinel= " );
-    for ( int i = 0; i < 16; i++ )
-    {
-      t = buf->getRawChar8();
-      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
-    }
   }
   else if ( version == DRW::AC1027 )  //2013
   {
 //        sz= buf->size()-76;
 //        buf->setPosition(sz);
     buf->moveBitPos( -128 );
-    QgsDebugMsg( QString( "setting position to:%1" ).arg( buf->getPosition() ) );
-
-    QgsDebugMsg( "dwg header end sentinel= " );
-    for ( int i = 0; i < 16; i++ )
-    {
-      t = buf->getRawChar8();
-      QgsDebugMsg( QString( "0x%1" ).arg( t, 0, 16 ) );
-    }
+  }
+  else
+  {
+    return true;
   }
 
-  return result;
+  QgsDebugMsg( QString( "set position to:%1" ).arg( buf->getPosition() ) );
+
+  l.clear();
+  for ( int i = 0; i < 16; i++ )
+  {
+    t = buf->getRawChar8();
+    l << QString( "0x%1" ).arg( t, 0, 16 );
+  }
+  QgsDebugMsg( QString( "dwg header end sentinel=%1" ).arg( l.join( " " ) ) );
+
+  return true;
 }

@@ -18,6 +18,7 @@
 #include "intern/drw_dbg.h"
 
 #include "qgslogger.h"
+#include <QStringList>
 
 #define RESERVE( vector, size ) try { \
     vector.reserve(size); \
@@ -237,43 +238,42 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
   if ( strBuf && version > DRW::AC1018 )  //2007+
   {
     strBuf->moveBitPos( objSize - 1 );
-    QgsDebugMsg( QString( "strBuf strbit pos 2007:%1 strBuf bpos 2007:%2" )
-                 .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
-               );
+    QgsDebugMsgLevel( QString( "strBuf strbit pos 2007:%1 strBuf bpos 2007:%2" )
+                      .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() ), 4
+                    );
     if ( strBuf->getBit() == 1 )
     {
-      QgsDebugMsg( "string bit is 1" );
+      QgsDebugMsgLevel( "string bit is 1", 4 );
       strBuf->moveBitPos( -17 );
       duint16 strDataSize = strBuf->getRawShort16();
-      QgsDebugMsg( QString( "strDataSize: %1" ).arg( strDataSize ) );
+      QgsDebugMsgLevel( QString( "strDataSize: %1" ).arg( strDataSize ), 4 );
       if (( strDataSize& 0x8000 ) == 0x8000 )
       {
-        QgsDebugMsg( "string 0x8000 bit is set" );
+        QgsDebugMsgLevel( "string 0x8000 bit is set", 4 );
         strBuf->moveBitPos( -33 );//RLZ pending to verify
         duint16 hiSize = strBuf->getRawShort16();
         strDataSize = (( strDataSize & 0x7fff ) | ( hiSize << 15 ) );
       }
       strBuf->moveBitPos( -strDataSize - 16 ); //-14
 
-      QgsDebugMsg( QString( "strBuf start strDataSize pos 2007:%1 strBuf bpos 2007:%2" )
-                   .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
-                 );
+      QgsDebugMsgLevel( QString( "strBuf start strDataSize pos 2007:%1 strBuf bpos 2007:%2" )
+                        .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() ), 4
+                      );
     }
     else
     {
       QgsDebugMsg( "string bit is 0" );
     }
 
-    QgsDebugMsg( QString( "strBuf start pos 2007:%1 strBuf bpos 2007:%2" )
-                 .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() )
-               );
+    QgsDebugMsgLevel( QString( "strBuf start pos 2007:%1 strBuf bpos 2007:%2" )
+                      .arg( strBuf->getPosition() ).arg( strBuf->getBitPos() ), 4
+                    );
   }
 
   dwgHandle ho = buf->getHandle();
   handle = ho.ref;
-  QgsDebugMsg( QString( "Entity Handle: %1.%2 0x%3" ).arg( ho.code ).arg( ho.size ).arg( ho.ref, 0, 16 ) );
   dint16 extDataSize = buf->getBitShort(); //BS
-  QgsDebugMsg( QString( " ext data size: %1" ).arg( extDataSize ) );
+  QgsDebugMsg( QString( "Entity Handle: %1.%2 0x%3; ext data size:%4" ).arg( ho.code ).arg( ho.size ).arg( ho.ref, 0, 16 ).arg( extDataSize ) );
   while ( extDataSize > 0 && buf->isGood() )
   {
     /* RLZ: TODO */
@@ -292,13 +292,15 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
       {
         duint8 strLength = tmpExtDataBuf.getRawChar8();
         duint16 cp = tmpExtDataBuf.getBERawShort16();
-        QgsDebugMsg( QString( " strLength:%1; str codepage:%2" ).arg( strLength ).arg( cp ) );
 
+        QStringList l;
         for ( int i = 0;i < strLength + 1; i++ )  //string length + null terminating char
         {
           duint8 dxfChar = tmpExtDataBuf.getRawChar8();
-          QgsDebugMsg( QString( " dxfChar:%1" ).arg( dxfChar ) );
+          l << QString( "0x%1" ).arg( dxfChar, 0, 16 );
         }
+
+        QgsDebugMsg( QString( "strLength:%1; str codepage:%2; %3" ).arg( strLength ).arg( cp ).arg( l.join( " " ) ) );
         break;
       }
       default:
@@ -2639,61 +2641,58 @@ bool DRW_Spline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     ncontrol = buf->getBitLong();
     weight = buf->getBit(); // RLZ ??? flags, weight, code 70, bit 4 (16)
 
-    QgsDebugMsg( QString( "flags:%1, knot tolerance:%2, control point tolerance:%3, num knots:%4, num control pt:%5, weight:%6" )
+    QgsDebugMsg( QString( "flags:0x%1, knot tolerance:%2, control point tolerance:%3, num knots:%4, num control pt:%5, weight:%6" )
                  .arg( flags, 0, 16 ).arg( tolknot ).arg( tolcontrol ).arg( nknots ).arg( ncontrol ).arg( weight )
                );
   }
   else
   {
-    QgsDebugMsg( "dwg Ellipse, unknown scenario" );
+    QgsDebugMsg( QString( "spline, unknown scenario %1" ).arg( scenario ) );
     return false; //RLZ: from doc only 1 or 2 are ok ?
   }
 
   RESERVE( knotslist, nknots );
   for ( dint32 i = 0; i < nknots; ++i )
   {
-    knotslist.push_back( buf->getBitDouble() );
+    double d = buf->getBitDouble();
+    knotslist.push_back( d );
+    QgsDebugMsgLevel( QString( "knot %1: %2 rem=%3" )
+                      .arg( i ).arg( d, 0, 'g', 17 ).arg( buf->numRemainingBytes() ), 4
+                    );
   }
+
   RESERVE( controllist, ncontrol );
   for ( dint32 i = 0; i < ncontrol; ++i )
   {
     DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
     controllist.push_back( crd );
+    QgsDebugMsgLevel( QString( "cp %1: %2,%3,%4 rem:%5" )
+                      .arg( i ).arg( crd->x, 0, 'g', 17 ).arg( crd->y, 0, 'g', 17 ).arg( crd->z, 0, 'g', 17 ).arg( buf->numRemainingBytes() ), 4
+                    );
     if ( weight )
     {
       double w = buf->getBitDouble(); //RLZ Warning: D (BD or RD)
-      QgsDebugMsg( QString( "w:%1" ).arg( w ) );
+      QgsDebugMsgLevel( QString( "weight %1: %2 rem:%3" )
+                        .arg( i ).arg( w, 0, 'g', 17 ).arg( buf->numRemainingBytes() ), 4
+                      );
     }
   }
+
   RESERVE( fitlist, nfit );
   for ( dint32 i = 0; i < nfit; ++i )
   {
     DRW_Coord* crd = new DRW_Coord( buf->get3BitDouble() );
     fitlist.push_back( crd );
-  }
-
-  QgsDebugMsgLevel( "knots list: ", 5 );
-  for ( std::vector<double>::iterator it = knotslist.begin() ; it != knotslist.end(); ++it )
-  {
-    QgsDebugMsgLevel( QString( " knot:%1" ).arg( *it ), 5 );
-  }
-
-  QgsDebugMsgLevel( "control point list:", 5 );
-  for ( std::vector<DRW_Coord *>::iterator it = controllist.begin() ; it != controllist.end(); ++it )
-  {
-    QgsDebugMsgLevel( QString( " %1,%2,%3" ).arg(( *it )->x ).arg(( *it )->y ).arg(( *it )->z ), 5 );
-  }
-
-  QgsDebugMsg( "fit point list:" );
-  for ( std::vector<DRW_Coord *>::iterator it = fitlist.begin() ; it != fitlist.end(); ++it )
-  {
-    QgsDebugMsgLevel( QString( " %1,%2,%3" ).arg(( *it )->x ).arg(( *it )->y ).arg(( *it )->z ), 5 );
+    QgsDebugMsgLevel( QString( "fp %1: %2,%3,%4 rem:%5" )
+                      .arg( i ).arg( crd->x, 0, 'g', 17 ).arg( crd->y, 0, 'g', 17 ).arg( crd->z, 0, 'g', 17 ).arg( buf->numRemainingBytes() ), 4
+                    );
   }
 
   /* Common Entity Handle Data */
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
     return ret;
+
 //    RS crc;   //RS */
   return buf->isGood();
 }
