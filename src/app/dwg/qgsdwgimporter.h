@@ -23,14 +23,15 @@
 #include <qgsabstractgeometryv2.h>
 
 class QgsCompoundCurveV2;
+class QgsQgsCoordinateReferenceSystem;
 
 class QgsDwgImporter : public DRW_Interface
 {
   public:
-    QgsDwgImporter( const QString &database );
+    QgsDwgImporter( const QString &database, const QgsCoordinateReferenceSystem &crs );
     ~QgsDwgImporter();
 
-    bool import( const QString &drawing, QString &error );
+    bool import( const QString &drawing, QString &error, bool expandInserts );
 
     /** Called when header is parsed.  */
     void addHeader( const DRW_Header* data ) override;
@@ -173,6 +174,7 @@ class QgsDwgImporter : public DRW_Interface
     void addEntity( OGRFeatureDefnH dfn, OGRFeatureH f, const DRW_Entity &data );
     QString colorString( int color, int color24, int transparency, const std::string &layer ) const;
     double lineWidth( int lWeight, const std::string &layer ) const;
+    QString linetypeString( const std::string &linetype, const std::string &layer ) const;
     void setString( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const std::string &value ) const;
     void setDouble( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, double value ) const;
     void setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const;
@@ -180,12 +182,18 @@ class QgsDwgImporter : public DRW_Interface
 
     bool curveFromLWPolyline( const DRW_LWPolyline& data, QgsCompoundCurveV2 &cc );
 
+    bool expandInserts( QString &error );
+
     OGRDataSourceH mDs;
     QString mDatabase;
     bool mInTransaction;
     int mSplineSegs;
     int mBlockHandle;
+    int mCrs;
+    OGRSpatialReferenceH mCrsH;
 
     QHash<QString, QString> mLayerColor;
     QHash<QString, double> mLayerLinewidth;
+    QHash<QString, QString> mLayerLinetype;
+    QHash<QString, QString> mLinetype;
 };

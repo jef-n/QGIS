@@ -20,6 +20,7 @@
 #include "intern/drw_dbg.h"
 #include "intern/dwgutil.h"
 
+#undef QGISDEBUG
 #include "qgslogger.h"
 #include <QStringList>
 
@@ -804,13 +805,12 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
   basePoint.x = buf->getBitDouble();
   basePoint.y = buf->getBitDouble();
   basePoint.z = buf->getBitDouble();
-
-  QgsDebugMsg( QString( "insertion point: %1,%2,%3" )
-               .arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z )
-             );
-
   UTF8STRING path = sBuf->getVariableText( version, false );
-  QgsDebugMsg( QString( "Xref path name: %1" ).arg( path.c_str() ) );
+
+  QgsDebugMsg( QString( "insertion point: %1,%2,%3; Xref path name:%4" )
+               .arg( basePoint.x ).arg( basePoint.y ).arg( basePoint.z )
+               .arg( path.c_str() )
+             );
 
   if ( version > DRW::AC1014 )  //2000+
   {
@@ -879,7 +879,7 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
     if ( !blockIsXref && !xrefOverlaid )
     {
       dwgHandle firstH = buf->getHandle();
-      QgsDebugMsg( QString( "firstH entity handle %1.%2 0x%3" ).arg( firstH.code ).arg( firstH.size ).arg( firstH.ref, 0, 16 ) );
+      QgsDebugMsgLevel( QString( "firstH entity handle %1.%2 0x%3" ).arg( firstH.code ).arg( firstH.size ).arg( firstH.ref, 0, 16 ), 5 );
       firstEH = firstH.ref;
 
       dwgHandle lastH = buf->getHandle();
@@ -898,7 +898,7 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
     for ( unsigned int i = 0; i < insertCount; i++ )
     {
       dwgHandle insertsH = buf->getHandle();
-      QgsDebugMsgLevel( QString( "insertsH handle %1: %2.%3 0x%4" ).arg( i ).arg( insertsH.code ).arg( insertsH.size ).arg( insertsH.ref, 0, 16 ), 6 );
+      QgsDebugMsgLevel( QString( "insertsH handle %1: %2.%3 0x%4" ).arg( i ).arg( insertsH.code ).arg( insertsH.size ).arg( insertsH.ref, 0, 16 ), 5 );
     }
 
     QgsDebugMsg( QString( "Remaining bytes: %1" ).arg( buf->numRemainingBytes() ) );

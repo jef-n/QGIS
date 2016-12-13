@@ -38,6 +38,10 @@
 #include "qgsfillsymbollayerv2.h"
 #include "qgslinesymbollayerv2.h"
 #include "qgspallabeling.h"
+#include "qgsmapcanvas.h"
+#include "qgscrscache.h"
+#include "qgsgenericprojectionselector.h"
+#include "qgsmessagelog.h"
 
 
 struct CursorOverride
@@ -84,6 +88,14 @@ QgsDwgImportDialog::QgsDwgImportDialog( QWidget *parent, Qt::WindowFlags f )
   leDrawing->setReadOnly( true );
   pbImportDrawing->setHidden( true );
   lblMessage->setHidden( true );
+
+  int crsid = s.value( "/DwgImport/lastCrs", QString::number( QgisApp::instance()->mapCanvas()->mapSettings().destinationCrs().srsid() ) ).toInt();
+
+  QgsCoordinateReferenceSystem crs = QgsCRSCache::instance()->crsBySrsId( crsid );
+  mCrsSelector->setCrs( crs );
+  mCrsSelector->setLayerCrs( crs );
+  mCrsSelector->dialog()->setMessage( tr( "Select the coordinate reference system for the dxf file. "
+                                          "The data points will be transformed from the layer coordinate reference system." ) );
 
   on_pbLoadDatabase_clicked();
   updateUI();
@@ -155,7 +167,6 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
     return;
 
   CursorOverride waitCursor;
-  SkipCrsValidation skipCrsValidation;
 
   bool lblVisible = false;
 
@@ -164,11 +175,16 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   {
     int idxPath = d->fieldNameIndex( "path" );
     int idxLastModified = d->fieldNameIndex( "lastmodified" );
+    int idxCrs = d->fieldNameIndex( "crs" );
 
     QgsFeature f;
-    if ( d->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( QgsAttributeList() << idxPath << idxLastModified ) ).nextFeature( f ) )
+    if ( d->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( QgsAttributeList() << idxPath << idxLastModified << idxCrs ) ).nextFeature( f ) )
     {
       leDrawing->setText( f.attribute( idxPath ).toString() );
+
+      QgsCoordinateReferenceSystem crs = QgsCRSCache::instance()->crsBySrsId( f.attribute( idxCrs ).toInt() );
+      mCrsSelector->setCrs( crs );
+      mCrsSelector->setLayerCrs( crs );
 
       QFileInfo fi( leDrawing->text() );
       if ( fi.exists() )
@@ -232,176 +248,6 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   }
 }
 
-void QgsDwgImportDialog::expandInserts()
-{
-  SkipCrsValidation skipCrsValidation;
-
-  QScopedPointer<QgsVectorLayer> blocks( new QgsVectorLayer( QString( "%1|layername=blocks" ).arg( leDatabase->text() ), "blocks", "ogr", false ) );
-  if ( !blocks || !blocks->isValid() )
-  {
-    QgsDebugMsg( "could not open layer 'blocks'" );
-    return;
-  }
-
-  int nameIdx = blocks->fieldNameIndex( "name" );
-  int handleIdx = blocks->fieldNameIndex( "handle" );
-  if ( nameIdx < 0 || handleIdx < 0 )
-  {
-    QgsDebugMsg( QString( "not all fields found (nameIdx=%1 handleIdx=%2)" ).arg( nameIdx ).arg( handleIdx ) );
-    return;
-  }
-
-  QHash<QString, int> blockhandle;
-
-  QgsFeatureIterator bfit = blocks->getFeatures();
-  QgsFeature block;
-  while ( bfit.nextFeature( block ) )
-  {
-    blockhandle.insert( block.attribute( nameIdx ).toString(), block.attribute( handleIdx ).toInt() );
-  }
-
-  blocks.reset();
-
-  QScopedPointer<QgsVectorLayer> inserts( new QgsVectorLayer( QString( "%1|layername=inserts" ).arg( leDatabase->text() ), "inserts", "ogr", false ) );
-  if ( !inserts || !inserts->isValid() )
-  {
-    QgsDebugMsg( "could not open layer 'inserts'" );
-    return;
-  }
-
-  nameIdx = inserts->fieldNameIndex( "name" );
-  int xscaleIdx = inserts->fieldNameIndex( "xscale" );
-  int yscaleIdx = inserts->fieldNameIndex( "yscale" );
-  int zscaleIdx = inserts->fieldNameIndex( "zscale" );
-  int angleIdx = inserts->fieldNameIndex( "angle" );
-  if ( xscaleIdx < 0 || yscaleIdx < 0 || zscaleIdx < 0 || angleIdx < 0 || nameIdx < 0 )
-  {
-    QgsDebugMsg( QString( "not all fields found (nameIdx=%1 xscaleIdx=%2 yscaleIdx=%3 zscaleIdx=%4 angleIdx=%5)" )
-                 .arg( nameIdx )
-                 .arg( xscaleIdx ).arg( yscaleIdx ).arg( zscaleIdx )
-                 .arg( angleIdx ) );
-    return;
-  }
-
-  QHash<QString, QPair<QgsVectorLayer *, QgsVectorLayer *>> layers;
-  Q_FOREACH ( QString name, QStringList() << "hatches" << "lines" << "polylines" << "texts" << "points" )
-  {
-    QgsVectorLayer *in = new QgsVectorLayer( QString( "%1|layername=%2" ).arg( leDatabase->text(), name ), name, "ogr", false );
-    if ( in && in->isValid() )
-    {
-      QgsVectorLayer *out = new QgsVectorLayer( QString( "%1|layername=%2" ).arg( leDatabase->text(), name ), name, "ogr", false );
-      if ( out && out->isValid() )
-      {
-        layers.insert( name, qMakePair( in, out ) );
-      }
-      else
-      {
-        delete in;
-        delete out;
-      }
-    }
-    else
-    {
-      delete in;
-    }
-  }
-
-  QgsFeatureIterator ifit = inserts->getFeatures();
-
-  QgsFeature insert;
-  int i = 0;
-  while ( ifit.nextFeature( insert ) )
-  {
-    if ( !insert.constGeometry() )
-    {
-      QgsDebugMsg( QString( "%1: insert without geometry" ).arg( insert.id() ) );
-      continue;
-    }
-
-    QgsPoint p( insert.constGeometry()->asPoint() );
-    QString name = insert.attribute( nameIdx ).toString();
-    double xscale = insert.attribute( xscaleIdx ).toDouble();
-    double yscale = insert.attribute( yscaleIdx ).toDouble();
-    double angle = insert.attribute( angleIdx ).toDouble();
-
-    int handle = blockhandle.value( name, -1 );
-    if ( handle < 0 )
-    {
-      QgsDebugMsg( QString( "Block '%1' not found" ).arg( name ) );
-      continue;
-    }
-
-    QgsDebugMsg( QString( "Resolving %1/%2: p=%3,%4 scale=%5,%6 angle=%7" )
-                 .arg( name ).arg( handle, 0, 16 )
-                 .arg( p.x() ).arg( p.y() )
-                 .arg( xscale ).arg( yscale ).arg( angle ) );
-
-    QTransform t;
-    t.translate( p.x(), p.y() ).scale( xscale, yscale ).rotateRadians( angle );
-
-    for ( QHash<QString, QPair< QgsVectorLayer *, QgsVectorLayer *> >::iterator layer = layers.begin(); layer != layers.end(); ++layer )
-    {
-      QgsVectorLayer *src = layer.value().first;
-      QgsVectorLayer *dst = layer.value().second;
-      src->setSubsetString( QString( "block=%1" ).arg( handle ) );
-
-      int fidIdx = src->fieldNameIndex( "fid" );
-      int blockIdx = src->fieldNameIndex( "block" );
-      if ( fidIdx < 0 || blockIdx < 0 )
-      {
-        QgsDebugMsg( QString( "%1: fields not found (fidIdx=%2; blockIdx=%3)" ).arg( layer.key() ).arg( fidIdx ).arg( blockIdx ) );
-        continue;
-      }
-
-      int angleIdx = src->fieldNameIndex( "angle" );
-
-      QgsFeatureIterator fit = src->getFeatures();
-
-      QgsFeature f;
-      int j = 0;
-      while ( fit.nextFeature( f ) )
-      {
-        if ( f.geometry()->transform( t ) != 0 )
-        {
-          QgsDebugMsg( QString( "%1/%2: could not transform geometry" ).arg( layer.key() ).arg( f.id() ) );
-          continue;
-        }
-
-        f.setFeatureId( -1 );
-        f.setAttribute( fidIdx, QVariant( QVariant::Int ) );
-        f.setAttribute( blockIdx, -1 );
-
-        if ( angleIdx >= 0 )
-          f.setAttribute( angleIdx, f.attribute( angleIdx ).toDouble() + angle );
-
-        // TODO: resolve BYBLOCK
-
-        if ( !dst->dataProvider()->addFeatures( QgsFeatureList() << f ) )
-        {
-          QgsDebugMsg( QString( "%1/%2: could not add feature" ).arg( layer.key() ).arg( f.id() ) );
-          continue;
-        }
-
-        ++j;
-      }
-
-      QgsDebugMsg( QString( "%1: %2 features copied" ).arg( layer.key() ).arg( j ) );
-    }
-
-    ++i;
-  }
-
-  for ( QHash<QString, QPair<QgsVectorLayer *, QgsVectorLayer *> >::iterator layer = layers.begin(); layer != layers.end(); ++layer )
-  {
-    delete layer.value().first;
-    delete layer.value().second;
-  }
-
-  layers.clear();
-
-  QgsDebugMsg( QString( "%1 inserts resolved" ).arg( i ) );
-}
-
 void QgsDwgImportDialog::on_pbBrowseDrawing_clicked()
 {
   QString dir( leDrawing->text().isEmpty() ? QDir::homePath() : QFileInfo( leDrawing->text() ).canonicalPath() );
@@ -418,10 +264,10 @@ void QgsDwgImportDialog::on_pbImportDrawing_clicked()
 {
   CursorOverride waitCursor;
 
-  QgsDwgImporter importer( leDatabase->text() );
+  QgsDwgImporter importer( leDatabase->text(), mCrsSelector->crs() );
 
   QString error;
-  if ( importer.import( leDrawing->text(), error ) )
+  if ( importer.import( leDrawing->text(), error, cbExpandInserts->isChecked() ) )
   {
     QgisApp::instance()->messageBar()->pushMessage( tr( "Drawing import completed." ), QgsMessageBar::INFO, 4 );
   }
@@ -430,16 +276,12 @@ void QgsDwgImportDialog::on_pbImportDrawing_clicked()
     QgisApp::instance()->messageBar()->pushMessage( tr( "Drawing import failed (%1)" ).arg( error ), QgsMessageBar::CRITICAL, 4 );
   }
 
-  if ( cbExpandInserts->isChecked() )
-    expandInserts();
-
   on_pbLoadDatabase_clicked();
 }
 
 QgsVectorLayer *QgsDwgImportDialog::layer( QgsLayerTreeGroup *layerGroup, QString layerFilter, QString table )
 {
   QgsVectorLayer *l = new QgsVectorLayer( QString( "%1|layername=%2" ).arg( leDatabase->text() ).arg( table ), table, "ogr", false );
-  l->setCrs( QgsCoordinateReferenceSystem() );
   l->setSubsetString( QString( "%1space=0 AND block=-1" ).arg( layerFilter ) );
 
   if ( l->featureCount() == 0 )
@@ -491,6 +333,9 @@ void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QS
     sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
     sll->setPenJoinStyle( Qt::MiterJoin );
     sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "linewidth" ) );
+    // sll->setUseCustomDashPattern( true );
+    // sll->setCustomDashPatternUnit( QgsSymbolV2::MapUnit );
+    // sll->setDataDefinedProperty( "customdash", new QgsDataDefined( true, false, "", "linetype" ) );
     sym = new QgsLineSymbolV2();
     sym->changeSymbolLayer( 0, sll );
     sym->setOutputUnit( QgsSymbolV2::MM );
@@ -504,6 +349,9 @@ void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QS
     sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
     sll->setPenJoinStyle( Qt::MiterJoin );
     sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "width" ) );
+    // sll->setUseCustomDashPattern( true );
+    // sll->setCustomDashPatternUnit( QgsSymbolV2::MapUnit );
+    // sll->setDataDefinedProperty( "customdash", new QgsDataDefined( true, false, "", "linetype" ) );
     sym = new QgsLineSymbolV2();
     sym->changeSymbolLayer( 0, sll );
     sym->setOutputUnit( QgsSymbolV2::MapUnit );
@@ -591,10 +439,25 @@ void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QS
   }
 }
 
+void QgsDwgImportDialog::updateCheckState( Qt::CheckState state )
+{
+  for ( int i = 0; i < mLayers->rowCount(); i++ )
+    mLayers->item( i, 0 )->setCheckState( state );
+}
+
+void QgsDwgImportDialog::on_pbSelectAll_clicked()
+{
+  updateCheckState( Qt::Checked );
+}
+
+void QgsDwgImportDialog::on_pbDeselectAll_clicked()
+{
+  updateCheckState( Qt::Unchecked );
+}
+
 void QgsDwgImportDialog::on_buttonBox_accepted()
 {
   CursorOverride waitCursor;
-  SkipCrsValidation skipCrsValidation;
 
   QMap<QString, bool> layers;
   bool allLayers = true;

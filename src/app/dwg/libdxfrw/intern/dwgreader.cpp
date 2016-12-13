@@ -19,6 +19,7 @@
 #include "dwgreader.h"
 #include "drw_textcodec.h"
 
+#undef QGISDEBUG
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 
@@ -974,7 +975,7 @@ bool dwgReader::readDwgBlocks( DRW_Interface& intfa, dwgBuffer *dbuf )
           {
             oc = mit->second;
             ObjectMap.erase( mit );
-            QgsDebugMsg( QString( "Blocks, parsing entity: 0x%1 loc=%2" ).arg( oc.handle, 0, 16 ).arg( oc.loc ) );
+            QgsDebugMsgLevel( QString( "Blocks, parsing entity: 0x%1 loc=%2" ).arg( oc.handle, 0, 16 ).arg( oc.loc ), 5 );
 
             ret2 = readDwgEntity( dbuf, oc, intfa );
             ret = ret && ret2;
@@ -1187,8 +1188,7 @@ bool dwgReader::readDwgEntity( dwgBuffer *dbuf, objHandle& obj, DRW_Interface& i
     std::map<duint32, DRW_Class*>::iterator it = classesmap.find( oType );
     if ( it == classesmap.end() ) //fail, not found in classes set error
     {
-      QgsDebugMsg( QString( "Class 0x%1 not found, handle 0x%2" ).arg( oType, 0, 16 ).arg( obj.handle, 0, 16 ) );
-
+      QgsMessageLog::logMessage( QObject::tr( "Class 0x%1 not found, handle 0x%2" ).arg( oType, 0, 16 ).arg( obj.handle, 0, 16 ), QObject::tr( "DWG/DXF import" ) );
       delete[]tmpByteStr;
       return false;
     }
@@ -1562,10 +1562,10 @@ bool DRW_ObjControl::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
     objectH = buf->getOffsetHandle( handle );
     if ( objectH.ref != 0 ) //in vports R14  I found some NULL handles
       handlesList.push_back( objectH.ref );
-    QgsDebugMsg( QString( " objectH Handle: %1.%2 0x%3, remaining bytes %4" )
-                 .arg( objectH.code ).arg( objectH.size ).arg( objectH.ref, 0, 16 )
-                 .arg( buf->numRemainingBytes() )
-               );
+    QgsDebugMsgLevel( QString( " objectH Handle: %1.%2 0x%3, remaining bytes %4" )
+                      .arg( objectH.code ).arg( objectH.size ).arg( objectH.ref, 0, 16 )
+                      .arg( buf->numRemainingBytes() ), 5
+                    );
   }
 
   for ( int i = 0; i < unkData; i++ )
