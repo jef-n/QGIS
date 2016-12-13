@@ -161,14 +161,14 @@ QgsDwgImporter::~QgsDwgImporter()
   }
 }
 
-bool QgsDwgImporter::import( const QString &drawing )
+bool QgsDwgImporter::import( const QString &drawing, QString &error )
 {
   QgsDebugCall;
 
   QFileInfo fi( drawing );
   if ( !fi.isReadable() )
   {
-    LOG( QObject::tr( "Drawing %1 is unreadable" ).arg( drawing ) );
+    error = QObject::tr( "Drawing %1 is unreadable" ).arg( drawing );
     return false;
   }
 
@@ -541,7 +541,7 @@ bool QgsDwgImporter::import( const QString &drawing )
   OGRFeatureH f = OGR_F_Create( dfn );
   Q_ASSERT( f );
 
-  OGR_F_SetFieldString( f, pathIdx, fi.canonicalPath().toUtf8().constData() );
+  OGR_F_SetFieldString( f, pathIdx, fi.canonicalFilePath().toUtf8().constData() );
 
   QDateTime d( fi.lastModified() );
   OGR_F_SetFieldDateTime( f, lastmodifiedIdx,
@@ -576,23 +576,76 @@ bool QgsDwgImporter::import( const QString &drawing )
 
   LOG( QObject::tr( "Updating database from %1 [%2]." ).arg( drawing ).arg( fi.lastModified().toString() ) );
 
+  DRW::error result( DRW::BAD_NONE );
+
   if ( fi.suffix().toLower() == "dxf" )
   {
     //loads dxf
     QSharedPointer<dxfRW> dxf( new dxfRW( drawing.toUtf8() ) );
-    return dxf->read( this, false );
+    if ( !dxf->read( this, false ) )
+    {
+      result = DRW::BAD_UNKNOWN;
+    }
   }
   else if ( fi.suffix().toLower() == "dwg" )
   {
     //loads dwg
     QSharedPointer<dwgR> dwg( new dwgR( drawing.toUtf8() ) );
-    return dwg->read( this, false );
+    if ( !dwg->read( this, false ) )
+    {
+      result = dwg->getError();
+    }
   }
   else
   {
     LOG( QObject::tr( "File %1 is not a DWG/DXF file" ).arg( drawing ) );
     return false;
   }
+
+  switch ( result )
+  {
+    case DRW::BAD_NONE:
+      error = QObject::tr( "No error." );
+      break;
+    case DRW::BAD_UNKNOWN:
+      error = QObject::tr( "Unknown error." );
+      break;
+    case DRW::BAD_OPEN:
+      error = QObject::tr( "error opening file." );
+      break;
+    case DRW::BAD_VERSION:
+      error = QObject::tr( "unsupported version." );
+      break;
+    case DRW::BAD_READ_METADATA:
+      error = QObject::tr( "error reading matadata." );
+      break;
+    case DRW::BAD_READ_FILE_HEADER:
+      error = QObject::tr( "error in file header read process." );
+      break;
+    case DRW::BAD_READ_HEADER:
+      error = QObject::tr( "error in header vars read process." );
+      break;
+    case DRW::BAD_READ_HANDLES:
+      error = QObject::tr( "error in object map read process." );
+      break;
+    case DRW::BAD_READ_CLASSES:
+      error = QObject::tr( "error in classes read process." );
+      break;
+    case DRW::BAD_READ_TABLES:
+      error = QObject::tr( "error in tables read process." );
+      break;
+    case DRW::BAD_READ_BLOCKS:
+      error = QObject::tr( "error in block read process." );
+      break;
+    case DRW::BAD_READ_ENTITIES:
+      error = QObject::tr( "error in entities read process." );
+      break;
+    case DRW::BAD_READ_OBJECTS:
+      error = QObject::tr( "error in objects read process." );
+      break;
+  }
+
+  return result == DRW::BAD_NONE;
 }
 
 void QgsDwgImporter::addHeader( const DRW_Header *data )

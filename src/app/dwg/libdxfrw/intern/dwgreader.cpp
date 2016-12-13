@@ -20,8 +20,9 @@
 #include "drw_textcodec.h"
 
 #include "qgslogger.h"
-#include <QStringList>
+#include "qgsmessagelog.h"
 
+#include <QStringList>
 
 
 dwgReader::~dwgReader()
@@ -174,6 +175,7 @@ bool dwgReader::readDwgHandles( dwgBuffer *dbuf, duint32 offset, duint32 size )
     QgsDebugMsgLevel( QString( "object map section size=%1" ).arg( size ), 5 );
 
     dbuf->setPosition( startPos );
+
     duint8 *tmpByteStr = new duint8[size];
     dbuf->getBytes( tmpByteStr, size );
     dwgBuffer buff( tmpByteStr, size, &decoder );
@@ -195,15 +197,17 @@ bool dwgReader::readDwgHandles( dwgBuffer *dbuf, duint32 offset, duint32 size )
     duint16 crcCalc = buff.crc8( 0xc0c1, 0, size );
     delete[]tmpByteStr;
     duint16 crcRead = dbuf->getBERawShort16();
-    QgsDebugMsgLevel( QString( "object map section crc8 read=%1 crc8 calculated=%2 buf->curPosition()=%3" )
-                      .arg( crcRead ).arg( crcCalc ).arg( dbuf->getPosition() ), 5
-                    );
+
+    if ( crcCalc != crcRead )
+    {
+      QgsMessageLog::logMessage( QObject::tr( "Object map section failed CRC check" ), QObject::tr( "DWG/DXF import" ) );
+      QgsDebugMsg( QString( "object map section crc8 read=%1 crc8 calculated=%2 buf->curPosition()=%3 FAILED" ).arg( crcRead ).arg( crcCalc ).arg( dbuf->getPosition() ) );
+    }
 
     startPos = dbuf->getPosition();
   }
 
-  bool ret = dbuf->isGood();
-  return ret;
+  return dbuf->isGood();
 }
 
 /*********** objects ************************/
