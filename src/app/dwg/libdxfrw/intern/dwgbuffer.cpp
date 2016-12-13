@@ -16,6 +16,7 @@
 #include "drw_textcodec.h"
 #include "drw_dbg.h"
 
+#undef QGISDEBUG
 #include "qgslogger.h"
 
 #if 0
@@ -963,7 +964,7 @@ bool dwgBuffer::getBytes( unsigned char *buf, int size )
   duint8 tmp;
   int pos = filestr->getPos();
   filestr->read( buf, size );
-  if ( !filestr->good() && filestr->getPos() - pos != size )
+  if ( !filestr->good() && ( int ) filestr->getPos() - pos != size )
   {
     QgsDebugMsg( QString( "short read: wanted %1; got %2 (at %3)" ).arg( size ).arg( filestr->getPos() - pos ).arg( filestr->getPos() ) );
     return false;

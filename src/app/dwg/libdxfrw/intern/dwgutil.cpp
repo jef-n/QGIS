@@ -167,7 +167,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
   bufD = dbuf;
   sizeC = csize - 2;
   sizeD = dsize;
-  QgsDebugMsg( QString( "last 2 bytes: 0x%1 0x%2" ).arg( bufC[sizeC], 0, 16 ).arg( bufC[sizeC+1], 0, 16 ) );
+  QgsDebugMsgLevel( QString( "last 2 bytes: 0x%1 0x%2" ).arg( bufC[sizeC], 0, 16 ).arg( bufC[sizeC+1], 0, 16 ), 5 );
   sizeC = csize;
 
   duint32 compBytes;
@@ -229,7 +229,7 @@ void dwgCompressor::decompress18( duint8 *cbuf, duint8 *dbuf, duint32 csize, dui
     }
     else if ( oc == 0x11 )
     {
-      QgsDebugMsg( QString( "end of input stream, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ) );
+      QgsDebugMsgLevel( QString( "end of input stream, Cpos:%1, Dpos:%2" ).arg( pos ).arg( rpos ), 5 );
       return; //end of input stream
     }
     else   //ll < 0x10

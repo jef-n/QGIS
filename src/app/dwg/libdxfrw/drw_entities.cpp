@@ -17,6 +17,7 @@
 #include "intern/dwgbuffer.h"
 #include "intern/drw_dbg.h"
 
+#undef QGISDEBUG
 #include "qgslogger.h"
 #include <QStringList>
 
