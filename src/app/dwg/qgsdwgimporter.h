@@ -30,7 +30,7 @@ class QgsDwgImporter : public DRW_Interface
     QgsDwgImporter( const QString &database );
     ~QgsDwgImporter();
 
-    bool import( const QString &drawing );
+    bool import( const QString &drawing, QString &error );
 
     /** Called when header is parsed.  */
     void addHeader( const DRW_Header* data ) override;
