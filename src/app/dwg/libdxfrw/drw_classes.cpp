@@ -87,6 +87,11 @@ bool DRW_Class::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *strBu
     QgsDebugMsg( QString( "Instance Count:%1, DWG version: %2, maintenance version:%3, unk0:%4, unk1:%5" )
                  .arg( instanceCount ).arg( dwgVersion ).arg( t ).arg( unk0 ).arg( unk1 )
                );
+    Q_UNUSED( instanceCount );
+    Q_UNUSED( dwgVersion );
+    Q_UNUSED( t );
+    Q_UNUSED( unk0 );
+    Q_UNUSED( unk1 );
   }
 
   toDwgType();

@@ -162,8 +162,11 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
     int pos = tmpExtDataBuf.getPosition();
     int bpos = tmpExtDataBuf.getBitPos();
     QgsDebugMsg( QString( "ext data pos:%1.%2" ).arg( pos ).arg( bpos ) );
+    Q_UNUSED( pos );
+    Q_UNUSED( bpos );
     duint8 dxfCode = tmpExtDataBuf.getRawChar8();
     QgsDebugMsg( QString( "dxfCode:%1" ).arg( dxfCode ) );
+    Q_UNUSED( dxfCode );
     switch ( dxfCode )
     {
       case 0:
@@ -172,10 +175,12 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
         QgsDebugMsg( QString( "strLength:%1" ).arg( strLength ) );
         duint16 cp = tmpExtDataBuf.getBERawShort16();
         QgsDebugMsg( QString( "str codepage:%1" ).arg( cp ) );
+        Q_UNUSED( cp );
         for ( int i = 0;i < strLength + 1;i++ )  //string length + null terminating char
         {
           duint8 dxfChar = tmpExtDataBuf.getRawChar8();
           QgsDebugMsg( QString( " dxfChar:%1" ).arg( dxfChar ) );
+          Q_UNUSED( dxfChar );
         }
         break;
       }
@@ -204,6 +209,7 @@ bool DRW_TableEntry::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *
   {
     duint8 bd = buf->getBit();
     QgsDebugMsg( QString( " Have binary data:%1" ).arg( bd ) );
+    Q_UNUSED( bd );
   }
   return buf->isGood();
 }
@@ -528,6 +534,7 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     dint16 xrefindex = buf->getBitShort();
     QgsDebugMsg( QString( "xrefindex: %1" ).arg( xrefindex ) );
+    Q_UNUSED( xrefindex );
   }
 
   duint8 xdep = buf->getBit();
@@ -540,6 +547,8 @@ bool DRW_LType::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   QgsDebugMsg( QString( "xdep: %1; flags:0x%2; desc:%3; pattern length:%4 align:%5; num dashes, size %6" )
                .arg( xdep ).arg( flags, 0, 16 ).arg( desc.c_str() ).arg( length ).arg( align ).arg( size )
              );
+  Q_UNUSED( xdep );
+  Q_UNUSED( align );
 
   bool haveStrArea = false;
   for ( std::vector<double>::size_type i = 0; i < size; i++ )
@@ -691,6 +700,7 @@ bool DRW_Layer::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     int t = buf->getBitShort();
     QgsDebugMsg( QString( "xrefindex = %1" ).arg( t ) );
+    Q_UNUSED( t );
     //dint16 xrefindex = buf->getBitShort();
   }
   flags |= buf->getBit() << 4;//is refx dependent
@@ -783,6 +793,7 @@ bool DRW_Block_Record::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 b
   {
     dint16 xrefindex = buf->getBitShort();
     QgsDebugMsg( QString( "xrefindex: %1" ).arg( xrefindex ) );
+    Q_UNUSED( xrefindex );
   }
   flags |= buf->getBit() << 4;//is refx dependent, block code 70, bit 5 (16)
   flags |= buf->getBit(); //if is anonimous block (*U) block code 70, bit 1 (1)
@@ -1174,6 +1185,7 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     duint8 renderMode = buf->getRawChar8();
     QgsDebugMsg( QString( "renderMode: %1" ).arg( renderMode ) );
+    Q_UNUSED( renderMode );
 
     if ( version > DRW::AC1018 ) //2007+
     {
@@ -1182,10 +1194,12 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
       t = buf->getBit();
       QgsDebugMsg( QString( "use default lights:%1" ).arg( t ) );
+      Q_UNUSED( t );
       t = buf->getRawChar8();
       QgsDebugMsg( QString( "default lighting type:%1" ).arg( t ) );
       d = buf->getBitDouble();
       QgsDebugMsg( QString( "brightness:%1" ).arg( d ) );
+      Q_UNUSED( d );
       d = buf->getBitDouble();
       QgsDebugMsg( QString( "contrast:%1" ).arg( d ) );
       t = buf->getCmColor( version );
@@ -1232,6 +1246,7 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
     t = buf->getBit();
     QgsDebugMsg( QString( "Unknown %1" ).arg( t ) );
+    Q_UNUSED( t );
     t = buf->getBit();
     QgsDebugMsg( QString( "UCS per Viewport: %1" ).arg( t ) );
 
@@ -1239,6 +1254,9 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     y = buf->getBitDouble();
     z = buf->getBitDouble();
     QgsDebugMsg( QString( "UCS origin:%1,%2,%3" ).arg( x, y, z ) );
+    Q_UNUSED( x );
+    Q_UNUSED( y );
+    Q_UNUSED( z );
 
     x = buf->getBitDouble();
     y = buf->getBitDouble();
@@ -1252,6 +1270,7 @@ bool DRW_Vport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
     d = buf->getBitDouble();
     QgsDebugMsg( QString( "UCS elevation: %1" ).arg( d ) );
+    Q_UNUSED( d );
 
     t = buf->getBitShort();
     QgsDebugMsg( QString( " UCS Orthographic type: %1" ).arg( t ) );
@@ -1371,6 +1390,7 @@ bool DRW_ImageDef::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
   dint32 imgVersion = buf->getBitLong();
   QgsDebugMsg( QString( "class Version:%1" ).arg( imgVersion ) );
+  Q_UNUSED( imgVersion );
 
   DRW_Coord size = buf->get2RawDouble();
   DRW_UNUSED( size );//RLZ: temporary, complete API
@@ -1428,6 +1448,7 @@ bool DRW_AppId::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   flags |= buf->getBit() << 4; //is refx dependent, style code 70, bit 5 (16)
   duint8 unknown = buf->getRawChar8(); // unknown code 71
   QgsDebugMsg( QString( "unknown code 71:%1" ).arg( unknown ) );
+  Q_UNUSED( unknown );
 
   if ( version > DRW::AC1018 )  //2007+ skip string area
   {

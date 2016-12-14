@@ -2609,6 +2609,7 @@ bool QgsDwgImporter::expandInserts( QString &error )
   }
 
   GIntBig n = OGR_L_GetFeatureCount( inserts, 0 );
+  Q_UNUSED( n );
 
   OGR_L_ResetReading( inserts );
 
@@ -2721,6 +2722,7 @@ bool QgsDwgImporter::expandInserts( QString &error )
           break;
 
         GIntBig fid = OGR_F_GetFID( f );
+        Q_UNUSED( fid );
 
         ogrG = OGR_F_GetGeometryRef( f );
         if ( !ogrG )

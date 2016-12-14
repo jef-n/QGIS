@@ -37,6 +37,7 @@ bool dwgReader15::readMetaData()
   /* MEASUREMENT system variable 2 bytes*/
   duint16 meas = fileBuf->getRawShort16();
   QgsDebugMsg( QString( "MEASUREMENT (0 = English, 1 = Metric)= %1" ).arg( meas ) );
+  Q_UNUSED( meas );
   duint16 cp = fileBuf->getRawShort16();
   QgsDebugMsg( QString( "codepage= %1" ).arg( cp ) );
 
@@ -122,8 +123,9 @@ bool dwgReader15::readFileHeader()
   }
 
   int headercrc = fileBuf->getRawShort16();
-
   QgsDebugMsg( QString( "file header crc8 xor result=%1, file header CRC=%2" ).arg( ckcrc ).arg( headercrc ) );
+  Q_UNUSED( headercrc );
+
   checkSentinel( fileBuf, secEnum::FILEHEADER, false );
 
   QgsDebugMsg( QString( "position after read file header sentinel=%1, bit pos=%2" ).arg( fileBuf->getPosition() ).arg( fileBuf->getBitPos() ) );
@@ -184,6 +186,8 @@ bool dwgReader15::readDwgClasses()
   }
   int crc = fileBuf->getRawShort16();
   QgsDebugMsg( QString( "crc=%1, classes section end sentinel" ).arg( crc ) );
+  Q_UNUSED( crc );
+
   checkSentinel( fileBuf, secEnum::CLASSES, false );
 
   bool ret = buff.isGood();

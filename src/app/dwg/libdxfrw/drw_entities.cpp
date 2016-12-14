@@ -293,6 +293,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
       {
         duint8 strLength = tmpExtDataBuf.getRawChar8();
         duint16 cp = tmpExtDataBuf.getBERawShort16();
+        Q_UNUSED( cp );
 
         QStringList l;
         for ( int i = 0;i < strLength + 1; i++ )  //string length + null terminating char
@@ -302,6 +303,7 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
         }
 
         QgsDebugMsg( QString( "strLength:%1; str codepage:%2; %3" ).arg( strLength ).arg( cp ).arg( l.join( " " ) ) );
+        Q_UNUSED( l );
         break;
       }
       default:
@@ -415,13 +417,17 @@ bool DRW_Entity::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer* strB
     duint8 visualFlags = buf->get2Bits(); //full & face visual style
     duint8 unk = buf->getBit(); //edge visual style
     QgsDebugMsg( QString( " shadowFlag 2:%1 unknown bit:%2" ).arg( visualFlags ).arg( unk ) );
+    Q_UNUSED( visualFlags );
+    Q_UNUSED( unk );
   }
   dint16 invisibleFlag = buf->getBitShort(); //BS
   QgsDebugMsg( QString( " invisibleFlag:%1" ).arg( invisibleFlag ) );
+  Q_UNUSED( invisibleFlag );
   if ( version > DRW::AC1014 )  //2000+
   {
     lWeight = DRW_LW_Conv::dwgInt2lineWidth( buf->getRawChar8() ); //RC
     QgsDebugMsg( QString( " lwFlag (lWeight):%1" ).arg( lWeight ) );
+    Q_UNUSED( lWeight );
   }
 #if 0
   //Only in blocks ????????
@@ -618,6 +624,7 @@ bool DRW_Point::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                .arg( QString( "%1,%2,%3" ).arg( extPoint.x ).arg( extPoint.y ).arg( extPoint.z ) )
                .arg( x_axis )
              );
+  Q_UNUSED( x_axis );
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
   if ( !ret )
@@ -1081,6 +1088,7 @@ void DRW_3Dface::parseCode( int code, dxfReader *reader )
   {
     case 70:
       invisibleflag = reader->getInt32();
+      Q_UNUSED( invisibleflag );
       break;
     default:
       DRW_Trace::parseCode( code, reader );
@@ -1189,6 +1197,7 @@ bool DRW_Block::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     duint8 unk = buf->getBit();
     QgsDebugMsg( QString( "unknown bit: %1" ).arg( unk ) );
+    Q_UNUSED( unk );
   }
 //    X handleAssoc;   //X
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -1505,9 +1514,6 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
       }
       else
       {
-#if 0
-        DRW_Vertex2D *pv = vertlist.back();
-#endif
         vertex->x = buf->getDefaultDouble( pv->x );
         vertex->y = buf->getDefaultDouble( pv->y );
       }
@@ -1559,6 +1565,7 @@ bool DRW_LWPolyline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
                       .arg( pv->stawidth )
                       .arg( pv->endwidth ), 5
                     );
+    Q_UNUSED( pv );
   }
 
   // Common Entity Handle Data
@@ -2067,6 +2074,7 @@ bool DRW_Vertex::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs, dou
     {
       dint32 id = buf->getBitLong();
       QgsDebugMsg( QString( " Vertex ID:%1" ).arg( id ) );
+      Q_UNUSED( id );
     }
     tgdir = buf->getBitDouble();
   }
@@ -2257,6 +2265,12 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                  .arg( gradTint )
                  .arg( numCol )
                );
+    Q_UNUSED( isGradient );
+    Q_UNUSED( res );
+    Q_UNUSED( gradAngle );
+    Q_UNUSED( gradShift );
+    Q_UNUSED( singleCol );
+    Q_UNUSED( gradTint );
 
     for ( dint32 i = 0 ; i < numCol; ++i )
     {
@@ -2270,9 +2284,14 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                    .arg( rgbCol )
                    .arg( ignCol )
                  );
+      Q_UNUSED( unkDouble );
+      Q_UNUSED( unkShort );
+      Q_UNUSED( rgbCol );
+      Q_UNUSED( ignCol );
     }
     UTF8STRING gradName = sBuf->getVariableText( version, false );
     QgsDebugMsg( QString( "gradient name:%1" ).arg( gradName.c_str() ) );
+    Q_UNUSED( gradName );
   }
   basePoint.z = buf->getBitDouble();
   extPoint = buf->get3BitDouble();
@@ -2431,6 +2450,8 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                  .arg( angle ).arg( scale )
                  .arg( doubleflag ).arg( deflines )
                );
+    Q_UNUSED( angle );
+    Q_UNUSED( scale );
 
     for ( dint32 i = 0 ; i < deflines && buf->isGood(); ++i )
     {
@@ -2447,11 +2468,15 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                    .arg( QString( "%1,%2" ).arg( ptL.x ).arg( ptL.y ) )
                    .arg( QString( "%1,%2" ).arg( offL.x ).arg( offL.y ) )
                  );
+      Q_UNUSED( angleL );
+      Q_UNUSED( ptL );
+      Q_UNUSED( offL );
 
       for ( duint16 j = 0 ; j < numDashL; ++j )
       {
         double lengthL = buf->getBitDouble();
         QgsDebugMsg( QString( " %1: %2" ).arg( j ).arg( lengthL ) );
+        Q_UNUSED( lengthL );
       }
     }//end deflines
   } //end not solid
@@ -2460,6 +2485,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     ddouble64 pixsize = buf->getBitDouble();
     QgsDebugMsg( QString( "pixel size:%1" ).arg( pixsize ) );
+    Q_UNUSED( pixsize );
   }
 
   dint32 numSeedPoints = buf->getBitLong();
@@ -2609,6 +2635,7 @@ bool DRW_Spline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     dint32 knotParam = buf->getBitLong();
 
     QgsDebugMsg( QString( "2013 splFlag1:%1, 2013 knotParam:%2" ).arg( splFlag1 ).arg( knotParam ) );
+    Q_UNUSED( knotParam );
     // QgsDebugMsg( QString( "unk bit:%1").arg( buf->getBit()) );
   }
 
@@ -2676,6 +2703,7 @@ bool DRW_Spline::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       QgsDebugMsgLevel( QString( "weight %1: %2 rem:%3" )
                         .arg( i ).arg( w, 0, 'g', 17 ).arg( buf->numRemainingBytes() ), 4
                       );
+      Q_UNUSED( w );
     }
   }
 
@@ -2766,6 +2794,7 @@ bool DRW_Image::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
                .arg( QString( "%1,%2,%3" ).arg( vVector.x ).arg( vVector.y ).arg( vVector.z ) )
                .arg( sizeu ).arg( sizev )
              );
+  Q_UNUSED( classVersion );
 
   duint16 displayProps = buf->getBitShort();
   DRW_UNUSED( displayProps );//RLZ: temporary, complete API
@@ -2930,6 +2959,7 @@ bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *s
   {
     duint8 dimVersion = buf->getRawChar8();
     QgsDebugMsg( QString( "dimVersion:%1" ).arg( dimVersion ) );
+    Q_UNUSED( dimVersion );
   }
   extPoint = buf->getExtrusion( version > DRW::AC1014 );
 
@@ -2944,6 +2974,11 @@ bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *s
     int bit4 = buf->getBit();
 
     QgsDebugMsg( QString( "Five unknown bits: %1%2%3%4%5" ).arg( bit0 ).arg( bit1 ).arg( bit2 ).arg( bit3 ).arg( bit4 ) );
+    Q_UNUSED( bit0 );
+    Q_UNUSED( bit1 );
+    Q_UNUSED( bit2 );
+    Q_UNUSED( bit3 );
+    Q_UNUSED( bit4 );
   }
   textPoint.x = buf->getRawDouble();
   textPoint.y = buf->getRawDouble();
@@ -2972,6 +3007,8 @@ bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *s
                .arg( QString( "%1,%2,%3" ).arg( inspoint.x ).arg( inspoint.y ).arg( inspoint.z ) )
                .arg( insRot_code54 )
              );
+  Q_UNUSED( inspoint );
+  Q_UNUSED( insRot_code54 );
 
   if ( version > DRW::AC1014 ) //2000+
   {
@@ -2981,6 +3018,7 @@ bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *s
     double actMeas = buf->getBitDouble();
 
     QgsDebugMsg( QString( " actMeas_code42: %1" ).arg( actMeas ) );
+    Q_UNUSED( actMeas );
 
     if ( version > DRW::AC1018 ) //2007+
     {
@@ -2991,6 +3029,9 @@ bool DRW_Dimension::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *s
       QgsDebugMsg( QString( "2007, unk, flip1, flip2: %1, %2, %3" )
                    .arg( unk ).arg( flip1 ).arg( flip2 )
                  );
+      Q_UNUSED( unk );
+      Q_UNUSED( flip1 );
+      Q_UNUSED( flip2 );
     }
   }
   clonePoint.x = buf->getRawDouble();
@@ -3479,6 +3520,9 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   QgsDebugMsg( QString( "unknown:%1 annottype:%2 pathtype:%3 numpts:%4" )
                .arg( bit0 ).arg( annot ).arg( pathtype ).arg( nPt )
              );
+  Q_UNUSED( bit0 );
+  Q_UNUSED( annot )
+  Q_UNUSED( pathtype )
 
   // add vertices
   for ( int i = 0; i < nPt; i++ )
@@ -3487,9 +3531,11 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     vertexlist.push_back( vertex );
     QgsDebugMsg( QString( " vertex %1: %2,%3,%4" ).arg( i ).arg( vertex->x ).arg( vertex->y ).arg( vertex->z ) );
   }
-  DRW_Coord Endptproj = buf->get3BitDouble();
 
+  DRW_Coord Endptproj = buf->get3BitDouble();
   QgsDebugMsg( QString( " endptproj: %1,%2,%3" ).arg( Endptproj.x ).arg( Endptproj.y ).arg( Endptproj.z ) );
+  Q_UNUSED( Endptproj );
+
   extrusionPoint = buf->getExtrusion( version > DRW::AC1014 );
   QgsDebugMsg( QString( " extrusion: %1,%2,%3" ).arg( extrusionPoint.x ).arg( extrusionPoint.y ).arg( extrusionPoint.z ) );
 
@@ -3502,6 +3548,11 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     int bit4 = buf->getBit();
 
     QgsDebugMsg( QString( "Five unknown bits: %1%2%3%4%5" ).arg( bit0 ).arg( bit1 ).arg( bit2 ).arg( bit3 ).arg( bit4 ) );
+    Q_UNUSED( bit0 );
+    Q_UNUSED( bit1 );
+    Q_UNUSED( bit2 );
+    Q_UNUSED( bit3 );
+    Q_UNUSED( bit4 );
   }
   horizdir = buf->get3BitDouble();
   offsetblock = buf->get3BitDouble();
@@ -3513,11 +3564,13 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     DRW_Coord unk = buf->get3BitDouble();
     QgsDebugMsg( QString( " unknown: %1,%2,%3" ).arg( unk.x ).arg( unk.y ).arg( unk.z ) );
+    Q_UNUSED( unk );
   }
   if ( version < DRW::AC1015 ) //R14 -
   {
     double dimgap = buf->getBitDouble();
     QgsDebugMsg( QString( "dimgap %1" ).arg( dimgap ) );
+    Q_UNUSED( dimgap );
   }
   if ( version < DRW::AC1024 ) //2010-
   {
@@ -3545,6 +3598,14 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     QgsDebugMsg( QString( "Arrow head type:%1 dimasz:%2 unk0:%3 unk1:%4 unk2:%5 byblockcol:%6 unk3:%7 unk3:%9" )
                  .arg( headtype ).arg( dimasz ).arg( unk0 ).arg( unk1 ).arg( unk2 ).arg( byblockcol ).arg( unk3 ).arg( unk4 )
                );
+    Q_UNUSED( headtype );
+    Q_UNUSED( dimasz );
+    Q_UNUSED( unk0 );
+    Q_UNUSED( unk1 );
+    Q_UNUSED( unk2 );
+    Q_UNUSED( byblockcol );
+    Q_UNUSED( unk3 );
+    Q_UNUSED( unk4 );
   }
   else   //R2000+
   {
@@ -3552,6 +3613,9 @@ bool DRW_Leader::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     int unk1 = buf->getBit();
     int unk2 = buf->getBit();
     QgsDebugMsg( QString( "unk0:%1 unk1:%2 unk2:%3" ).arg( unk0 ).arg( unk1 ).arg( unk2 ) );
+    Q_UNUSED( unk0 );
+    Q_UNUSED( unk1 );
+    Q_UNUSED( unk2 );
   }
 
   ret = DRW_Entity::parseDwgEntHandle( version, buf );
@@ -3676,13 +3740,16 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     double gridY = buf->getRawDouble();
     int czoom = buf->getBitShort();
 
-    QgsDebugMsg( QString( "gridSpacing: %1,%2" ).arg( gridX ).arg( gridY ) );
-    QgsDebugMsg( QString( "Circle zoom?: %1" ).arg( czoom ) );
+    QgsDebugMsg( QString( "gridSpacing: %1,%2 Circle zoom?: %3" ).arg( gridX ).arg( gridY ).arg( czoom ) );
+    Q_UNUSED( gridX );
+    Q_UNUSED( gridY );
+    Q_UNUSED( czoom );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     int gridmajor = buf->getBitShort();
     QgsDebugMsg( QString( "Grid major?: %1" ).arg( gridmajor ) );
+    Q_UNUSED( gridmajor );
   }
   if ( version > DRW::AC1014 )  //2000+
   {
@@ -3691,10 +3758,12 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
 
     int t = buf->getBitLong();
     QgsDebugMsg( QString( "Status Flags?: %1" ).arg( t ) );
+    Q_UNUSED( t );
 
     //RLZ: Warning needed separate string bufer
     std::string txt = sBuf->getVariableText( version, false );
     QgsDebugMsg( QString( "Style sheet?: %1" ).arg( txt.c_str() ) );
+    Q_UNUSED( txt );
 
     t = buf->getRawChar8();
     QgsDebugMsg( QString( "Render mode?: %1" ).arg( t ) );
@@ -3708,6 +3777,9 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
     y = buf->getBitDouble();
     z = buf->getBitDouble();
     QgsDebugMsg( QString( "UCS OMode: %1,%2,%3" ).arg( x ).arg( y ).arg( z ) );
+    Q_UNUSED( x );
+    Q_UNUSED( y );
+    Q_UNUSED( z );
 
     x = buf->getBitDouble();
     y = buf->getBitDouble();
@@ -3729,18 +3801,21 @@ bool DRW_Viewport::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     int t = buf->getBitShort();
     QgsDebugMsg( QString( "ShadePlot Mode...: %1" ).arg( t ) );
+    Q_UNUSED( t );
   }
   if ( version > DRW::AC1018 )  //2007+
   {
     int t;
     t = buf->getBit();
     QgsDebugMsg( QString( "Use def Light...: %1" ).arg( t ) );
+    Q_UNUSED( t );
 
     t = buf->getRawChar8();
     QgsDebugMsg( QString( "Def light tipe?: %1" ).arg( t ) );
 
     double d = buf->getBitDouble();
     QgsDebugMsg( QString( "Brightness: %1" ).arg( d ) );
+    Q_UNUSED( d );
 
     d = buf->getBitDouble();
     QgsDebugMsg( QString( "Contrast: %1" ).arg( d ) );
