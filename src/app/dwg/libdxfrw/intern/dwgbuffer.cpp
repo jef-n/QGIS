@@ -870,6 +870,7 @@ duint32 dwgBuffer::getCmColor( DRW::Version v )
   QgsDebugMsg( QString( "type COLOR:%1 index COLOR:%2 RGB COLOR:0x%3 byte COLOR:%4" )
                .arg( type ).arg( idx ).arg( rgb, 0, 16 ).arg( cb )
              );
+  Q_UNUSED( idx );
 
   if ( cb&1 )
   {

@@ -1058,6 +1058,7 @@ bool dwgReader::readPlineVertex( DRW_Polyline& pline, dwgBuffer *dbuf )
         buff.resetPosition();
 
         QgsDebugMsg( QString( " object type=0x%1" ).arg( oType, 0, 16 ) );
+        Q_UNUSED( oType );
 
         ret2 = vt.parseDwg( version, &buff, bs, pline.basePoint.z );
         delete[]tmpByteStr;
@@ -1105,6 +1106,7 @@ bool dwgReader::readPlineVertex( DRW_Polyline& pline, dwgBuffer *dbuf )
         dint16 oType = buff.getObjType( version );
         buff.resetPosition();
         QgsDebugMsg( QString( " object type=0x%1" ).arg( oType, 0, 16 ) );
+        Q_UNUSED( oType );
 
         ret2 = vt.parseDwg( version, &buff, bs, pline.basePoint.z );
         delete[]tmpByteStr;
@@ -1433,6 +1435,7 @@ bool dwgReader::readDwgObjects( DRW_Interface& intfa, dwgBuffer *dbuf )
 
   duint32 i = 0;
   QgsDebugMsg( QString( "entities map total size=%1, object map total size=%2" ).arg( ObjectMap.size() ).arg( objObjectMap.size() ) );
+  Q_UNUSED( i );
 
   std::map<duint32, objHandle>::iterator itB = objObjectMap.begin();
   std::map<duint32, objHandle>::iterator itE = objObjectMap.end();
@@ -1537,6 +1540,7 @@ bool DRW_ObjControl::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs 
   {
     int stringBit = buf->getBit();
     QgsDebugMsg( QString( " string bit for  v2007+: %1" ).arg( stringBit ) );
+    Q_UNUSED( stringBit );
   }
 
   dwgHandle objectH = buf->getHandle();

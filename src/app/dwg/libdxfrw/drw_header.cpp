@@ -1949,6 +1949,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     duint32 hSize = buf->getRawLong32();
     endBitPos += 32; //start bit: + 4 hight size
     QgsDebugMsg( QString( "2010+ & MV> 3, higth 32b:%1" ).arg( hSize ) );
+    Q_UNUSED( hSize );
   }
 //RLZ TODO add $ACADVER var & $DWGCODEPAGE & $MEASUREMENT
 //RLZ TODO EN 2000 falta $CELWEIGHT, $ENDCAPS, $EXTNAMES $JOINSTYLE $LWDISPLAY $PSTYLEMODE $TDUCREATE  $TDUUPDATE $XEDIT
@@ -1969,18 +1970,24 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     duint64 requiredVersions = buf->getBitLongLong();
     QgsDebugMsg( QString( "REQUIREDVERSIONS var: %1" ).arg( requiredVersions ) );
+    Q_UNUSED( requiredVersions );
   }
   double unk0 = buf->getBitDouble();
   double unk1 = buf->getBitDouble();
   double unk2 = buf->getBitDouble();
   double unk3 = buf->getBitDouble();
   QgsDebugMsg( QString( "unk0:%1 unk1:%2 unk2:%3 unk3:%4" ).arg( unk0 ).arg( unk1 ).arg( unk2 ).arg( unk3 ) );
+  Q_UNUSED( unk0 );
+  Q_UNUSED( unk1 );
+  Q_UNUSED( unk2 );
+  Q_UNUSED( unk3 );
 
   if ( version < DRW::AC1021 )  //2007-
   {
     std::string t;
     t = buf->getCP8Text();
     QgsDebugMsg( QString( "unknown0: %1" ).arg( t.c_str() ) );
+    Q_UNUSED( t );
     t = buf->getCP8Text();
     QgsDebugMsg( QString( "unknown1: %1" ).arg( t.c_str() ) );
     t = buf->getCP8Text();
@@ -2026,6 +2033,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     int b = buf->getBit();
     QgsDebugMsg( QString( "Undocumented: %1" ).arg( b ) );
+    Q_UNUSED( b );
   }
   vars["USRTIMER"] = new DRW_Variant( 70, buf->getBit() );
   vars["SKPOLY"] = new DRW_Variant( 70, buf->getBit() );
@@ -2080,6 +2088,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     int t;
     t = buf->getBitLong();
     QgsDebugMsg( QString( "Unknown long 1: %1" ).arg( t ) );
+    Q_UNUSED( t );
     t = buf->getBitLong();
     QgsDebugMsg( QString( "Unknown long 2: %1" ).arg( t ) );
     t = buf->getBitLong();
@@ -2149,6 +2158,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     int t;
     t = buf->getBitLong();
     QgsDebugMsg( QString( "Unknown long 4: %1" ).arg( t ) );
+    Q_UNUSED( t );
     t = buf->getBitLong();
     QgsDebugMsg( QString( "Unknown long 5: %1" ).arg( t ) );
     t = buf->getBitLong();
@@ -2182,6 +2192,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     dwgHandle CMATERIAL = hBbuf->getHandle();
     QgsDebugMsg( QString( "CMATERIAL: %1.%2 0x%3" ).arg( CMATERIAL.code ).arg( CMATERIAL.size ).arg( CMATERIAL.ref, 0, 16 ) );
+    Q_UNUSED( CMATERIAL );
   }
   dwgHandle DIMSTYLE = hBbuf->getHandle();
   QgsDebugMsg( QString( "DIMSTYLE: %1.%2 0x%3" ).arg( DIMSTYLE.code ).arg( DIMSTYLE.size ).arg( DIMSTYLE.ref, 0, 16 ) );
@@ -2486,6 +2497,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
   {
     int t = buf->getBitLong();
     QgsDebugMsg( QString( "Flags:%1" ).arg( t, 0, 15 ) );
+    Q_UNUSED( t );
     vars["INSUNITS"] = new DRW_Variant( 70, buf->getBitShort() );
     duint16 cepsntype = buf->getBitShort();
     vars["CEPSNTYPE"] = new DRW_Variant( 70, cepsntype );
@@ -2532,12 +2544,14 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     int t;
     vars["CAMERADISPLAY"] = new DRW_Variant( 70, buf->getBit() );
     t = buf->getBitLong();
+    Q_UNUSED( t );
     QgsDebugMsg( QString( "Unknown 2007+ long1: %1" ).arg( t ) );
     t = buf->getBitLong();
     QgsDebugMsg( QString( "Unknown 2007+ long2: %1" ).arg( t ) );
 
     double d = buf->getBitDouble();
     QgsDebugMsg( QString( "Unknown 2007+ double1: %1" ).arg( d ) );
+    Q_UNUSED( d );
 
     vars["STEPSPERSEC"] = new DRW_Variant( 40, buf->getBitDouble() );
     vars["STEPSIZE"] = new DRW_Variant( 40, buf->getBitDouble() );
@@ -2583,6 +2597,7 @@ bool DRW_Header::parseDwg( DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbu
     int t;
     t = buf->getBitShort();
     QgsDebugMsg( QString( "Unknown R14+ short1: %1" ).arg( t ) );
+    Q_UNUSED( t );
     t = buf->getBitShort();
     QgsDebugMsg( QString( "Unknown R14+ short2: %1" ).arg( t ) );
     t = buf->getBitShort();
