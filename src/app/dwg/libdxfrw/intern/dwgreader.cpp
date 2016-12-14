@@ -148,6 +148,7 @@ bool dwgReader::checkSentinel( dwgBuffer *buf, enum secEnum::DWGSection, bool st
 }
 
 /*********** objects map ************************/
+
 /** Note: object map are split in sections with max size 2035?
  *  each section are 2 bytes size + data bytes + 2 bytes crc
  *  size value are data bytes + 2 and to calculate crc are used
@@ -212,6 +213,7 @@ bool dwgReader::readDwgHandles( dwgBuffer *dbuf, duint32 offset, duint32 size )
 }
 
 /*********** objects ************************/
+
 /**
  * Reads all the object referenced in the object map section of the DWG file
  * (using their object file offsets)
@@ -923,7 +925,7 @@ bool dwgReader::readDwgBlocks( DRW_Interface& intfa, dwgBuffer *dbuf )
     //and update block record name
     bkr->name = bk.name;
 
-    /** Read & send block entities**/
+    //! Read & send block entities
     // in dwg code 330 are not set like dxf in ModelSpace & PaperSpace, set it (RLZ: only tested in 2000)
     if ( bk.parentHandle == DRW::NoHandle )
     {

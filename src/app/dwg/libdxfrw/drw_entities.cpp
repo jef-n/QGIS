@@ -1795,7 +1795,7 @@ bool DRW_MText::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   if ( version > DRW::AC1018 )  //2007+
   {
     /* Rect height BD 46 Reference rectangle height. */
-    /** @todo */
+    //! @todo
     buf->getBitDouble();
   }
   height = buf->getBitDouble();/* Text height BD 40 Undocumented */
@@ -1829,14 +1829,14 @@ bool DRW_MText::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
   {
     /* Background flags BL 0 = no background, 1 = background fill, 2 =background
     fill with drawing fill color. */
-    dint32 bk_flags = buf->getBitLong(); /** @todo add to DRW_MText */
+    dint32 bk_flags = buf->getBitLong(); //! @todo add to DRW_MText
     if ( bk_flags == 1 )
     {
       /* Background scale factor BL Present if background flags = 1, default = 1.5*/
       buf->getBitLong();
       /* Background color CMC Present if background flags = 1 */
       buf->getCmColor( version ); //RLZ: warning CMC or ENC
-      /** @todo buf->getCMC */
+      //! @todo buf->getCMC
       /* Background transparency BL Present if background flags = 1 */
       buf->getBitLong();
     }
@@ -2476,7 +2476,7 @@ bool DRW_Hatch::parseDwg( DRW::Version version, dwgBuffer *buf, duint32 bs )
       {
         double lengthL = buf->getBitDouble();
         QgsDebugMsg( QString( " %1: %2" ).arg( j ).arg( lengthL ) );
-	Q_UNUSED( lengthL );
+        Q_UNUSED( lengthL );
       }
     }//end deflines
   } //end not solid
