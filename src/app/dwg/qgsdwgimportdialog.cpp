@@ -26,22 +26,22 @@
 #include "qgsdwgimporter.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
-#include "qgsmaplayerregistry.h"
+#include "qgsproject.h"
 #include "qgsfeatureiterator.h"
 #include "qgslayertreeview.h"
 #include "qgslayertreemodel.h"
 #include "qgslayertreegroup.h"
-#include "qgsrendererv2.h"
+#include "qgsrenderer.h"
 #include "qgsdatadefined.h"
 #include "qgsnullsymbolrenderer.h"
-#include "qgssinglesymbolrendererv2.h"
-#include "qgsfillsymbollayerv2.h"
-#include "qgslinesymbollayerv2.h"
+#include "qgssinglesymbolrenderer.h"
+#include "qgsfillsymbollayer.h"
+#include "qgslinesymbollayer.h"
 #include "qgspallabeling.h"
 #include "qgsmapcanvas.h"
-#include "qgscrscache.h"
 #include "qgsgenericprojectionselector.h"
 #include "qgsmessagelog.h"
+#include "qgslogger.h"
 
 
 struct CursorOverride
@@ -55,23 +55,6 @@ struct CursorOverride
   {
     QApplication::restoreOverrideCursor();
   }
-};
-
-
-struct SkipCrsValidation
-{
-  SkipCrsValidation() : savedValidation( QgsCoordinateReferenceSystem::customSrsValidation() )
-  {
-    QgsCoordinateReferenceSystem::setCustomSrsValidation( nullptr );
-  }
-
-  ~SkipCrsValidation()
-  {
-    QgsCoordinateReferenceSystem::setCustomSrsValidation( savedValidation );
-  }
-
-private:
-  CUSTOM_CRS_VALIDATION savedValidation;
 };
 
 
@@ -91,7 +74,7 @@ QgsDwgImportDialog::QgsDwgImportDialog( QWidget *parent, Qt::WindowFlags f )
 
   int crsid = s.value( "/DwgImport/lastCrs", QString::number( QgisApp::instance()->mapCanvas()->mapSettings().destinationCrs().srsid() ) ).toInt();
 
-  QgsCoordinateReferenceSystem crs = QgsCRSCache::instance()->crsBySrsId( crsid );
+  QgsCoordinateReferenceSystem crs( crsid, QgsCoordinateReferenceSystem::InternalCrsId );
   mCrsSelector->setCrs( crs );
   mCrsSelector->setLayerCrs( crs );
   mCrsSelector->dialog()->setMessage( tr( "Select the coordinate reference system for the dxf file. "
@@ -173,16 +156,16 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   QScopedPointer<QgsVectorLayer> d( new QgsVectorLayer( QString( "%1|layername=drawing" ).arg( leDatabase->text() ), "layers", "ogr", false ) );
   if ( d && d->isValid() )
   {
-    int idxPath = d->fieldNameIndex( "path" );
-    int idxLastModified = d->fieldNameIndex( "lastmodified" );
-    int idxCrs = d->fieldNameIndex( "crs" );
+    int idxPath = d->fields().lookupField( "path" );
+    int idxLastModified = d->fields().lookupField( "lastmodified" );
+    int idxCrs = d->fields().lookupField( "crs" );
 
     QgsFeature f;
     if ( d->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( QgsAttributeList() << idxPath << idxLastModified << idxCrs ) ).nextFeature( f ) )
     {
       leDrawing->setText( f.attribute( idxPath ).toString() );
 
-      QgsCoordinateReferenceSystem crs = QgsCRSCache::instance()->crsBySrsId( f.attribute( idxCrs ).toInt() );
+      QgsCoordinateReferenceSystem crs( f.attribute( idxCrs ).toInt(), QgsCoordinateReferenceSystem::InternalCrsId );
       mCrsSelector->setCrs( crs );
       mCrsSelector->setLayerCrs( crs );
 
@@ -208,9 +191,9 @@ void QgsDwgImportDialog::on_pbLoadDatabase_clicked()
   QScopedPointer<QgsVectorLayer> l( new QgsVectorLayer( QString( "%1|layername=layers" ).arg( leDatabase->text() ), "layers", "ogr", false ) );
   if ( l && l->isValid() )
   {
-    int idxName = l->fieldNameIndex( "name" );
-    int idxColor = l->fieldNameIndex( "ocolor" );
-    int idxFlags = l->fieldNameIndex( "flags" );
+    int idxName = l->fields().lookupField( "name" );
+    int idxColor = l->fields().lookupField( "ocolor" );
+    int idxFlags = l->fields().lookupField( "flags" );
 
     QgsDebugMsg( QString( "idxName:%1 idxColor:%2 idxFlags:%3" ).arg( idxName ).arg( idxColor ).arg( idxFlags ) );
 
@@ -290,7 +273,7 @@ QgsVectorLayer *QgsDwgImportDialog::layer( QgsLayerTreeGroup *layerGroup, QStrin
     return nullptr;
   }
 
-  QgsMapLayerRegistry::instance()->addMapLayer( l, false );
+  QgsProject::instance()->addMapLayer( l, false );
   layerGroup->addLayer( l );
   return l;
 }
@@ -313,63 +296,65 @@ void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QS
   }
 
   QgsVectorLayer *l;
-  QgsSymbolV2 *sym;
+  QgsSymbol *sym;
 
   l = layer( layerGroup, layerFilter, "hatches" );
   if ( l )
   {
-    QgsSimpleFillSymbolLayerV2 *sfl = new QgsSimpleFillSymbolLayerV2();
+    QgsSimpleFillSymbolLayer *sfl = new QgsSimpleFillSymbolLayer();
     sfl->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
     sfl->setBorderStyle( Qt::NoPen );
-    sym = new QgsFillSymbolV2();
+    sym = new QgsFillSymbol();
     sym->changeSymbolLayer( 0, sfl );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+    l->setRenderer( new QgsSingleSymbolRenderer( sym ) );
   }
 
   l = layer( layerGroup, layerFilter, "lines" );
   if ( l )
   {
-    QgsSimpleLineSymbolLayerV2 *sll = new QgsSimpleLineSymbolLayerV2();
+    QgsSimpleLineSymbolLayer *sll = new QgsSimpleLineSymbolLayer();
     sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
     sll->setPenJoinStyle( Qt::MiterJoin );
     sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "linewidth" ) );
     // sll->setUseCustomDashPattern( true );
     // sll->setCustomDashPatternUnit( QgsSymbolV2::MapUnit );
     // sll->setDataDefinedProperty( "customdash", new QgsDataDefined( true, false, "", "linetype" ) );
-    sym = new QgsLineSymbolV2();
+    sym = new QgsLineSymbol();
     sym->changeSymbolLayer( 0, sll );
-    sym->setOutputUnit( QgsSymbolV2::MM );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+    sym->setOutputUnit( QgsUnitTypes::RenderMillimeters );
+    l->setRenderer( new QgsSingleSymbolRenderer( sym ) );
   }
 
   l = layer( layerGroup, layerFilter, "polylines" );
   if ( l )
   {
-    QgsSimpleLineSymbolLayerV2 *sll = new QgsSimpleLineSymbolLayerV2();
+    QgsSimpleLineSymbolLayer *sll = new QgsSimpleLineSymbolLayer();
     sll->setDataDefinedProperty( "color", new QgsDataDefined( true, false, "", "color" ) );
     sll->setPenJoinStyle( Qt::MiterJoin );
     sll->setDataDefinedProperty( "width", new QgsDataDefined( true, false, "", "width" ) );
     // sll->setUseCustomDashPattern( true );
     // sll->setCustomDashPatternUnit( QgsSymbolV2::MapUnit );
     // sll->setDataDefinedProperty( "customdash", new QgsDataDefined( true, false, "", "linetype" ) );
-    sym = new QgsLineSymbolV2();
+    sym = new QgsLineSymbol();
     sym->changeSymbolLayer( 0, sll );
-    sym->setOutputUnit( QgsSymbolV2::MapUnit );
-    l->setRendererV2( new QgsSingleSymbolRendererV2( sym ) );
+    sym->setOutputUnit( QgsUnitTypes::RenderMapUnits );
+    l->setRenderer( new QgsSingleSymbolRenderer( sym ) );
   }
 
   l = layer( layerGroup, layerFilter, "texts" );
   if ( l )
   {
-    l->setRendererV2( new QgsNullSymbolRenderer() );
+    l->setRenderer( new QgsNullSymbolRenderer() );
+
+    QgsTextFormat tf;
+    tf.setSizeUnit( QgsUnitTypes::RenderMapUnits );
 
     QgsPalLayerSettings pls;
-    pls.readFromLayer( l );
+    pls.setFormat( tf );
 
     pls.enabled = true;
     pls.drawLabels = true;
     pls.fieldName = "text";
-    pls.fontSizeInMapUnits = true;
     pls.wrapChar = "\\P";
     pls.setDataDefinedProperty( QgsPalLayerSettings::Size, true, false, "", "height" );
     pls.setDataDefinedProperty( QgsPalLayerSettings::Color, true, false, "", "color" );
@@ -421,7 +406,7 @@ void QgsDwgImportDialog::createGroup( QgsLayerTreeGroup *group, QString name, QS
   if ( l )
   {
     // FIXME: use PDMODE?
-    l->setRendererV2( new QgsNullSymbolRenderer() );
+    l->setRenderer( new QgsNullSymbolRenderer() );
   }
 
   if ( !cbExpandInserts->isChecked() )

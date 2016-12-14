@@ -23,11 +23,11 @@
 #include "libdxfrw.h"
 #include "qgis.h"
 #include "qgspointv2.h"
-#include "qgslinestringv2.h"
-#include "qgscircularstringv2.h"
-#include "qgscurvepolygonv2.h"
-#include "qgscompoundcurvev2.h"
-#include "qgspolygonv2.h"
+#include "qgslinestring.h"
+#include "qgscircularstring.h"
+#include "qgscurvepolygon.h"
+#include "qgscompoundcurve.h"
+#include "qgspolygon.h"
 #include "qgsgeometry.h"
 #include "qgsogrutils.h"
 
@@ -599,7 +599,7 @@ bool QgsDwgImporter::import( const QString &drawing, QString &error, bool doExpa
   if ( fi.suffix().toLower() == "dxf" )
   {
     //loads dxf
-    QSharedPointer<dxfRW> dxf( new dxfRW( drawing.toUtf8() ) );
+    QScopedPointer<dxfRW> dxf( new dxfRW( drawing.toUtf8() ) );
     if ( !dxf->read( this, false ) )
     {
       result = DRW::BAD_UNKNOWN;
@@ -608,7 +608,7 @@ bool QgsDwgImporter::import( const QString &drawing, QString &error, bool doExpa
   else if ( fi.suffix().toLower() == "dwg" )
   {
     //loads dwg
-    QSharedPointer<dwgR> dwg( new dwgR( drawing.toUtf8() ) );
+    QScopedPointer<dwgR> dwg( new dwgR( drawing.toUtf8() ) );
     if ( !dwg->read( this, false ) )
     {
       result = dwg->getError();
@@ -1167,11 +1167,10 @@ void QgsDwgImporter::addBlock( const DRW_Block &data )
   SETSTRING( name );
   SETINTEGER( flags );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QgsPointV2 p( QgsWkbTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -1236,11 +1235,10 @@ void QgsDwgImporter::addPoint( const DRW_Point &data )
 
   setPoint( dfn, f, "ext", data.extPoint );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QgsPointV2 p( QgsWkbTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -1292,17 +1290,16 @@ void QgsDwgImporter::addArc( const DRW_Arc &data )
   QgsDebugMsgLevel( QString( "arc handle=0x%1 radius=%2 staangle=%3 endangle=%4 isccw=%5 half=%6" )
                     .arg( data.handle, 0, 16 ).arg( data.mRadius ).arg( data.staangle ).arg( data.endangle ).arg( data.isccw ).arg( half ), 5 );
 
-  QgsCircularStringV2 c;
-  c.setPoints( QgsPointSequenceV2()
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a0 ) * data.mRadius, data.basePoint.y + sin( a0 ) * data.mRadius )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a1 ) * data.mRadius, data.basePoint.y + sin( a1 ) * data.mRadius )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + cos( a2 ) * data.mRadius, data.basePoint.y + sin( a2 ) * data.mRadius )
+  QgsCircularString c;
+  c.setPoints( QgsPointSequence()
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x + cos( a0 ) * data.mRadius, data.basePoint.y + sin( a0 ) * data.mRadius )
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x + cos( a1 ) * data.mRadius, data.basePoint.y + sin( a1 ) * data.mRadius )
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x + cos( a2 ) * data.mRadius, data.basePoint.y + sin( a2 ) * data.mRadius )
              );
 
-  int binarySize;
-  unsigned char *wkb = c.asWkb( binarySize );
+  QByteArray wkb = c.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -1331,17 +1328,16 @@ void QgsDwgImporter::addCircle( const DRW_Circle &data )
 
   setPoint( dfn, f, "ext", data.extPoint );
 
-  QgsCircularStringV2 c;
-  c.setPoints( QgsPointSequenceV2()
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x + data.mRadius, data.basePoint.y, data.basePoint.z )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
+  QgsCircularString c;
+  c.setPoints( QgsPointSequence()
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x + data.mRadius, data.basePoint.y, data.basePoint.z )
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x - data.mRadius, data.basePoint.y, data.basePoint.z )
              );
 
-  int binarySize;
-  unsigned char *wkb = c.asWkb( binarySize );
+  QByteArray wkb = c.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -1362,7 +1358,7 @@ void QgsDwgImporter::addEllipse( const DRW_Ellipse &data )
   addPolyline( pol );
 }
 
-bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoundCurveV2 &cc )
+bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoundCurve &cc )
 {
   int vertexnum = data.vertlist.size();
   if ( vertexnum == 0 )
@@ -1371,7 +1367,7 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
     return false;
   }
 
-  QgsPointSequenceV2 s;
+  QgsPointSequence s;
   bool hadBulge( data.vertlist[0]->bulge != 0.0 );
   std::vector<DRW_Vertex2D *>::size_type n = data.flags & 1 ? vertexnum + 1 : vertexnum;
   for ( std::vector<DRW_Vertex2D *>::size_type i = 0; i < n; i++ )
@@ -1381,7 +1377,7 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
     Q_ASSERT( data.vertlist[i0] != nullptr );
     QgsDebugMsgLevel( QString( "%1: %2,%3 bulge:%4" ).arg( i ).arg( data.vertlist[i0]->x ).arg( data.vertlist[i0]->y ).arg( data.vertlist[i0]->bulge ), 5 );
 
-    QgsPointV2 p( QgsWKBTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
+    QgsPointV2 p( QgsWkbTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
     s << p;
 
     bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
@@ -1390,13 +1386,13 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
     {
       if ( hadBulge )
       {
-        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        QgsCircularString *c = new QgsCircularString();
         c->setPoints( s );
         cc.addCurve( c );
       }
       else
       {
-        QgsLineStringV2 *c = new QgsLineStringV2();
+        QgsLineString *c = new QgsLineString();
         c->setPoints( s );
         cc.addCurve( c );
       }
@@ -1417,7 +1413,7 @@ bool QgsDwgImporter::curveFromLWPolyline( const DRW_LWPolyline &data, QgsCompoun
       double r = c / 2.0 / sin( a );
       double h = r * ( 1 - cos( a ) );
 
-      s << QgsPointV2( QgsWKBTypes::PointZ,
+      s << QgsPointV2( QgsWkbTypes::PointZ,
                        data.vertlist[i0]->x + 0.5 * dx + h * dy / c,
                        data.vertlist[i0]->y + 0.5 * dy - h * dx / c,
                        data.elevation );
@@ -1437,8 +1433,8 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
     return;
   }
 
-  QgsPointSequenceV2 s;
-  QgsCompoundCurveV2 cc;
+  QgsPointSequence s;
+  QgsCompoundCurve cc;
   double width;
   bool hadBulge( false );
 
@@ -1448,8 +1444,8 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
     int i0 = i % vertexnum;
     int i1 = ( i + 1 ) % vertexnum;
 
-    QgsPointV2 p0( QgsWKBTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
-    QgsPointV2 p1( QgsWKBTypes::PointZ, data.vertlist[i1]->x, data.vertlist[i1]->y, data.elevation );
+    QgsPointV2 p0( QgsWkbTypes::PointZ, data.vertlist[i0]->x, data.vertlist[i0]->y, data.elevation );
+    QgsPointV2 p1( QgsWkbTypes::PointZ, data.vertlist[i1]->x, data.vertlist[i1]->y, data.elevation );
     double staWidth = data.vertlist[i0]->stawidth == 0.0 ? data.width : data.vertlist[i0]->stawidth;
     double endWidth = data.vertlist[i0]->endwidth == 0.0 ? data.width : data.vertlist[i0]->endwidth;
     bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
@@ -1466,14 +1462,14 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
     {
       if ( hadBulge )
       {
-        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        QgsCircularString *c = new QgsCircularString();
         c->setPoints( s );
         // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
       else
       {
-        QgsLineStringV2 *c = new QgsLineStringV2();
+        QgsLineString *c = new QgsLineString();
         c->setPoints( s );
         // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
@@ -1500,11 +1496,10 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
         // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
-        int binarySize;
-        unsigned char *wkb = cc.asWkb( binarySize );
+        QByteArray wkb = cc.asWkb();
 
         OGRGeometryH geom;
-        if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+        if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
         {
           LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
         }
@@ -1537,7 +1532,7 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
         double r = c / 2.0 / sin( a );
         double h = r * ( 1 - cos( a ) );
 
-        s << QgsPointV2( QgsWKBTypes::PointZ,
+        s << QgsPointV2( QgsWkbTypes::PointZ,
                          p0.x() + 0.5 * dx + h * dy / c,
                          p0.y() + 0.5 * dy - h * dx / c,
                          data.elevation );
@@ -1567,8 +1562,8 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
       QgsVector ve( v * 0.5 * endWidth );
 
       QgsPolygonV2 poly;
-      QgsLineStringV2 *ls = new QgsLineStringV2();
-      ls->setPoints( QgsPointSequenceV2()
+      QgsLineString *ls = new QgsLineString();
+      ls->setPoints( QgsPointSequence()
                      << QgsPointV2( ps + vs )
                      << QgsPointV2( pe + ve )
                      << QgsPointV2( pe - ve )
@@ -1579,10 +1574,9 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
       poly.setExteriorRing( ls );
       // QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
 
-      int binarySize;
-      unsigned char *wkb = poly.asWkb( binarySize );
+      QByteArray wkb = poly.asWkb();
       OGRGeometryH geom;
-      if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+      if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
       {
         LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
       }
@@ -1600,14 +1594,14 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
   {
     if ( hadBulge )
     {
-      QgsCircularStringV2 *c = new QgsCircularStringV2();
+      QgsCircularString *c = new QgsCircularString();
       c->setPoints( s );
       // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
     }
     else
     {
-      QgsLineStringV2 *c = new QgsLineStringV2();
+      QgsLineString *c = new QgsLineString();
       c->setPoints( s );
       // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
@@ -1633,11 +1627,10 @@ void QgsDwgImporter::addLWPolyline( const DRW_LWPolyline &data )
 
     // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
-    int binarySize;
-    unsigned char *wkb = cc.asWkb( binarySize );
+    QByteArray wkb = cc.asWkb();
 
     OGRGeometryH geom;
-    if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+    if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
     {
       LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
     }
@@ -1659,8 +1652,8 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     return;
   }
 
-  QgsPointSequenceV2 s;
-  QgsCompoundCurveV2 cc;
+  QgsPointSequence s;
+  QgsCompoundCurve cc;
   double width;
   bool hadBulge( false );
 
@@ -1670,8 +1663,8 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     int i0 = i % vertexnum;
     int i1 = ( i + 1 ) % vertexnum;
 
-    QgsPointV2 p0( QgsWKBTypes::PointZ, data.vertlist[i0]->basePoint.x, data.vertlist[i0]->basePoint.y, data.vertlist[i0]->basePoint.z );
-    QgsPointV2 p1( QgsWKBTypes::PointZ, data.vertlist[i1]->basePoint.x, data.vertlist[i1]->basePoint.y, data.vertlist[i1]->basePoint.z );
+    QgsPointV2 p0( QgsWkbTypes::PointZ, data.vertlist[i0]->basePoint.x, data.vertlist[i0]->basePoint.y, data.vertlist[i0]->basePoint.z );
+    QgsPointV2 p1( QgsWkbTypes::PointZ, data.vertlist[i1]->basePoint.x, data.vertlist[i1]->basePoint.y, data.vertlist[i1]->basePoint.z );
     double staWidth = data.vertlist[i0]->endwidth == 0.0 ? data.defendwidth : data.vertlist[i0]->stawidth;
     double endWidth = data.vertlist[i0]->stawidth == 0.0 ? data.defstawidth : data.vertlist[i0]->endwidth;
     bool hasBulge( data.vertlist[i0]->bulge != 0.0 );
@@ -1688,14 +1681,14 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
     {
       if ( hadBulge )
       {
-        QgsCircularStringV2 *c = new QgsCircularStringV2();
+        QgsCircularString *c = new QgsCircularString();
         c->setPoints( s );
         // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
       }
       else
       {
-        QgsLineStringV2 *c = new QgsLineStringV2();
+        QgsLineString *c = new QgsLineString();
         c->setPoints( s );
         // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
         cc.addCurve( c );
@@ -1722,11 +1715,10 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
         // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
-        int binarySize;
-        unsigned char *wkb = cc.asWkb( binarySize );
+        QByteArray wkb = cc.asWkb();
 
         OGRGeometryH geom;
-        if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+        if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
         {
           LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
         }
@@ -1760,7 +1752,7 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
         double r = c / 2.0 / sin( a );
         double h = r * ( 1 - cos( a ) );
 
-        s << QgsPointV2( QgsWKBTypes::PointZ,
+        s << QgsPointV2( QgsWkbTypes::PointZ,
                          p0.x() + 0.5 * dx + h * dy / c,
                          p0.y() + 0.5 * dy - h * dx / c,
                          p0.z() + 0.5 * dz );
@@ -1790,8 +1782,8 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
       QgsVector ve( v * 0.5 * endWidth );
 
       QgsPolygonV2 poly;
-      QgsLineStringV2 *ls = new QgsLineStringV2();
-      QgsPointSequenceV2 s;
+      QgsLineString *ls = new QgsLineString();
+      QgsPointSequence s;
       s << QgsPointV2( ps + vs );
       s.last().addZValue( p0.z() );
       s << QgsPointV2( pe + ve );
@@ -1806,10 +1798,9 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
       poly.setExteriorRing( ls );
       // QgsDebugMsg( QString( "write poly:%1" ).arg( poly.asWkt() ) );
 
-      int binarySize;
-      unsigned char *wkb = poly.asWkb( binarySize );
+      QByteArray wkb = poly.asWkb();
       OGRGeometryH geom;
-      if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+      if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
       {
         LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
       }
@@ -1827,14 +1818,14 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
   {
     if ( hadBulge )
     {
-      QgsCircularStringV2 *c = new QgsCircularStringV2();
+      QgsCircularString *c = new QgsCircularString();
       c->setPoints( s );
       // QgsDebugMsg( QString( "add circular string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
     }
     else
     {
-      QgsLineStringV2 *c = new QgsLineStringV2();
+      QgsLineString *c = new QgsLineString();
       c->setPoints( s );
       // QgsDebugMsg( QString( "add line string:%1" ).arg( c->asWkt() ) );
       cc.addCurve( c );
@@ -1860,11 +1851,10 @@ void QgsDwgImporter::addPolyline( const DRW_Polyline &data )
 
     // QgsDebugMsg( QString( "write curve:%1" ).arg( cc.asWkt() ) );
 
-    int binarySize;
-    unsigned char *wkb = cc.asWkb( binarySize );
+    QByteArray wkb = cc.asWkb();
 
     OGRGeometryH geom;
-    if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+    if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
     {
       LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
     }
@@ -2103,16 +2093,15 @@ void QgsDwgImporter::addSpline( const DRW_Spline *data )
 
   addEntity( dfn, f, *data );
 
-  QgsLineStringV2 l;
-  QgsPointSequenceV2 ps;
+  QgsLineString l;
+  QgsPointSequence ps;
   for ( size_t i = 0; i < p.size(); ++i )
     ps << QgsPointV2( p[i] );
   l.setPoints( ps );
 
-  int binarySize;
-  unsigned char *wkb = l.asWkb( binarySize );
+  QByteArray wkb = l.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -2157,11 +2146,10 @@ void QgsDwgImporter::addInsert( const DRW_Insert &data )
   SETDOUBLE( colspace );
   SETDOUBLE( rowspace );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QgsPointV2 p( QgsWkbTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
@@ -2206,21 +2194,20 @@ void QgsDwgImporter::addSolid( const DRW_Solid &data )
 
   // pt1 pt2
   // pt3 pt4
-  QgsPointSequenceV2 s;
-  s << QgsPointV2( QgsWKBTypes::PointZ,   data.basePoint.x,   data.basePoint.y, data.basePoint.z );
-  s << QgsPointV2( QgsWKBTypes::PointZ,    data.secPoint.x,    data.secPoint.y, data.basePoint.z );
-  s << QgsPointV2( QgsWKBTypes::PointZ, data.fourthPoint.x, data.fourthPoint.y, data.basePoint.z );
-  s << QgsPointV2( QgsWKBTypes::PointZ,  data.thirdPoint.x,  data.thirdPoint.y, data.basePoint.z );
+  QgsPointSequence s;
+  s << QgsPointV2( QgsWkbTypes::PointZ,   data.basePoint.x,   data.basePoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWkbTypes::PointZ,    data.secPoint.x,    data.secPoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWkbTypes::PointZ, data.fourthPoint.x, data.fourthPoint.y, data.basePoint.z );
+  s << QgsPointV2( QgsWkbTypes::PointZ,  data.thirdPoint.x,  data.thirdPoint.y, data.basePoint.z );
   s << s[0];
 
-  QgsLineStringV2 *ls = new QgsLineStringV2();
+  QgsLineString *ls = new QgsLineString();
   ls->setPoints( s );
   poly.setExteriorRing( ls );
 
-  int binarySize;
-  unsigned char *wkb = poly.asWkb( binarySize );
+  QByteArray wkb = poly.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
   }
@@ -2258,12 +2245,11 @@ void QgsDwgImporter::addMText( const DRW_MText &data )
 
   setPoint( dfn, f, "ext", data.extPoint );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
+  QgsPointV2 p( QgsWkbTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z );
 
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -2302,12 +2288,11 @@ void QgsDwgImporter::addText( const DRW_Text &data )
 
   setPoint( dfn, f, "ext", data.extPoint );
 
-  QgsPointV2 p( QgsWKBTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z );
+  QgsPointV2 p( QgsWkbTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z );
 
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -2397,7 +2382,7 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
   SETDOUBLE( scale );
   SETINTEGER( deflines );
 
-  QgsCurvePolygonV2 p;
+  QgsCurvePolygon p;
 
   Q_ASSERT( data.looplist.size() == data.loopsnum );
 
@@ -2405,7 +2390,7 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
   {
     const DRW_HatchLoop &hatchLoop = *data.looplist[i];
 
-    QgsCompoundCurveV2 *cc = new QgsCompoundCurveV2();
+    QgsCompoundCurve *cc = new QgsCompoundCurve();
 
     for ( std::vector<DRW_Entity *>::size_type j = 0;  j < hatchLoop.objlist.size(); j++ )
     {
@@ -2420,10 +2405,10 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
       }
       else if ( l )
       {
-        QgsLineStringV2 *ls = new QgsLineStringV2();
-        ls->setPoints( QgsPointSequenceV2()
-                       << QgsPointV2( QgsWKBTypes::PointZ, l->basePoint.x, l->basePoint.y, l->basePoint.z )
-                       << QgsPointV2( QgsWKBTypes::PointZ, l->secPoint.x, l->secPoint.y, l->secPoint.z ) );
+        QgsLineString *ls = new QgsLineString();
+        ls->setPoints( QgsPointSequence()
+                       << QgsPointV2( QgsWkbTypes::PointZ, l->basePoint.x, l->basePoint.y, l->basePoint.z )
+                       << QgsPointV2( QgsWkbTypes::PointZ, l->secPoint.x, l->secPoint.y, l->secPoint.z ) );
         // QgsDebugMsg( QString( "add linestring:%1" ).arg( ls->asWkt() ) );
         cc->addCurve( ls );
       }
@@ -2445,10 +2430,9 @@ void QgsDwgImporter::addHatch( const DRW_Hatch *pdata )
     }
   }
 
-  int binarySize;
-  unsigned char *wkb = p.asWkb( binarySize );
+  QByteArray wkb = p.asWkb();
   OGRGeometryH geom;
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -2477,16 +2461,15 @@ void QgsDwgImporter::addLine( const DRW_Line& data )
 
   setPoint( dfn, f, "ext", data.extPoint );
 
-  QgsLineStringV2 l;
+  QgsLineString l;
 
-  l.setPoints( QgsPointSequenceV2()
-               << QgsPointV2( QgsWKBTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z )
-               << QgsPointV2( QgsWKBTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z ) );
+  l.setPoints( QgsPointSequence()
+               << QgsPointV2( QgsWkbTypes::PointZ, data.basePoint.x, data.basePoint.y, data.basePoint.z )
+               << QgsPointV2( QgsWkbTypes::PointZ, data.secPoint.x, data.secPoint.y, data.secPoint.z ) );
 
   OGRGeometryH geom;
-  int binarySize;
-  unsigned char *wkb = l.asWkb( binarySize );
-  if ( OGR_G_CreateFromWkb( wkb, nullptr, &geom, binarySize ) != OGRERR_NONE )
+  QByteArray wkb = l.asWkb();
+  if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &geom, wkb.size() ) != OGRERR_NONE )
   {
     LOG( QObject::tr( "Could not create geometry [%1]" ).arg( QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
 
@@ -2609,6 +2592,7 @@ bool QgsDwgImporter::expandInserts( QString &error )
   }
 
   GIntBig n = OGR_L_GetFeatureCount( inserts, 0 );
+  Q_UNUSED( n );
 
   OGR_L_ResetReading( inserts );
 
@@ -2637,16 +2621,14 @@ bool QgsDwgImporter::expandInserts( QString &error )
       continue;
     }
 
-    QgsGeometry *g = QgsOgrUtils::ogrGeometryToQgsGeometry( ogrG );
-    if ( !g )
+    QgsGeometry g( QgsOgrUtils::ogrGeometryToQgsGeometry( ogrG ) );
+    if ( g.isEmpty() )
     {
       QgsDebugMsg( QString( "%1: could not copy geometry" ).arg( OGR_F_GetFID( insert ) ) );
       continue;
     }
 
-    QgsPoint p( g->asPoint() );
-
-    delete g;
+    QgsPoint p( g.asPoint() );
 
     QString name = QString::fromUtf8( OGR_F_GetFieldAsString( insert, nameIdx ) );
     double xscale = OGR_F_GetFieldAsDouble( insert, xscaleIdx );
@@ -2721,6 +2703,7 @@ bool QgsDwgImporter::expandInserts( QString &error )
           break;
 
         GIntBig fid = OGR_F_GetFID( f );
+        Q_UNUSED( fid );
 
         ogrG = OGR_F_GetGeometryRef( f );
         if ( !ogrG )
@@ -2729,41 +2712,29 @@ bool QgsDwgImporter::expandInserts( QString &error )
           continue;
         }
 
-        QgsGeometry *g = QgsOgrUtils::ogrGeometryToQgsGeometry( ogrG );
-        if ( !g )
+        QgsGeometry g( QgsOgrUtils::ogrGeometryToQgsGeometry( ogrG ) );
+        if ( g.isEmpty() )
         {
           QgsDebugMsg( QString( "%1: could not copy geometry" ).arg( fid ) );
           continue;
         }
 
-        if ( g->transform( t ) != 0 )
+        if ( g.transform( t ) != 0 )
         {
           QgsDebugMsg( QString( "%1/%2: could not transform geometry" ).arg( name ).arg( fid ) );
           continue;
         }
 
-        const unsigned char *wkb = g->asWkb();
-        if ( !wkb )
-        {
-          QgsDebugMsg( QString( "%1/%2: could not create wkb" ).arg( name ).arg( fid ) );
-          delete g;
-          continue;
-        }
-
-        if ( OGR_G_CreateFromWkb( const_cast<unsigned char *>( wkb ), nullptr, &ogrG, g->wkbSize() ) != OGRERR_NONE )
+        QByteArray wkb = g.geometry()->asWkb();
+        if ( OGR_G_CreateFromWkb(( unsigned char * ) wkb.constData(), nullptr, &ogrG, wkb.size() ) != OGRERR_NONE )
         {
           QgsDebugMsg( QString( "%1/%2: could not create ogr geometry" ).arg( name ).arg( fid ) );
-          delete g;
           continue;
         }
-
-        delete g;
-        g = nullptr;
 
         if ( OGR_F_SetGeometryDirectly( f, ogrG ) != OGRERR_NONE )
         {
           QgsDebugMsg( QString( "%1/%2: could not assign geometry" ).arg( name ).arg( fid ) );
-          delete g;
           continue;
         }
 

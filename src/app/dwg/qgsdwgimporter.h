@@ -20,9 +20,9 @@
 #include <QString>
 #include <ogr_api.h>
 
-#include <qgsabstractgeometryv2.h>
+#include <qgsabstractgeometry.h>
 
-class QgsCompoundCurveV2;
+class QgsCompoundCurve;
 class QgsQgsCoordinateReferenceSystem;
 
 class QgsDwgImporter : public DRW_Interface
@@ -33,125 +33,125 @@ class QgsDwgImporter : public DRW_Interface
 
     bool import( const QString &drawing, QString &error, bool expandInserts );
 
-    /** Called when header is parsed.  */
+    //! Called when header is parsed.
     void addHeader( const DRW_Header* data ) override;
 
-    /** Called for every line Type.  */
+    //! Called for every line Type.
     void addLType( const DRW_LType& data ) override;
 
-    /** Called for every layer. */
+    //! Called for every layer.
     void addLayer( const DRW_Layer& data ) override;
 
-    /** Called for every dim style. */
+    //! Called for every dim style.
     void addDimStyle( const DRW_Dimstyle& data ) override;
 
-    /** Called for every VPORT table. */
+    //! Called for every VPORT table.
     void addVport( const DRW_Vport& data ) override;
 
-    /** Called for every text style. */
+    //! Called for every text style.
     void addTextStyle( const DRW_Textstyle& data ) override;
 
-    /** Called for every AppId entry. */
+    //! Called for every AppId entry.
     void addAppId( const DRW_AppId& data ) override;
 
     void addBlock( const DRW_Block& data ) override;
 
     void setBlock( const int handle ) override;
 
-    /** Called to end the current block */
+    //! Called to end the current block
     void endBlock() override;
 
-    /** Called for every point */
+    //! Called for every point
     void addPoint( const DRW_Point& data ) override;
 
-    /** Called for every line */
+    //! Called for every line
     void addLine( const DRW_Line& data ) override;
 
-    /** Called for every ray */
+    //! Called for every ray
     void addRay( const DRW_Ray& data ) override;
 
-    /** Called for every xline */
+    //! Called for every xline
     void addXline( const DRW_Xline& data ) override;
 
-    /** Called for every arc */
+    //! Called for every arc
     void addArc( const DRW_Arc& data ) override;
 
-    /** Called for every circle */
+    //! Called for every circle
     void addCircle( const DRW_Circle& data ) override;
 
-    /** Called for every ellipse */
+    //! Called for every ellipse
     void addEllipse( const DRW_Ellipse& data ) override;
 
-    /** Called for every lwpolyline */
+    //! Called for every lwpolyline
     void addLWPolyline( const DRW_LWPolyline& data ) override;
 
-    /** Called for every polyline start */
+    //! Called for every polyline start
     void addPolyline( const DRW_Polyline& data ) override;
 
-    /** Called for every spline */
+    //! Called for every spline
     void addSpline( const DRW_Spline* data ) override;
 
-    /** Called for every spline knot value */
+    //! Called for every spline knot value
     void addKnot( const DRW_Entity& data ) override;
 
-    /** Called for every insert. */
+    //! Called for every insert.
     void addInsert( const DRW_Insert& data ) override;
 
-    /** Called for every trace start */
+    //! Called for every trace start
     void addTrace( const DRW_Trace& data ) override;
 
-    /** Called for every 3dface start */
+    //! Called for every 3dface start
     void add3dFace( const DRW_3Dface& data ) override;
 
-    /** Called for every solid start */
+    //! Called for every solid start
     void addSolid( const DRW_Solid& data ) override;
 
-    /** Called for every Multi Text entity. */
+    //! Called for every Multi Text entity.
     void addMText( const DRW_MText& data ) override;
 
-    /** Called for every Text entity. */
+    //! Called for every Text entity.
     void addText( const DRW_Text& data ) override;
 
-    /** Called for every dimension entity. */
+    //! Called for every dimension entity.
     void addDim( const DRW_Dimension *data );
 
-    /** Called for every aligned dimension entity. */
+    //! Called for every aligned dimension entity.
     void addDimAlign( const DRW_DimAligned *data ) override;
 
-    /** Called for every linear or rotated dimension entity. */
+    //! Called for every linear or rotated dimension entity.
     void addDimLinear( const DRW_DimLinear *data ) override;
 
-    /** Called for every radial dimension entity. */
+    //! Called for every radial dimension entity.
     void addDimRadial( const DRW_DimRadial *data ) override;
 
-    /** Called for every diametric dimension entity. */
+    //! Called for every diametric dimension entity.
     void addDimDiametric( const DRW_DimDiametric *data ) override;
 
-    /** Called for every angular dimension (2 lines version) entity. */
+    //! Called for every angular dimension (2 lines version) entity.
     void addDimAngular( const DRW_DimAngular *data ) override;
 
-    /** Called for every angular dimension (3 points version) entity. */
+    //! Called for every angular dimension (3 points version) entity.
     void addDimAngular3P( const DRW_DimAngular3p *data ) override;
 
-    /** Called for every ordinate dimension entity. */
+    //! Called for every ordinate dimension entity.
     void addDimOrdinate( const DRW_DimOrdinate *data ) override;
 
-    /** Called for every leader start. */
+    //! Called for every leader start.
     void addLeader( const DRW_Leader *data ) override;
 
-    /** Called for every hatch entity. */
+    //! Called for every hatch entity.
     void addHatch( const DRW_Hatch *data ) override;
 
-    /** Called for every viewport entity. */
+    //! Called for every viewport entity.
     void addViewport( const DRW_Viewport& data ) override;
 
-    /** Called for every image entity. */
+    //! Called for every image entity.
     void addImage( const DRW_Image *data ) override;
 
-    /** Called for every image definition. */
+    //! Called for every image definition.
     void linkImage( const DRW_ImageDef *data ) override;
 
-    /** Called for every comment in the DXF file (code 999). */
+    //! Called for every comment in the DXF file (code 999).
     void addComment( const char* comment ) override;
 
     void writeHeader( DRW_Header& data ) override;
@@ -180,7 +180,7 @@ class QgsDwgImporter : public DRW_Interface
     void setInteger( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, int value ) const;
     void setPoint( OGRFeatureDefnH dfn, OGRFeatureH f, QString field, const DRW_Coord &value ) const;
 
-    bool curveFromLWPolyline( const DRW_LWPolyline& data, QgsCompoundCurveV2 &cc );
+    bool curveFromLWPolyline( const DRW_LWPolyline& data, QgsCompoundCurve &cc );
 
     bool expandInserts( QString &error );
 
