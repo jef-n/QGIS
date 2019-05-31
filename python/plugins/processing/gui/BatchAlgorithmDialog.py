@@ -28,24 +28,23 @@ __revision__ = '$Format:%H$'
 from pprint import pformat
 import time
 
-from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.PyQt.QtCore import Qt, QCoreApplication
 
-from qgis.core import (QgsProcessingParameterDefinition,
-                       QgsProcessingParameterRasterDestination,
-                       QgsProcessingParameterVectorDestination,
-                       QgsProcessingParameterFeatureSink,
-                       QgsProcessingOutputLayerDefinition,
-                       QgsProcessingOutputHtml,
+from qgis.core import (QgsProcessingOutputHtml,
                        QgsProcessingOutputNumber,
                        QgsProcessingOutputString,
                        QgsProject,
+                       QgsProcessingParameterDefinition,
                        QgsProcessingMultiStepFeedback,
-                       Qgis,
-                       QgsScopedProxyProgressTask)
+                       QgsScopedProxyProgressTask,
+                       QgsProcessingOutputLayerDefinition,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFeatureSink,
+                       Qgis)
 
 from qgis.gui import QgsProcessingAlgorithmDialogBase
-from qgis.utils import OverrideCursor, iface
+from qgis.utils import OverrideCursor
 
 from processing.gui.BatchPanel import BatchPanel
 from processing.gui.AlgorithmExecutor import execute
@@ -130,7 +129,7 @@ class BatchAlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             try:
                 self.showLog()
                 self.repaint()
-            except:
+            except Exception:  # FIXME which one?
                 pass
 
             start_time = time.time()
