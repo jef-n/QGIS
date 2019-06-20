@@ -119,6 +119,20 @@ typedef SInt32 SRefCon;
 void version( )
 {
   const QString msg = QStringLiteral( "QGIS %1 '%2' (%3)\n" ).arg( VERSION ).arg( RELEASE_NAME ).arg( QGSVERSION );
+
+#ifdef Q_OS_WIN
+  if ( !AttachConsole( ATTACH_PARENT_PROCESS ) && !AllocConsole() )
+  {
+    MessageBox( nullptr,
+                msg.toLocal8Bit().constData(),
+                "QGIS version",
+                MB_OK );
+    return;
+  }
+
+  freopen( "CONOUT$", "w", stdout );
+#endif
+
   std::cout << msg.toStdString();
 }
 
