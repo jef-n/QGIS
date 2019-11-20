@@ -19,14 +19,16 @@ if not "%ARCH%"=="x86" if not "%ARCH%"=="x86_64" (
 	goto usage
 )
 
-if "%OSGEO4W_ROOT%"=="" (
-	if "%ARCH%"=="x86" (
-		set OSGEO4W_ROOT=C:\OSGeo4W
-		set VCARCH=x86
-	) else (
-		set OSGEO4W_ROOT=C:\OSGeo4W64
-		set VCARCH=amd64
-	)
+if "%ARCH%"=="x86" (
+	set VCARCH=x86
+) else (
+	set VCARCH=amd64
+)
+
+if "%OSGEO4W_ROOT%"=="" if "%ARCH%"=="x86" (
+	set OSGEO4W_ROOT=C:\OSGeo4W
+) else (
+	set OSGEO4W_ROOT=C:\OSGeo4W64
 )
 
 if not exist "%OSGEO4W_ROOT%\bin\o4w_env.bat" (echo o4w_env.bat not found & goto error)

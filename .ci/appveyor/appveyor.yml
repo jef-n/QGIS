@@ -1,0 +1,67 @@
+version: "{build}"
+
+image:
+  - Visual Studio 2015
+
+environment:
+  matrix:
+  - platform: x64
+    OSGEO4W_ARCH: x86_64
+    OSGEO4W_ROOT: C:\OSGeo4W64
+    APPVEYOR_SAVE_CACHE_ON_ERROR: true
+  - platform: x86
+    OSGEO4W_ARCH: x86
+    OSGEO4W_ROOT: C:\OSGeo4W
+    APPVEYOR_SAVE_CACHE_ON_ERROR: true
+
+configuration: Debug
+clone_folder: c:\src\qgis
+shallow_clone: true
+
+cache:
+  - '%OSGEO4W_ROOT%'
+  - '%USERPROFILE%\clcache-%OSGEO4W_ARCH%'
+
+services: postgresql
+
+skip_commits:
+  message: /ci skip/
+
+install:
+  - SET PATH=c:\cygwin\bin;%PATH%
+  - tasklist
+  - ps: $TimeoutProcess = Start-Process c:\cygwin\bin\bash "echo Sleeping; /bin/sleep 15m; echo Killing; taskkill /im ninja.exe /f; taskkill /im ctest.exe /f"
+  - tasklist
+  - c:\cygwin\setup-x86.exe -qnNdO -R C:/cygwin -s http://cygwin.mirror.constant.com -l C:/temp/cygwin -P flex -P poppler -P doxygen
+  - ps: cd ms-windows\osgeo4w
+  - appveyor DownloadFile https://download.osgeo.org/osgeo4w/osgeo4w-setup-%OSGEO4W_ARCH%.exe -FileName osgeo4w-setup.exe
+  - osgeo4w-setup.exe --advanced --arch %OSGEO4W_ARCH% --quiet-mode --upgrade-also --root %OSGEO4W_ROOT% --only-site -s http://download.osgeo.org/osgeo4w --autoaccept -P qgis-dev-deps -P python3-clcache
+  - appveyor DownloadFile https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-win.zip -FileName ninja.zip
+  - 7z x -y ninja.zip -o%OSGEO4W_ROOT%\bin
+  - appveyor DownloadFile http://www.dependencywalker.com/depends22_%platform%.zip -FileName depends.zip
+  - 7z x -y depends.zip -o%OSGEO4W_ROOT%\bin depends.exe
+  - cmake --version
+  - ctest --version
+  - SET PATH=%OSGEO4W_ROOT%\bin;c:\cygwin\bin;%PATH%
+  - SET CLCACHE_DIR=%USERPROFILE%\clcache-%OSGEO4W_ARCH%
+  - ninja --version
+
+on_finish:
+  - ps: Stop-Process -Id $TimeoutProcess.Id
+
+build_script:
+  - sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MAJOR "\([0-9]*\)")$/set major=\1/p' ..\..\CMakeLists.txt >version.cmd
+  - sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MINOR "\([0-9]*\)")$/set minor=\1/p' ..\..\CMakeLists.txt >>version.cmd
+  - sed -ne 's/^SET(CPACK_PACKAGE_VERSION_PATCH "\([0-9]*\)")$/set patch=\1/p' ..\..\CMakeLists.txt >>version.cmd
+  - cmd: call version.cmd
+  - del version.cmd
+  - package-nightly.cmd %major%.%minor%.%patch% %APPVEYOR_BUILD_NUMBER% qgis-dev %OSGEO4W_ARCH% %APPVEYOR_REPO_COMMIT:~0,10% appveyor
+  - dir c:\src\qgis\ms-windows\osgeo4w\build-qgis-dev-%OSGEO4W_ARCH%\output\crssync.exe
+  - cmd: call %OSGEO4W_ROOT%\bin\o4w_env.bat
+  - cmd: call qt5_env.bat
+  - cmd: call py3_env.bat
+  - dir /s /b c:\src\qgis\ms-windows\osgeo4w\crssync.exe
+  - depends /c /f:1 /ot:crssync.log c:\src\qgis\ms-windows\osgeo4w\build-qgis-dev-%OSGEO4W_ARCH%\output\crssync.exe
+  - cmd: type crssync.log
+
+deploy: off

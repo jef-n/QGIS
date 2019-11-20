@@ -50,8 +50,6 @@ if not exist "%SETUPAPI_LIBRARY%" set SETUPAPI_LIBRARY=%PF86%\Windows Kits\8.0\L
 if not exist "%SETUPAPI_LIBRARY%" (echo SETUPAPI_LIBRARY not found & goto error)
 
 set CMAKE_OPT=^
-	-D CMAKE_CXX_FLAGS_RELWITHDEBINFO="/MD /ZI /MP /Od /D NDEBUG" ^
-	-D CMAKE_PDB_OUTPUT_DIRECTORY_RELWITHDEBINFO=%BUILDDIR%\apps\%PACKAGENAME%\pdb ^
 	-D SPATIALINDEX_LIBRARY=%O4W_ROOT%/lib/spatialindex-32.lib
 goto cmake
 
@@ -64,8 +62,6 @@ if not exist "%SETUPAPI_LIBRARY%" (echo SETUPAPI_LIBRARY not found & goto error)
 
 set CMAKE_OPT=^
 	-D SPATIALINDEX_LIBRARY=%O4W_ROOT%/lib/spatialindex-64.lib ^
-	-D CMAKE_CXX_FLAGS_RELWITHDEBINFO="/MD /Zi /MP /Od /D NDEBUG" ^
-	-D CMAKE_PDB_OUTPUT_DIRECTORY_RELWITHDEBINFO=%BUILDDIR%\apps\%PACKAGENAME%\pdb ^
 	-D SETUPAPI_LIBRARY="%SETUPAPI_LIBRARY%" ^
 	-D CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS=TRUE
 
@@ -133,10 +129,14 @@ if "%CMAKEGEN%"=="" set CMAKEGEN=Ninja
 
 for %%i in (%PYTHONHOME%) do set PYVER=%%~ni
 
+set CLCACHE_CL=%CMAKE_COMPILER_PATH%\cl.exe
+
 cmake -G "%CMAKEGEN%" ^
-	-D CMAKE_CXX_COMPILER="%CMAKE_COMPILER_PATH:\=/%/cl.exe" ^
-	-D CMAKE_C_COMPILER="%CMAKE_COMPILER_PATH:\=/%/cl.exe" ^
+	-D CMAKE_CXX_COMPILER="%O4W_ROOT%/bin/clcache.bat" ^
+	-D CMAKE_C_COMPILER="%O4W_ROOT%/bin/clcache.bat" ^
 	-D CMAKE_LINKER="%CMAKE_COMPILER_PATH:\=/%/link.exe" ^
+	-D CMAKE_CXX_FLAGS_RELWITHDEBINFO="/MD /Z7 /MP /Od /D NDEBUG" ^
+	-D CMAKE_PDB_OUTPUT_DIRECTORY_RELWITHDEBINFO=%BUILDDIR%\apps\%PACKAGENAME%\pdb ^
 	-D BUILDNAME="%PACKAGENAME%-%VERSION%%SHA%-Nightly-VC14-%ARCH%" ^
 	-D SITE="%SITE%" ^
 	-D PEDANTIC=TRUE ^
@@ -188,11 +188,10 @@ if errorlevel 1 (echo clean failed & goto error)
 if exist ..\skipbuild (echo skip build & goto skipbuild)
 echo ALL_BUILD: %DATE% %TIME%
 cmake --build %BUILDDIR% --target NightlyBuild --config %BUILDCONF%
-if errorlevel 1 cmake --build %BUILDDIR% --target NightlyBuild --config %BUILDCONF%
 if errorlevel 1 (
 	cmake --build %BUILDDIR% --target NightlySubmit --config %BUILDCONF%
 	if errorlevel 1 echo SUBMITTING BUILD ERRORS WAS NOT SUCCESSFUL.
-	echo build failed twice
+	echo build failed
 	goto error
 )
 
@@ -222,14 +221,14 @@ set QT_PLUGIN_PATH=%BUILDDIR%\output\plugins;%OSGEO4W_ROOT%\apps\qt5\plugins
 cmake --build %BUILDDIR% --target NightlyTest --config %BUILDCONF%
 if errorlevel 1 echo TESTS WERE NOT SUCCESSFUL.
 
-:skiptests
-
 set TEMP=%oldtemp%
 set TMP=%oldtmp%
 PATH %oldpath%
 
 cmake --build %BUILDDIR% --target NightlySubmit --config %BUILDCONF%
 if errorlevel 1 echo TEST SUBMISSION WAS NOT SUCCESSFUL.
+
+:skiptests
 
 if exist "%PKGDIR%" (
 	echo REMOVE: %DATE% %TIME%
