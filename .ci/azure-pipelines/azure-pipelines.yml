@@ -48,19 +48,58 @@ jobs:
       echo "LTR: ${LTR}"
       case "${BUILD_SOURCEBRANCHNAME}" in
       "${LTR}")
-        echo "##vso[task.setvariable variable=OSGEO4W_PKG]qgis-ltr-dev"
-        echo "##vso[task.setvariable variable=OSGEO4W_DEPS]qgis-ltr-dev-deps"
+        OSGEO4W_PKG=qgis-ltr-dev
+        OSGEO4W_DEPS=qgis-ltr-dev-deps
         ;;
       "${LR}")
-        echo "##vso[task.setvariable variable=OSGEO4W_PKG]qgis-rel-dev"
-        echo "##vso[task.setvariable variable=OSGEO4W_DEPS]qgis-rel-dev-deps"
+        OSGEO4W_PKG=qgis-rel-dev
+        OSGEO4W_DEPS=qgis-rel-dev-deps
         ;;
       *)
-        echo "##vso[task.setvariable variable=OSGEO4W_PKG]qgis-dev"
-        echo "##vso[task.setvariable variable=OSGEO4W_DEPS]qgis-dev-deps"
+        OSGEO4W_PKG=qgis-dev
+        OSGEO4W_DEPS=qgis-dev-deps
         ;;
       esac
-    displayName: 'Get package name from branch'
+
+      target=Experimental
+      major=$(sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MAJOR "\([0-9]*\)")\s*$/\1/p' CMakeLists.txt)
+      minor=$(sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MINOR "\([0-9]*\)")\s*$/\1/p' CMakeLists.txt)
+      patch=$(sed -ne 's/^SET(CPACK_PACKAGE_VERSION_PATCH "\([0-9]*\)")\s*$/\1/p' CMakeLists.txt)
+      binary=$(curl --location-trusted https://download.osgeo.org/osgeo4w/$OSGEO4W_ARCH/release/qgis/$OSGEO4W_PKG/LATEST.sha | sed -e "s/:.*$//")
+      (( binary++ )) || true
+
+      version=$major.$minor.$patch
+      sha="${BUILD_SOURCEVERSION:0:10}"
+
+      if [ "$BUILD_REASON" = "PullRequest" ]; then
+        buildname="PR $SYSTEM_PULLREQUEST_PULLREQUESTID / $BUILD_SOURCEBRANCHNAME ($BUILD_ID) ($sha) ($OSGEO4W_ARCH)"
+      else
+        buildname="$OSGEO4W_PKG-$version-$sha-$target-VC14-$OSGEO4W_ARCH"
+      fi
+
+      url=$buildname
+      url=${url//(/%28}
+      url=${url//)/%29}
+      url=${url// /+}
+      url="https://cdash.orfeo-toolbox.org/index.php?project=QGIS&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercombine=and&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$url&field2=site&compare2=61&value2=azure-pipelines"
+
+      echo "##vso[task.setvariable variable=TARGET]$target"
+      echo "##vso[task.setvariable variable=OSGEO4W_PKG]$OSGEO4W_PKG"
+      echo "##vso[task.setvariable variable=OSGEO4W_DEPS]$OSGEO4W_DEPS"
+      echo "##vso[task.setvariable variable=MAJOR]$major"
+      echo "##vso[task.setvariable variable=MINOR]$minor"
+      echo "##vso[task.setvariable variable=PATCH]$patch"
+      echo "##vso[task.setvariable variable=BINARY]$binary"
+      echo "##vso[task.setvariable variable=VERSION]$version"
+      echo "##vso[task.setvariable variable=BUILDNAME]$buildname"
+      echo "##vso[task.setvariable variable=DASHURL]$url"
+    displayName: 'Setup build variables'
+
+  - bash: echo "$DASHURL"
+    displayName: dash link
+
+  - bash: false
+    displayName: false
 
   - script: curl --output c:\setup-x86.exe https://cygwin.com/setup-x86.exe
     env:
@@ -148,12 +187,6 @@ jobs:
     env:
       OSGEO4W_ROOT: $(OSGEO4W_ROOT)
 
-  - script: curl --location-trusted --output c:\LATEST.sha https://download.osgeo.org/osgeo4w/$(OSGEO4W_ARCH)/release/qgis/$(OSGEO4W_PKG)/LATEST.sha
-    displayName: 'Download LATEST.sha'
-    env:
-      OSGEO4W_ARCH: $(OSGEO4W_ARCH)
-      OSGEO4W_PKG: $(OSGEO4W_PKG)
-
 # Too large…
 #  - task: Cache@2
 #    inputs:
@@ -170,26 +203,19 @@ jobs:
   - script: |
       echo on
       PATH c:\cygwin\bin;%OSGEO4W_ROOT%\bin;%PATH%
-      sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MAJOR "\([0-9]*\)")\s*$/set major=\1/p' CMakeLists.txt >version.cmd
-      sed -ne 's/^SET(CPACK_PACKAGE_VERSION_MINOR "\([0-9]*\)")\s*$/set minor=\1/p' CMakeLists.txt >>version.cmd
-      sed -ne 's/^SET(CPACK_PACKAGE_VERSION_PATCH "\([0-9]*\)")\s*$/set patch=\1/p' CMakeLists.txt >>version.cmd
-      sed -ne 's/^\([0-9]*\):.*$/set binary=\1/p' c:\latest.sha >>version.cmd
-      call version.cmd
-      del version.cmd
-      set /A binary=%binary%+1
       cd ms-windows\osgeo4w
       touch skippackage
       set OSGEO4W_CXXFLAGS=/MD /MP /Od /D NDEBUG
-      if "%BUILD_REASON%"=="PullRequest" set BUILDNAME=PR %SYSTEM_PULLREQUEST_PULLREQUESTID% / %BUILD_SOURCEBRANCHNAME% (%BUILD_ID%) (%REPO_COMMIT:~0,10%)
-      package-nightly.cmd %major%.%minor%.%patch% %binary% %OSGEO4W_PKG% %OSGEO4W_ARCH% %REPO_COMMIT:~0,10% azure-pipelines
+      package-nightly.cmd %VERSION% %BINARY% %OSGEO4W_PKG% %OSGEO4W_ARCH% %REPO_COMMIT:~0,10% azure-pipelines
     env:
       OSGEO4W_ROOT: $(OSGEO4W_ROOT)
       OSGEO4W_ARCH: $(OSGEO4W_ARCH)
       OSGEO4W_PKG: $(OSGEO4W_PKG)
       CTEST_CUSTOM_TESTS_IGNORE: $(CTEST_CUSTOM_TESTS_IGNORE)
-      REPO_COMMIT: $(Build.SourceVersion)
       CLCACHE_DIR: $(CLCACHE_DIR)
-      TARGET: Experimental
+      MAJOR: $(MAJOR)
+      BINARY: $(BINARY)
+      VERSION: $(VERSION)
       CC: $(CC)
       CXX: $(CXX)
     displayName: 'Building QGIS'
@@ -216,7 +242,7 @@ jobs:
     inputs:
       testResultsFormat: 'cTest'
       testResultsFiles: 'ms-windows/osgeo4w/build-$(OSGEO4W_PKG)-$(OSGEO4W_ARCH)/Testing/*/Test.xml'
-    displayName: 'Publishing tests'
+    displayName: 'Publishing tests (<a href="$(DASHURL)">cdash</a>)'
 
 #  - script: |
 #      PATH c:\cygwin\bin;%PATH%
