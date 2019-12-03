@@ -22,7 +22,6 @@ jobs:
   pool:
     vmImage: vs2015-win2012r2
   timeoutInMinutes: 360
-  continueOnError: true
   strategy:
     maxParallel: 4
     matrix:
@@ -181,12 +180,12 @@ jobs:
       cd ms-windows\osgeo4w
       touch skippackage
       set OSGEO4W_CXXFLAGS=/MD /MP /Od /D NDEBUG
+      if "%BUILD_REASON%"=="PullRequest" set BUILDNAME=PR %SYSTEM_PULLREQUEST_PULLREQUESTID% / %BUILD_SOURCEBRANCHNAME% (%BUILD_ID%) (%REPO_COMMIT:~0,10%)
       package-nightly.cmd %major%.%minor%.%patch% %binary% %OSGEO4W_PKG% %OSGEO4W_ARCH% %REPO_COMMIT:~0,10% azure-pipelines
     env:
       OSGEO4W_ROOT: $(OSGEO4W_ROOT)
       OSGEO4W_ARCH: $(OSGEO4W_ARCH)
       OSGEO4W_PKG: $(OSGEO4W_PKG)
-      BUILD_NUMBER: $(Build.BuildId)
       CTEST_CUSTOM_TESTS_IGNORE: $(CTEST_CUSTOM_TESTS_IGNORE)
       REPO_COMMIT: $(Build.SourceVersion)
       CLCACHE_DIR: $(CLCACHE_DIR)
