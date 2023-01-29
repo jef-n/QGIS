@@ -117,10 +117,6 @@ ifneq (,$(findstring ;$(GRASSVER);, ";7;8;"))
 		-DGRASS_PREFIX$(GRASSVER)=/usr/lib/$(GRASS)
 endif
 
-ifneq (,$(findstring $(DISTRIBUTION),"sid kinetic lunar"))
-	CMAKE_OPTS += -DGDAL_LIBRARY=/usr/lib/$(DEB_BUILD_MULTIARCH)/libgdal.so
-endif
-
 $(shell test -f /usr/include/$(DEB_BUILD_MULTIARCH)/qt5/Qt3DExtras/qt3dextrasversion.h -a -f /usr/lib/$(DEB_BUILD_MULTIARCH)/cmake/Qt53DExtras/Qt53DExtrasConfig.cmake)
 ifneq (0,$(.SHELLSTATUS))
 # Qt3DExtras intentionally removed from debian (#895386) and in turn ubuntu

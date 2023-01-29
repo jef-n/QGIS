@@ -5,13 +5,13 @@
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 #
-# Once run this will define: 
-# 
+# Once run this will define:
+#
 # GDAL_FOUND       = system has GDAL lib
 #
 # GDAL_LIBRARY     = full path to the library
 #
-# GDAL_INCLUDE_DIR      = where to find headers 
+# GDAL_INCLUDE_DIR      = where to find headers
 
 INCLUDE (${CMAKE_SOURCE_DIR}/cmake/MacPlistMacros.cmake)
 
@@ -24,11 +24,11 @@ IF(WIN32)
 
   IF (MSVC)
     FIND_PATH(GDAL_INCLUDE_DIR gdal.h "$ENV{LIB_DIR}/include/gdal" $ENV{INCLUDE})
-    FIND_LIBRARY(GDAL_LIBRARY NAMES gdal gdal_i PATHS 
+    FIND_LIBRARY(GDAL_LIBRARY NAMES gdal gdal_i PATHS
 	    "$ENV{LIB_DIR}/lib" $ENV{LIB} /usr/lib c:/msys/local/lib)
     IF (GDAL_LIBRARY)
       SET (
-         GDAL_LIBRARY;odbc32;odbccp32 
+         GDAL_LIBRARY;odbc32;odbccp32
          CACHE STRING INTERNAL)
     ENDIF (GDAL_LIBRARY)
   ENDIF (MSVC)
@@ -40,7 +40,7 @@ ELSEIF(APPLE AND QGIS_MAC_DEPS_DIR)
 
 ELSE(WIN32)
 
-  IF(UNIX) 
+  IF(UNIX)
 
     # try to use framework on mac
     # want clean framework path, not unix compatibility path
@@ -91,21 +91,21 @@ ELSE(WIN32)
           /usr/bin/
           )
       # MESSAGE("DBG GDAL_CONFIG ${GDAL_CONFIG}")
-    
-      IF (GDAL_CONFIG) 
 
-        ## extract gdal version 
+      IF (GDAL_CONFIG)
+
+        ## extract gdal version
         EXEC_PROGRAM(${GDAL_CONFIG}
             ARGS --version
             OUTPUT_VARIABLE GDAL_VERSION )
         STRING(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\1" GDAL_VERSION_MAJOR "${GDAL_VERSION}")
         STRING(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\2" GDAL_VERSION_MINOR "${GDAL_VERSION}")
         STRING(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\3" GDAL_VERSION_MICRO "${GDAL_VERSION}")
-  
+
         # MESSAGE("DBG GDAL_VERSION ${GDAL_VERSION}")
         # MESSAGE("DBG GDAL_VERSION_MAJOR ${GDAL_VERSION_MAJOR}")
         # MESSAGE("DBG GDAL_VERSION_MINOR ${GDAL_VERSION_MINOR}")
-  
+
         # check for gdal version
         # version 1.2.5 is known NOT to be supported (missing CPL_STDCALL macro)
         # According to INSTALL, 2.1+ is required
@@ -124,15 +124,15 @@ ELSE(WIN32)
             ARGS --prefix
             OUTPUT_VARIABLE GDAL_PREFIX)
         #SET(GDAL_INCLUDE_DIR ${GDAL_PREFIX}/include CACHE STRING INTERNAL)
-        FIND_PATH(GDAL_INCLUDE_DIR 
-            gdal.h 
+        FIND_PATH(GDAL_INCLUDE_DIR
+            gdal.h
             ${GDAL_PREFIX}/include/gdal
             ${GDAL_PREFIX}/include
-            /usr/local/include 
-            /usr/include 
+            /usr/local/include
+            /usr/include
             )
 
-        ## extract link dirs for rpath  
+        ## extract link dirs for rpath
         EXEC_PROGRAM(${GDAL_CONFIG}
             ARGS --libs
             OUTPUT_VARIABLE GDAL_CONFIG_LIBS )
@@ -140,30 +140,30 @@ ELSE(WIN32)
         ## split off the link dirs (for rpath)
         ## use regular expression to match wildcard equivalent "-L*<endchar>"
         ## with <endchar> is a space or a semicolon
-        STRING(REGEX MATCHALL "[-][L]([^ ;])+" 
-            GDAL_LINK_DIRECTORIES_WITH_PREFIX 
+        STRING(REGEX MATCHALL "(^|[\t ])-L([^ ;])+"
+            GDAL_LINK_DIRECTORIES_WITH_PREFIX
             "${GDAL_CONFIG_LIBS}" )
-        #      MESSAGE("DBG  GDAL_LINK_DIRECTORIES_WITH_PREFIX=${GDAL_LINK_DIRECTORIES_WITH_PREFIX}")
+        # MESSAGE("DBG  GDAL_LINK_DIRECTORIES_WITH_PREFIX=${GDAL_LINK_DIRECTORIES_WITH_PREFIX}")
 
         ## remove prefix -L because we need the pure directory for LINK_DIRECTORIES
-      
+
         IF (GDAL_LINK_DIRECTORIES_WITH_PREFIX)
-          STRING(REGEX REPLACE "[-][L]" "" GDAL_LINK_DIRECTORIES ${GDAL_LINK_DIRECTORIES_WITH_PREFIX} )
+          STRING(REGEX REPLACE "^[\t ]*-L" "" GDAL_LINK_DIRECTORIES ${GDAL_LINK_DIRECTORIES_WITH_PREFIX} )
         ENDIF (GDAL_LINK_DIRECTORIES_WITH_PREFIX)
 
         ## split off the name
         ## use regular expression to match wildcard equivalent "-l*<endchar>"
         ## with <endchar> is a space or a semicolon
-        STRING(REGEX MATCHALL "[-][l]([^ ;])+" 
-            GDAL_LIB_NAME_WITH_PREFIX 
+        STRING(REGEX MATCHALL "(^|[\t ])-l([^ ;])+"
+            GDAL_LIB_NAME_WITH_PREFIX
             "${GDAL_CONFIG_LIBS}" )
-        #      MESSAGE("DBG  GDAL_LIB_NAME_WITH_PREFIX=${GDAL_LIB_NAME_WITH_PREFIX}")
+        # MESSAGE("DBG  GDAL_LIB_NAME_WITH_PREFIX=${GDAL_LIB_NAME_WITH_PREFIX}")
 
 
         ## remove prefix -l because we need the pure name
-      
+
         IF (GDAL_LIB_NAME_WITH_PREFIX)
-          STRING(REGEX REPLACE "[-][l]" "" GDAL_LIB_NAME ${GDAL_LIB_NAME_WITH_PREFIX} )
+          STRING(REGEX REPLACE "^[\t ]*-l" "" GDAL_LIB_NAME ${GDAL_LIB_NAME_WITH_PREFIX} )
         ENDIF (GDAL_LIB_NAME_WITH_PREFIX)
 
         IF (APPLE)
@@ -176,7 +176,7 @@ ELSE(WIN32)
         ELSE (APPLE)
           FIND_LIBRARY(GDAL_LIBRARY NAMES ${GDAL_LIB_NAME} gdal PATHS ${GDAL_LINK_DIRECTORIES}/lib ${GDAL_LINK_DIRECTORIES})
         ENDIF (APPLE)
-      
+
       ELSE(GDAL_CONFIG)
         MESSAGE("FindGDAL.cmake: gdal-config not found. Please set it manually. GDAL_CONFIG=${GDAL_CONFIG}")
       ENDIF(GDAL_CONFIG)
