@@ -1,0 +1,99 @@
+name: OSGeo4W Windows Build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - master
+      - release-**
+      - queued_ltr_backports
+    paths:
+    - 'src/**'
+    - 'external/**'
+    - 'python/**'
+    - 'tests/**'
+    - 'ms-windows/**'
+    - 'CMakeLists.txt'
+    - '.github/workflows/osgeo4w.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  osgeo4w-build:
+    name: OSGeo4W Windows Build
+    runs-on: windows-latest
+    env:
+      CCACHE_DIR: build/ccache
+
+    steps:
+      - name: keep original line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+        repository: 'jef-n/OSGeo4W'
+
+      - name: 'setup environment'
+        shell: cmd
+        run: bootstrap.cmd none
+
+      - name: 'determine package name'
+        shell: cygwin/bin/bash
+        run:
+          set -x
+          export PATH=/bin:/usr/bin
+
+          RELBRANCH=$(git ls-remote --heads $GITHUB_REPOSITORY "refs/heads/release-*_*" | sed -e '/\^{}$/d' -ne 's#^.*refs/heads/release-#release-#p' | sort -V | tail -1)
+          RELBRANCH=${RELBRANCH#*/}
+          LTRTAG=$(git ls-remote --tags $GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -1)
+          LTRBRANCH=release-${LTRTAG#ltr-}
+          if [ "$RELBRANCH" = "$LTRBRANCH" ]; then
+            LTRTAG=$(git ls-remote --tags $GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -2 | head -1)
+            LTRBRANCH=release-${LTRTAG#ltr-}
+          fi
+
+          case $GITHUB_BASE_REF in
+          $LTRBRANCH|queued_ltr_backports)
+            p=qgis-ltr-dev
+            ;;
+          $RELBRANCH)
+            p=qgis-rel-dev
+            ;;
+          master)
+            # TODO: qgis-qt6-dev
+            p=qgis-dev
+            ;;
+          *)
+            echo "Could not determine package name from target branch $GITHUB_BASE_REF"
+            exit 1
+            ;;
+          esac
+
+          echo PKGS=$p >>$GITHUB_ENV
+
+      - uses: actions/checkout@v4
+        with:
+           path: 'src/${{ env.PKG }}/qgis'
+
+      - name: Restore build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: build-ccache-osgeo4w-${{ github.event.pull_request.base.ref || github.ref_name }}
+          restore-keys: |
+            build-ccache-osgeo4w-master
+
+      - name: Build QGIS
+        run: bootstrap.cmd %PKG%
+
+      - name: Save build cache for push only
+        uses: actions/cache/save@v4
+        if: ${{ github.event_name == 'push' }}
+        with:
+          path: build
+          key: build-ccache-osgeo4w-${{ github.ref_name }}-${{ github.run_id }}
