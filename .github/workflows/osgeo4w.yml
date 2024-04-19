@@ -30,6 +30,7 @@ jobs:
     runs-on: windows-latest
     env:
       CCACHE_DIR: build/ccache
+      PATH: C:\WINDOWS\system32;C:\Windows
 
     steps:
       - name: keep original line endings
