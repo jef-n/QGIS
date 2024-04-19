@@ -36,10 +36,14 @@ jobs:
       - name: keep original line endings
         run: |
           git config --global core.autocrlf false
+        env:
+          PATH: C:\Program Files\Git\bin;C:\WINDOWS\system32;C:\Windows
 
       - uses: actions/checkout@v4
         with:
           repository: 'jef-n/o4w-playground'
+        env:
+          PATH: C:\Program Files\Git\bin;C:\WINDOWS\system32;C:\Windows
 
       - name: 'setup environment'
         shell: cmd
