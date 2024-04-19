@@ -36,7 +36,8 @@ jobs:
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v4
-        repository: 'jef-n/OSGeo4W'
+        with:
+          repository: 'jef-n/OSGeo4W'
 
       - name: 'setup environment'
         shell: cmd
