@@ -57,17 +57,20 @@ jobs:
 
       - name: 'determine package name'
         shell: bash {0}
+        env:
+          BASHOPTS: igncr
         run: |
-          set -x;
-          cygpath -aw /;
+          set -x
+          cygpath -aw /
           export PATH=/bin:/usr/bin
+          set
 
-          RELBRANCH=$(git ls-remote --heads $GITHUB_REPOSITORY "refs/heads/release-*_*" | sed -e '/\^{}$/d' -ne 's#^.*refs/heads/release-#release-#p' | sort -V | tail -1)
+          RELBRANCH=$(git ls-remote --heads https://github.com/$GITHUB_REPOSITORY "refs/heads/release-*_*" | sed -e '/\^{}$/d' -ne 's#^.*refs/heads/release-#release-#p' | sort -V | tail -1)
           RELBRANCH=${RELBRANCH#*/}
-          LTRTAG=$(git ls-remote --tags $GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -1)
+          LTRTAG=$(git ls-remote --tags https://github.com/$GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -1)
           LTRBRANCH=release-${LTRTAG#ltr-}
           if [ "$RELBRANCH" = "$LTRBRANCH" ]; then
-            LTRTAG=$(git ls-remote --tags $GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -2 | head -1)
+            LTRTAG=$(git ls-remote --tags https://github.com/$GITHUB_REPOSITORY | sed -e '/\^{}$/d' -ne 's#^.*refs/tags/ltr-#ltr-#p' | sort -V | tail -2 | head -1)
             LTRBRANCH=release-${LTRTAG#ltr-}
           fi
 
