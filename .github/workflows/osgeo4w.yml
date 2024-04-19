@@ -42,10 +42,12 @@ jobs:
 
       - name: 'setup environment'
         shell: cmd
-        run: bootstrap.cmd none
+        run: |
+          bootstrap.cmd none
+          echo CD:%CD%
 
       - name: 'determine package name'
-        shell: ${{ github.workspace }}/cygwin/bin/bash {0}
+        shell: ./cygwin/bin/bash {0}
         run: |
           set -x
           export PATH=/bin:/usr/bin
