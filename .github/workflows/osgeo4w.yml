@@ -44,7 +44,7 @@ jobs:
 
       - name: 'determine package name'
         shell: ./cygwin/bin/bash {0}
-        run:
+        run: |
           set -x
           export PATH=/bin:/usr/bin
 
