@@ -44,7 +44,7 @@ jobs:
         shell: cmd
         run: |
           echo on
-          bootstrap.cmd none
+          call bootstrap.cmd none
           path
           echo CD:%CD%
           cygwin\bin\cygpath -aw /bin >>%GITHUB_PATH%
@@ -52,6 +52,7 @@ jobs:
       - name: 'determine package name'
         shell: bash {0}
         run: |
+          cygpath -a /
           set -x
           export PATH=/bin:/usr/bin
 
