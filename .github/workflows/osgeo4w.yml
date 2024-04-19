@@ -43,11 +43,14 @@ jobs:
       - name: 'setup environment'
         shell: cmd
         run: |
+          echo on
           bootstrap.cmd none
+          path
           echo CD:%CD%
+          cygwin\bin\cygpath -aw /bin >>%GITHUB_PATH%
 
       - name: 'determine package name'
-        shell: ./cygwin/bin/bash {0}
+        shell: bash {0}
         run: |
           set -x
           export PATH=/bin:/usr/bin
