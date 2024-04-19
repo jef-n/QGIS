@@ -33,11 +33,12 @@ jobs:
 
     steps:
       - name: keep original line endings
-        run: git config --global core.autocrlf false
+        run: |
+          git config --global core.autocrlf false
 
       - uses: actions/checkout@v4
         with:
-          repository: 'jef-n/OSGeo4W'
+          repository: 'jef-n/o4w-playground'
 
       - name: 'setup environment'
         shell: cmd
