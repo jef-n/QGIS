@@ -1,5 +1,5 @@
 #############################################################
-# CMake settings
+# CMake settings test
 cmake_minimum_required(VERSION 3.12.0)
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_AUTORCC ON)
